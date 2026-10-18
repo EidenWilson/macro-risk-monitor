@@ -1,0 +1,1118 @@
+<title>Macro Risk Monitor</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+/* Layout: sticky bar; hero sentence + profit bar; inputs rail (left) + analysis column (right); stacks on phones */
+:root{
+  --bg:#eceff1; --surface:#ffffff; --sunk:#f4f6f7; --ink:#0f1b26; --muted:#5b6977; --line:#d6dce1;
+  --accent:#2445c9; --accent-soft:#e3e8fb; --on-accent:#ffffff;
+  --loss:#cf3a28; --loss-soft:#f8e1dd; --gain:#0f7d66; --gain-soft:#dcefe9; --warn:#b26a00; --warn-soft:#fbefd9;
+  --rec:#2e8b57; --over:#c47d0e; --stag:#cf3a28; --contr:#2f6db3;
+  --f:"Archivo",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --shadow:0 1px 2px rgba(15,27,38,.06),0 8px 24px -12px rgba(15,27,38,.18);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0c141b; --surface:#131d26; --sunk:#0f1820; --ink:#e6edf3; --muted:#90a0ae; --line:#25323e;
+  --accent:#7d97ff; --accent-soft:#1c2850; --on-accent:#0b1430;
+  --loss:#ff7a66; --loss-soft:#3a1d19; --gain:#4fc7a7; --gain-soft:#12302a; --warn:#f0ad3e; --warn-soft:#3a2b12;
+  --rec:#5cc489; --over:#f0ad3e; --stag:#ff7a66; --contr:#6ea8ef;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px -12px rgba(0,0,0,.6); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0c141b; --surface:#131d26; --sunk:#0f1820; --ink:#e6edf3; --muted:#90a0ae; --line:#25323e;
+  --accent:#7d97ff; --accent-soft:#1c2850; --on-accent:#0b1430;
+  --loss:#ff7a66; --loss-soft:#3a1d19; --gain:#4fc7a7; --gain-soft:#12302a; --warn:#f0ad3e; --warn-soft:#3a2b12;
+  --rec:#5cc489; --over:#f0ad3e; --stag:#ff7a66; --contr:#6ea8ef;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px -12px rgba(0,0,0,.6); color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:15px;line-height:1.5;font-variant-numeric:tabular-nums}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+.gutter{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.inner{max-width:1220px;margin:0 auto}
+button,input,select{font:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.bar .inner{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-block:9px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-stretch:115%;font-size:16px;letter-spacing:-.01em}
+.mark{width:22px;height:22px;flex:none}
+.tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;background:var(--sunk);border:1px solid var(--line);white-space:nowrap;font-size:12.5px;color:var(--muted)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--gain)}
+.btn{font-size:13px;font-weight:600;padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--surface);color:var(--muted);font-size:12.5px;font-weight:700;padding:6px 10px;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--ink);color:var(--surface)}
+
+.hero{padding-block:32px 24px}
+.lede{font-size:clamp(24px,3.6vw,40px);line-height:1.15;font-weight:500;font-stretch:88%;letter-spacing:-.015em;max-width:30ch;margin:0;text-wrap:balance}
+.lede .num{font-weight:800;font-stretch:112%;color:var(--loss);white-space:nowrap}
+.lede .ok{font-weight:800;font-stretch:112%;color:var(--gain);white-space:nowrap}
+.lede .base{font-weight:700;white-space:nowrap}
+.profitbar{margin-top:20px;max-width:880px}
+.pb-track{position:relative;height:34px;border-radius:8px;background:var(--gain-soft);overflow:hidden;border:1px solid var(--line)}
+.pb-keep{position:absolute;inset:0 auto 0 0;background:var(--gain);transition:width .5s cubic-bezier(.2,.8,.2,1)}
+.pb-lose{position:absolute;top:0;bottom:0;background:repeating-linear-gradient(135deg,var(--loss) 0 8px,color-mix(in srgb,var(--loss) 75%,transparent) 8px 16px);transition:left .5s cubic-bezier(.2,.8,.2,1),width .5s cubic-bezier(.2,.8,.2,1)}
+.pb-typ{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink);transition:left .5s cubic-bezier(.2,.8,.2,1)}
+.pb-legend{display:flex;flex-wrap:wrap;gap:6px 20px;margin-top:10px;font-size:13px;color:var(--muted)}
+.pb-legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-2px}
+.pb-legend b{color:var(--ink);font-weight:600}
+.alert{display:none;margin-top:16px;max-width:880px;padding:12px 14px;border-radius:10px;background:var(--warn-soft);color:var(--ink);font-size:14px;border:1px solid color-mix(in srgb,var(--warn) 40%,transparent)}
+.alert.on{display:block}
+.alert b{color:var(--warn)}
+.presets{display:flex;gap:8px;flex-wrap:wrap;margin-top:22px;align-items:center}
+.presets>span{font-size:13px;color:var(--muted);margin-right:4px}
+.pill{font-size:13.5px;font-weight:600;padding:7px 14px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.pill:hover{border-color:var(--accent)}
+.pill[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+@media (prefers-reduced-motion:reduce){.pb-keep,.pb-lose,.pb-typ{transition:none!important}}
+
+.main{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:24px;align-items:start;padding-block:8px 56px}
+@media (max-width:920px){.main{grid-template-columns:minmax(0,1fr)}}
+.col{display:flex;flex-direction:column;gap:24px;min-width:0}
+.card{background:var(--surface);border-radius:14px;box-shadow:var(--shadow);padding:22px;min-width:0}
+h2{font-size:21px;font-weight:700;font-stretch:108%;letter-spacing:-.01em;line-height:1.2;margin:0 0 4px;text-wrap:balance}
+h3{font-size:15px;font-weight:700;margin:0 0 8px}
+.note{color:var(--muted);font-size:13.5px;margin:0 0 16px;max-width:72ch}
+.small{font-size:12.5px;color:var(--muted)}
+
+/* inputs */
+details.group{border-top:1px solid var(--line);padding-block:12px 2px}
+details.group:first-of-type{border-top:0;padding-top:2px}
+details.group>summary{list-style:none;cursor:pointer;font-size:14px;font-weight:700;display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}
+details.group>summary::-webkit-details-marker{display:none}
+details.group>summary::after{content:"+";color:var(--muted);font-weight:500;font-size:18px;line-height:1}
+details.group[open]>summary::after{content:"–"}
+details.group>summary small{font-weight:500;color:var(--muted);margin-left:auto;font-size:12.5px}
+.field{display:grid;grid-template-columns:1fr auto;align-items:center;gap:4px 10px;margin-bottom:11px}
+.field>label{font-size:13px;color:var(--muted)}
+.money{display:flex;align-items:center;background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:0 10px;width:128px}
+.money span{color:var(--muted);font-size:13px}
+.money input{border:0;background:transparent;font-weight:600;font-size:14.5px;color:var(--ink);width:100%;padding:6px 0 6px 4px;text-align:right}
+.money input:focus{outline:none}
+.money:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.range{grid-column:1/-1;display:grid;grid-template-columns:1fr 64px;gap:10px;align-items:center}
+.range output{font-weight:700;text-align:right;font-size:13.5px}
+input[type=range]{width:100%;accent-color:var(--accent)}
+select{background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:6px 8px;color:var(--ink);font-size:13.5px;max-width:170px}
+.toggle{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);margin-bottom:10px}
+.toggle input{accent-color:var(--accent);width:16px;height:16px}
+.linkbtn{background:none;border:0;color:var(--accent);cursor:pointer;padding:0;font-size:13px;font-weight:600}
+
+/* clients */
+.clients{margin-bottom:20px}
+.clist{display:flex;flex-direction:column;gap:6px;margin:10px 0}
+.crow{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:8px 10px;border-radius:8px;background:var(--sunk);font-size:13.5px;cursor:pointer;border:1px solid transparent}
+.crow:hover{border-color:var(--accent)}
+.crow.active{border-color:var(--accent);background:var(--accent-soft)}
+.crow .risk{font-weight:700}
+.crow .x{background:none;border:0;color:var(--muted);cursor:pointer;font-size:16px;line-height:1;padding:0 2px}
+.flag{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+.saverow{display:flex;gap:6px}
+.saverow input{flex:1;min-width:0;background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:6px 8px;color:var(--ink);font-size:13.5px}
+
+/* regime */
+.regime{display:grid;grid-template-columns:260px minmax(0,1fr);gap:24px;align-items:center}
+@media (max-width:640px){.regime{grid-template-columns:minmax(0,1fr)}}
+.compass{width:100%;max-width:300px}
+.regname{font-size:34px;font-weight:800;font-stretch:118%;letter-spacing:-.02em;line-height:1;margin:6px 0 10px}
+.facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 16px;margin-top:16px}
+@media (max-width:440px){.facts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.fact b{display:block;font-size:20px;font-weight:700;font-stretch:105%}
+.fact span{font-size:12.5px;color:var(--muted)}
+.hot{color:var(--loss)} .cool{color:var(--gain)} .warm{color:var(--warn)}
+.second{margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}
+.stack{display:flex;height:14px;border-radius:7px;overflow:hidden;background:var(--sunk);margin:8px 0}
+.stack i{display:block;height:100%}
+.slegend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12.5px;color:var(--muted)}
+.slegend b{color:var(--ink)}
+.slegend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+
+.tabs{display:flex;gap:4px;padding:4px;background:var(--sunk);border-radius:10px;width:fit-content;max-width:100%;flex-wrap:wrap;margin-bottom:16px}
+.tab{font-size:13.5px;font-weight:600;padding:7px 12px;border-radius:7px;border:0;background:transparent;color:var(--muted);cursor:pointer}
+.tab[aria-pressed=true]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.scroll{overflow-x:auto}
+svg{display:block}
+svg text{font-family:var(--f);fill:var(--muted);font-size:11px}
+.moves{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.moves span{font-size:12.5px;padding:3px 9px;border-radius:6px;background:var(--sunk);color:var(--muted)}
+.moves b{color:var(--ink);font-weight:600}
+.callout{display:flex;flex-wrap:wrap;gap:12px;margin-top:14px}
+.callout div{flex:1 1 180px;padding:12px 14px;border-radius:10px;background:var(--sunk)}
+.callout span{display:block;font-size:12.5px;color:var(--muted)}
+.callout b{font-size:20px;font-weight:800;font-stretch:108%}
+
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th{text-align:left;font-weight:600;color:var(--muted);font-size:12.5px;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+td.n,th.n{text-align:right;white-space:nowrap}
+tr:last-child td{border-bottom:0}
+.hedge-row input{width:16px;height:16px;accent-color:var(--accent);vertical-align:-3px;margin-right:8px}
+.hedge-row td:first-child{min-width:220px}
+.hedge-row small{display:block;color:var(--muted);font-size:12.5px;margin-left:24px}
+.verdict{font-weight:700;font-size:12.5px;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.v-good{background:var(--gain-soft);color:var(--gain)} .v-meh{background:var(--sunk);color:var(--muted)} .v-bad{background:var(--loss-soft);color:var(--loss)}
+
+.dist{display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:20px;align-items:center}
+@media (max-width:720px){.dist{grid-template-columns:minmax(0,1fr)}}
+.stat{padding:9px 0;border-bottom:1px solid var(--line)}
+.stat:last-child{border-bottom:0}
+.stat span{display:block;font-size:12.5px;color:var(--muted)}
+.stat b{font-size:21px;font-weight:800;font-stretch:108%}
+
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12.5px;padding:8px 10px;border-radius:8px;line-height:1.4;z-index:20;max-width:240px}
+
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(10,15,20,.5);display:flex;align-items:center;justify-content:center;z-index:30;padding:16px}
+.modal[hidden]{display:none!important}
+.sheet{background:var(--surface);border-radius:14px;max-width:640px;width:100%;max-height:88vh;overflow:auto;padding:22px;box-shadow:var(--shadow)}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:22px;text-align:center;color:var(--muted);font-size:14px;margin:12px 0}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;z-index:40}
+footer{color:var(--muted);font-size:12.5px;padding-block:0 40px}
+footer p{margin:0 0 6px;max-width:90ch}
+</style>
+
+<div class="bar gutter"><div class="inner">
+  <div class="brand"><svg class="mark" viewBox="0 0 22 22" aria-hidden="true"><rect x="1" y="1" width="9" height="9" rx="2" fill="var(--stag)"/><rect x="12" y="1" width="9" height="9" rx="2" fill="var(--over)" opacity=".55"/><rect x="1" y="12" width="9" height="9" rx="2" fill="var(--contr)" opacity=".55"/><rect x="12" y="12" width="9" height="9" rx="2" fill="var(--rec)" opacity=".55"/></svg><span data-t="brand">Macro Risk Monitor</span></div>
+  <div class="tools">
+    <span class="chip"><span class="dot"></span><span id="asof"></span></span>
+    <button type="button" class="btn" id="openUpload" data-t="uploadBtn">Import accounts</button>
+    <button type="button" class="btn primary" id="pdfBtn" data-t="pdfBtn">Download report</button>
+    <div class="seg" role="group" aria-label="Language"><button type="button" data-lang="en" aria-pressed="true">EN</button><button type="button" data-lang="de" aria-pressed="false">DE</button></div>
+  </div>
+</div></div>
+
+<section class="hero gutter"><div class="inner">
+  <p class="lede" id="lede"></p>
+  <div class="profitbar" aria-hidden="true"><div class="pb-track"><div class="pb-keep" id="pbKeep"></div><div class="pb-lose" id="pbLose"></div><div class="pb-typ" id="pbTyp"></div></div></div>
+  <div class="pb-legend" id="pbLegend"></div>
+  <div class="alert" id="alert" role="status"></div>
+  <div class="presets" role="group"><span data-t="tryExample">Try an example:</span><span id="presets" style="display:contents"></span></div>
+</div></section>
+
+<div class="gutter"><div class="inner main">
+  <aside class="col">
+    <section class="card clients" aria-labelledby="h-cl">
+      <h2 id="h-cl" data-t="clientsTitle">Saved businesses</h2>
+      <p class="note" id="clientsNote" style="margin-bottom:6px"></p>
+      <div class="clist" id="clist"></div>
+      <div class="saverow"><input id="clientName" maxlength="60" aria-label="Business name"><button type="button" class="btn" id="saveClient" data-t="save">Save</button></div>
+      <div class="field" style="margin:12px 0 0"><label for="threshold" data-t="alertAt">Warn me when a bad year costs more than</label><div class="range"><input type="range" id="threshold" min="10" max="100" step="5"><output id="thresholdO"></output></div></div>
+    </section>
+
+    <form class="card" id="form" autocomplete="off" aria-labelledby="h-in">
+      <h2 id="h-in" data-t="yourBusiness">Your business</h2>
+      <p class="note" id="presetNote"></p>
+
+      <details class="group" open><summary><span data-t="gSales">Sales and profit</span></summary>
+        <div class="field"><label for="rev" data-t="rev">Annual revenue</label><div class="money"><span>€</span><input id="rev" inputmode="numeric"></div></div>
+        <div class="field"><label for="ebit" data-t="ebit">Annual profit (EBIT)</label><div class="money"><span>€</span><input id="ebit" inputmode="numeric"></div></div>
+        <div class="field"><label for="margin" data-t="margin">Contribution margin</label><div class="range"><input type="range" id="margin" min="5" max="95" step="5"><output id="marginO"></output></div></div>
+        <div class="field"><label for="demandIdx" data-t="demandIdx">Your sales follow</label><select id="demandIdx"></select></div>
+        <div class="field"><label for="beta" data-t="beta">Sensitivity of your sales</label><div class="range"><input type="range" id="beta" min="0" max="2" step="0.1"><output id="betaO"></output></div></div>
+      </details>
+
+      <details class="group" open><summary><span data-t="gLoan">Floating-rate loan</span><small>Euribor + margin</small></summary>
+        <div class="field"><label for="loan" data-t="loan">Amount outstanding</label><div class="money"><span>€</span><input id="loan" inputmode="numeric"></div></div>
+        <div class="field"><label for="spread" data-t="spread">Bank margin</label><div class="range"><input type="range" id="spread" min="0" max="6" step="0.1"><output id="spreadO"></output></div></div>
+        <div class="field"><label for="loanReset" data-t="loanReset">Rate fixed for another</label><div class="range"><input type="range" id="loanReset" min="0" max="12" step="1"><output id="loanResetO"></output></div></div>
+        <label class="toggle"><input type="checkbox" id="floor"> <span data-t="floor">Rate floor: negative Euribor counts as 0%</span></label>
+      </details>
+
+      <details class="group" open><summary><span data-t="gEnergy">Energy</span></summary>
+        <div class="field"><label for="energy" data-t="energy">Annual energy bill</label><div class="money"><span>€</span><input id="energy" inputmode="numeric"></div></div>
+        <div class="field"><label for="elecShare" data-t="elecShare">Of which electricity</label><div class="range"><input type="range" id="elecShare" min="0" max="100" step="5"><output id="elecShareO"></output></div></div>
+        <div class="field"><label for="fixed" data-t="fixed">On a fixed-price contract</label><div class="range"><input type="range" id="fixed" min="0" max="100" step="5"><output id="fixedO"></output></div></div>
+        <div class="field"><label for="fixedEnd" data-t="fixedEnd">Fixed contract runs for another</label><div class="range"><input type="range" id="fixedEnd" min="0" max="12" step="1"><output id="fixedEndO"></output></div></div>
+      </details>
+
+      <details class="group" open><summary><span data-t="gInputs">Materials and ingredients</span></summary>
+        <div class="field"><label for="food" data-t="food">Annual purchases</label><div class="money"><span>€</span><input id="food" inputmode="numeric"></div></div>
+        <div class="field"><label for="inputIdx" data-t="inputIdx">Prices follow</label><select id="inputIdx"></select></div>
+        <div class="field"><label for="pass" data-t="pass">Price rises you pass on</label><div class="range"><input type="range" id="pass" min="0" max="100" step="5"><output id="passO"></output></div></div>
+      </details>
+
+      <details class="group"><summary><span data-t="gStaff">Rent and staff</span></summary>
+        <div class="field"><label for="rent" data-t="rent">Annual rent</label><div class="money"><span>€</span><input id="rent" inputmode="numeric"></div></div>
+        <label class="toggle"><input type="checkbox" id="indexed"> <span data-t="indexed">Index-linked rent (Indexmiete)</span></label>
+        <div class="field"><label for="rentMonth" data-t="rentMonth">Next rent adjustment in</label><div class="range"><input type="range" id="rentMonth" min="1" max="12" step="1"><output id="rentMonthO"></output></div></div>
+        <div class="field"><label for="payroll" data-t="payroll">Annual payroll</label><div class="money"><span>€</span><input id="payroll" inputmode="numeric"></div></div>
+        <div class="field"><label for="mwShare" data-t="mwShare">Paid at minimum wage</label><div class="range"><input type="range" id="mwShare" min="0" max="100" step="5"><output id="mwShareO"></output></div></div>
+        <div class="field"><label for="payMonth" data-t="payMonth">Next pay rise for other staff in</label><div class="range"><input type="range" id="payMonth" min="1" max="12" step="1"><output id="payMonthO"></output></div></div>
+      </details>
+
+      <details class="group"><summary><span data-t="gTrade">Imports and transport</span></summary>
+        <div class="field"><label for="usd" data-t="usd">Paid in US dollars</label><div class="money"><span>€</span><input id="usd" inputmode="numeric"></div></div>
+        <div class="field"><label for="fuel" data-t="fuel">Fuel and delivery</label><div class="money"><span>€</span><input id="fuel" inputmode="numeric"></div></div>
+      </details>
+
+      <details class="group"><summary><span data-t="gCash">Cash</span></summary>
+        <div class="field"><label for="cash" data-t="cash">Cash in the bank today</label><div class="money"><span>€</span><input id="cash" inputmode="numeric"></div></div>
+        <div class="field"><label for="credit" data-t="credit">Unused credit line</label><div class="money"><span>€</span><input id="credit" inputmode="numeric"></div></div>
+        <div class="field"><label for="surplus" data-t="surplus">Normal monthly cash surplus</label><div class="money"><span>€</span><input id="surplus" inputmode="numeric"></div></div>
+        <p class="small" style="margin:0 0 8px" data-t="surplusHint">After loan repayments, tax and owner pay, in a month with no price shocks.</p>
+      </details>
+
+      <details class="group"><summary><span data-t="gHedge">Cost of protection</span></summary>
+        <div class="field"><label for="fixPremium" data-t="fixPremium">Extra cost to fix the loan rate</label><div class="range"><input type="range" id="fixPremium" min="0" max="3" step="0.05"><output id="fixPremiumO"></output></div></div>
+        <div class="field"><label for="energyPremium" data-t="energyPremium">Premium for a fixed energy price</label><div class="range"><input type="range" id="energyPremium" min="0" max="30" step="1"><output id="energyPremiumO"></output></div></div>
+        <div class="field"><label for="fwdCost" data-t="fwdCost">Cost of a dollar forward</label><div class="range"><input type="range" id="fwdCost" min="-3" max="3" step="0.1"><output id="fwdCostO"></output></div></div>
+        <p class="small" style="margin:0 0 8px" id="hedgeHint"></p>
+      </details>
+      <button type="button" class="linkbtn" id="reset" data-t="reset">Reset this example</button>
+    </form>
+  </aside>
+
+  <div class="col">
+    <section class="card" aria-labelledby="h-reg">
+      <div class="regime">
+        <div class="scroll"><svg class="compass" id="compass" viewBox="0 0 300 300" role="img" aria-label="Regime compass"></svg></div>
+        <div>
+          <h2 id="h-reg" data-t="regTitle">Where the German economy is now</h2>
+          <div class="regname" id="regname"></div>
+          <p class="note" id="regdesc" style="margin:0"></p>
+          <div class="small" id="since"></div>
+          <div class="facts" id="facts"></div>
+        </div>
+      </div>
+      <div class="second">
+        <h3 data-t="hmmTitle">Second opinion from a statistical model</h3>
+        <p class="note" id="hmmNote" style="margin-bottom:6px"></p>
+        <div class="stack" id="hmmStack"></div>
+        <div class="slegend" id="hmmLegend"></div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="h-cash">
+      <h2 id="h-cash" data-t="cashTitle">Your cash over the next 12 months</h2>
+      <p class="note" data-t="cashNote">Bank balance month by month if nothing changes, in a typical year, and in a bad year (1 in 20). The shaded band is your credit line.</p>
+      <div class="scroll"><svg id="cashChart" viewBox="0 0 720 260" style="width:100%;min-width:520px"></svg></div>
+      <div class="legend" id="cashLegend"></div>
+      <div class="callout" id="cashCallout"></div>
+      <h3 style="margin-top:22px" data-t="calTitle">When each cost starts to bite</h3>
+      <p class="note" data-t="calNote">Exposures only feel price moves once a contract runs out or an adjustment date arrives. Known rises are already locked in.</p>
+      <div class="scroll"><svg id="calendar" viewBox="0 0 720 230" style="width:100%;min-width:520px"></svg></div>
+    </section>
+
+    <section class="card" aria-labelledby="h-wf">
+      <h2 id="h-wf" data-t="wfTitle">If a past shock repeated next year</h2>
+      <p class="note" data-t="wfNote">Your annual profit, step by step, if sales, prices and rates moved over the next 12 months the way they did in that period. Moves build up gradually over the year.</p>
+      <div class="tabs" id="scen" role="group"></div>
+      <div class="scroll"><svg id="wf" viewBox="0 0 760 310" style="width:100%;min-width:600px"></svg></div>
+      <div class="moves" id="moves"></div>
+    </section>
+
+    <section class="card" aria-labelledby="h-hd">
+      <h2 id="h-hd" data-t="hedgeTitle">Is protection worth it?</h2>
+      <p class="note" data-t="hedgeNote">Each action reduces your bad-year loss but has a cost of its own. Net value is the bad-year saving minus that cost. Tick actions to apply them to the whole page.</p>
+      <div class="scroll"><table id="hedgeTable"></table></div>
+      <div class="callout" id="hedgeCallout"></div>
+    </section>
+
+    <section class="card" aria-labelledby="h-ds">
+      <h2 id="h-ds" data-t="distTitle">Range of outcomes for next year</h2>
+      <p class="note" id="dsnote"></p>
+      <div class="tabs" id="mode" role="group"></div>
+      <div class="dist">
+        <div class="scroll"><svg id="hist" viewBox="0 0 520 200" style="width:100%;min-width:380px"></svg></div>
+        <div id="stats"></div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="h-bt">
+      <h2 id="h-bt" data-t="btTitle">Does the model hold up?</h2>
+      <p class="note" id="btNote"></p>
+      <div class="scroll"><svg id="bt" viewBox="0 0 760 240" style="width:100%;min-width:600px"></svg></div>
+      <div class="legend" id="btLegend"></div>
+      <div class="callout" id="btCallout"></div>
+    </section>
+
+    <section class="card" aria-labelledby="h-tl">
+      <h2 id="h-tl" data-t="tlTitle">Twenty years of regimes</h2>
+      <p class="note" data-t="tlNote">German inflation and industrial output, year on year, as they were known at the time. The top band shows the compass regime, the bottom band the statistical model. Hover to inspect a month.</p>
+      <div class="scroll"><svg id="tl" viewBox="0 0 760 270" style="width:100%;min-width:600px"></svg></div>
+      <div class="legend" id="tlleg"></div>
+    </section>
+  </div>
+</div></div>
+
+<footer class="gutter"><div class="inner">
+  <p id="foot1"></p><p id="foot2"></p><p id="foot3"></p>
+</div></footer>
+
+<div class="modal" id="upModal" hidden role="dialog" aria-modal="true" aria-labelledby="h-up">
+  <div class="sheet">
+    <h2 id="h-up" data-t="upTitle">Import from your accounts</h2>
+    <p class="note" data-t="upNote">Upload a trial balance (Summen- und Saldenliste) exported as CSV from DATEV or your tax advisor. The file stays in your browser. Accounts are mapped using the SKR03 or SKR04 chart of accounts.</p>
+    <div class="drop" id="drop"><span data-t="dropHere">Drop a CSV file here, or</span> <label class="linkbtn" style="cursor:pointer"><input type="file" id="file" accept=".csv,.txt" hidden><span data-t="chooseFile">choose a file</span></label></div>
+    <div class="row" style="margin-bottom:12px"><button type="button" class="btn" id="sampleCsv" data-t="sampleCsv">Use a sample export</button><button type="button" class="btn" id="tplCsv" data-t="tplCsv">Download a template</button>
+      <label class="small"><span data-t="chart">Chart of accounts</span> <select id="skr"><option value="auto">Auto</option><option value="03">SKR03</option><option value="04">SKR04</option></select></label></div>
+    <div id="upResult"></div>
+    <div class="row" style="justify-content:flex-end;margin-top:14px"><button type="button" class="btn" id="upClose" data-t="cancel">Cancel</button><button type="button" class="btn primary" id="upApply" disabled data-t="apply">Use these figures</button></div>
+  </div>
+</div>
+<div class="tip" id="tip" hidden></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const D = __DATA__;
+const $ = id => document.getElementById(id);
+const F = Object.fromEntries(D.factors.map((f, i) => [f, i]));          // factor -> column offset in samples
+const SOFF = 5;                                                        // sample = [period, rule regime, hmm state, e0, infl0, ...factors]
+const has = f => f in F && D.samples.some(s => s[SOFF + F[f]] !== null);
+
+/* ---------------- text ---------------- */
+const T = {
+ en:{brand:'Macro Risk Monitor',uploadBtn:'Import accounts',pdfBtn:'Download report',tryExample:'Try an example:',clientsTitle:'Saved businesses',save:'Save',alertAt:'Warn me when a bad year costs more than',
+  yourBusiness:'Your business',gSales:'Sales and profit',rev:'Annual revenue',ebit:'Annual profit (EBIT)',margin:'Contribution margin',demandIdx:'Your sales follow',beta:'Sensitivity of your sales',
+  gLoan:'Floating-rate loan',loan:'Amount outstanding',spread:'Bank margin',loanReset:'Rate fixed for another',floor:'Rate floor: negative Euribor counts as 0%',
+  gEnergy:'Energy',energy:'Annual energy bill',elecShare:'Of which electricity',fixed:'On a fixed-price contract',fixedEnd:'Fixed contract runs for another',
+  gInputs:'Materials and ingredients',food:'Annual purchases',inputIdx:'Prices follow',pass:'Price rises you pass on',
+  gStaff:'Rent and staff',rent:'Annual rent',indexed:'Index-linked rent (Indexmiete)',rentMonth:'Next rent adjustment in',payroll:'Annual payroll',mwShare:'Paid at minimum wage',payMonth:'Next pay rise for other staff in',
+  gTrade:'Imports and transport',usd:'Paid in US dollars',fuel:'Fuel and delivery',gCash:'Cash',cash:'Cash in the bank today',credit:'Unused credit line',surplus:'Normal monthly cash surplus',surplusHint:'After loan repayments, tax and owner pay, in a month with no price shocks.',
+  gHedge:'Cost of protection',fixPremium:'Extra cost to fix the loan rate',energyPremium:'Premium for a fixed energy price',fwdCost:'Cost of a dollar forward',reset:'Reset this example',
+  regTitle:'Where the German economy is now',hmmTitle:'Second opinion from a statistical model',cashTitle:'Your cash over the next 12 months',cashNote:'Bank balance month by month if nothing changes, in a typical year, and in a bad year (1 in 20). The shaded band is your credit line.',
+  calTitle:'When each cost starts to bite',calNote:'Exposures only feel price moves once a contract runs out or an adjustment date arrives. Known rises are already locked in.',
+  wfTitle:'If a past shock repeated next year',wfNote:'Your annual profit, step by step, if sales, prices and rates moved over the next 12 months the way they did in that period. Moves build up gradually over the year.',
+  hedgeTitle:'Is protection worth it?',hedgeNote:'Each action reduces your bad-year loss but has a cost of its own. Net value is the bad-year saving minus that cost. Tick actions to apply them to the whole page.',
+  distTitle:'Range of outcomes for next year',btTitle:'Does the model hold up?',tlTitle:'Twenty years of regimes',tlNote:'German inflation and industrial output, year on year, as they were known at the time. The top band shows the compass regime, the bottom band the statistical model. Hover to inspect a month.',
+  upTitle:'Import from your accounts',upNote:'Upload a trial balance (Summen- und Saldenliste) exported as CSV from DATEV or your tax advisor. The file stays in your browser. Accounts are mapped using the SKR03 or SKR04 chart of accounts.',
+  dropHere:'Drop a CSV file here, or',chooseFile:'choose a file',sampleCsv:'Use a sample export',tplCsv:'Download a template',chart:'Chart of accounts',cancel:'Cancel',apply:'Use these figures',
+  months:n=>n===1?'1 month':n+' months',inMonth:n=>'month '+n,now:'now',
+  Recovery:'Recovery',Overheating:'Overheating',Stagflation:'Stagflation',Contraction:'Contraction',
+  dRecovery:'Growth picking up while inflation eases. Usually the calmest regime for costs.',dOverheating:'Growth and inflation both rising. Interest rates tend to go up.',dStagflation:'Prices rising while output weakens. Costs climb just as demand softens.',dContraction:'Growth and inflation both falling. Interest rates tend to be cut.',
+  'Expansion':'Expansion','Sluggish growth':'Sluggish growth','Inflation shock':'Inflation shock','Recession':'Recession',
+  since:(m)=>`Since ${m}. The path shows the last 24 months.`,dataThrough:m=>'Data through '+m,
+  fEuribor:'Euribor 3M',fInfl:'Inflation, year on year',fEnergy:'Energy prices, year on year',fFood:'Food prices, year on year',fIp:'Industrial output, year on year',fBrent:'Brent crude, year on year',
+  hmmNote:(s,p,stay,mu)=>`A hidden Markov model fitted to growth and inflation levels puts Germany in <b>${s}</b> with ${p}% probability (average growth ${mu.growth}%, inflation ${mu.inflation}% in this state). It gives a ${stay}% chance the state still holds next month.`,
+  ledeLoss:(l,e)=>`In a bad year, the economy could take <span class="num">${l}</span> out of your <span class="base">${e}</span> profit.`,
+  ledeAll:(l,e)=>`In a bad year, macro moves could cost you <span class="num">${l}</span>, more than your entire <span class="base">${e}</span> profit.`,
+  ledeOk:(e,r)=>`Even in a bad year in a ${r} economy, your <span class="base">${e}</span> profit stays intact.`,
+  keep:'Profit left in a bad year',atRisk:'At risk',typical:'Typical year',basedOn:(n,w)=>`1-in-20 outcome from ${n} past ${w}`,monthsW:'months',
+  alertOn:(n,p,t)=>`<b>Above your alert level.</b> ${n}: a bad year would cost ${p}% of profit, above your ${t}% limit.`,
+  clientsNote:(c)=>c?'Ranked by bad-year loss as a share of profit. Click one to open it.':'Save the business you are looking at to compare several side by side. Useful for advisors with many clients.',
+  clientsCloud:'Saved to your account.',clientsLocal:'Saved in this browser only.',namePh:'Business name',savedT:n=>`Saved ${n}`,deletedT:n=>`Deleted ${n}`,
+  noShock:'No price shocks',typYear:'Typical year',badYear:'Bad year (1 in 20)',creditLine:'Credit line',
+  lowest:'Lowest balance in a bad year',runsOut:'Cash plus credit runs out',never:'Not within 12 months',inM:m=>'in '+m,lockedIn:'Already locked in for next year',lockedNote:'minimum wage and index-linked rent',
+  calRows:{loan:'Loan interest',energy:'Energy (floating part)',energyFix:'Energy (fixed part)',inputs:'Materials',rent:'Rent indexation',mw:'Minimum wage rise',wages:'Other pay rises',usd:'US dollar purchases',fuel:'Fuel',sales:'Sales'},
+  live:'exposed',fixedL:'fixed',known:'known rise',
+  steps:{today:'Profit today',sales:'Sales',loan:'Loan',energy:'Energy',inputs:'Materials',rent:'Rent',wages:'Wages',usd:'US dollar',fuel:'Fuel',after:'Profit after'},
+  scen:{'2022 energy shock':'2022 energy shock','Last 12 months':'Last 12 months','2008 financial crisis':'2008 crisis','2011 euro crisis':'2011 euro crisis'},
+  mv:{rate:'Euribor',energy:'Energy',elec:'Electricity',gas:'Gas',food:'Food',fx:'EUR/USD',oil:'Oil',cpi:'Inflation',retail:'Retail sales',foodserv:'Restaurant sales',ip:'Industrial output',ppi_food:'Food producer prices',ppi_metal:'Metal prices',ppi_paper:'Paper prices',ppi_plastic:'Plastics prices',ppi_wood:'Wood prices'},
+  hedges:{loan:['Fix the loan rate','Swap or refinance to a fixed rate.'],energy:['Fix all energy prices','Move the floating part to a fixed-price contract now.'],pass:['Pass on 80% of price rises','Index menu or product prices to input costs.'],usd:['Lock the dollar rate','A forward contract fixes the euro cost of US invoices.']},
+  hAction:'Action',hSave:'Bad-year saving',hCost:'Yearly cost',hNet:'Net value',hVerdict:'',worth:'Worth it',marginal:'Marginal',notWorth:'Not worth it',noEffect:'No effect',costCustomers:'Some customers',
+  hcToday:'Bad-year loss today',hcWith:'With the actions ticked',hcTick:'Tick an action above',hcProt:'Net profit protected',
+  modes:{regime:r=>`${r} periods`,hmm:'Statistical model',all:'All months since 2000'},
+  dsNote:(m)=>m==='hmm'?'Each past month is weighted by how likely the statistical model thinks today resembles it. Bars count what the following 12 months would do to your profit.':'Each bar counts past months whose following 12 months, applied to your business, would have changed your profit by that amount.',
+  good:'Good year (1 in 20)',ofProfit:'of profit',
+  btNote:(n)=>`For every month since 2008 the model forecast a 1-in-20 loss for your business using only data available at the time, then the actual next 12 months played out. A sound model is beaten in about 5% of months. Windows overlap, so the ${n} checks are not independent.`,
+  btWhere:'Most misses: ',btLesson:'The model learns from history, so it underestimates shocks bigger than anything it has seen, such as 2021–22. Check the 2022 stress scenario as well.',btCalib:n=>`For your business, read the bad-year figure as roughly a 1-in-${n} year rather than 1 in 20.`,
+  btPred:'Forecast bad year (1 in 20)',btReal:'What actually happened',btBreach:'Worse than forecast',btRate:'Months worse than forecast',btExpect:'Expected for a sound model',btTest:'Statistical test (Kupiec)',btPass:p=>`Passes, p = ${p}`,btFail:p=>`Fails, p = ${p}`,
+  tlInfl:'Inflation',tlIp:'Industrial output',tlTop:'Compass regime',tlBottom:'Statistical model',noData:'n/a',
+  foot1:'Data: ECB Data Portal (Euribor, EUR/USD, HICP Germany), Eurostat (industrial production, retail and producer prices), FRED (Brent crude). Snapshot of data through ',
+  foot2:'Method: the compass regime is the direction of the 6-month change in 3-month-average inflation and industrial output. The statistical model is a 4-state Gaussian hidden Markov model on their levels, with filtered probabilities. The range of outcomes applies the actual 12-month moves that followed each past month since 2000 to your figures, building up linearly through the year and scaled up when markets are more volatile today than they were then (filtered historical simulation).',
+  foot3:'Prototype for discussion. Not financial advice.',
+  demandOpts:{none:'Nothing (ignore sales)',retail:'Retail sales',foodserv:'Restaurant and café sales',ip:'Industrial output'},
+  inputOpts:{food:'Food prices',ppi_food:'Food producer prices',ppi_metal:'Metal prices',ppi_paper:'Paper prices',ppi_plastic:'Plastics prices',ppi_wood:'Wood prices',cpi:'General inflation'},
+  needsData:'Sector data loads with the next data refresh. Using general inflation for now.',
+  hedgeHint:(f)=>f,
+  presetNotes:{restaurant:'Example: a 60-seat restaurant in Munich.',bakery:'Example: a bakery with two shops in Bavaria.',foodtruck:'Example: a food truck working markets and events.',importer:'Example: an online shop selling goods bought from US suppliers.',metal:'Example: a metal workshop with 18 staff supplying machine builders.',print:'Example: a print shop with 12 staff.'},
+  presetNames:{restaurant:'Restaurant',bakery:'Bakery',foodtruck:'Food truck',importer:'Online importer',metal:'Metal workshop',print:'Print shop'},
+  change:' Change any figure to match your own business.',
+  upFound:(skr,n)=>`Read ${n} accounts using ${skr}. Check the figures below before using them.`,upNone:'No account numbers found. The file needs a column with 4-digit account numbers and a balance column.',
+  upCols:['Field','From accounts','Amount'],imported:'Imported from accounts',
+  pdfTitle:'Macro risk report',pdfSaved:'Report saved',pdfNo:'Downloads are not available in this view.',pdfFail:'The report could not be created.',
+  report:{prepared:'Prepared',business:'Business',regime:'Economic regime',summary:'Summary',exposures:'Exposures',scenarios:'Stress scenarios',hedges:'Protection options',cash:'Cash outlook',method:'Method and data'}
+ },
+ de:{brand:'Makro-Risikomonitor',uploadBtn:'Buchhaltung importieren',pdfBtn:'Bericht herunterladen',tryExample:'Beispiel ansehen:',clientsTitle:'Gespeicherte Betriebe',save:'Speichern',alertAt:'Warnen, wenn ein schlechtes Jahr mehr kostet als',
+  yourBusiness:'Ihr Betrieb',gSales:'Umsatz und Gewinn',rev:'Jahresumsatz',ebit:'Jahresgewinn (EBIT)',margin:'Deckungsbeitrag',demandIdx:'Ihr Umsatz folgt',beta:'Empfindlichkeit Ihres Umsatzes',
+  gLoan:'Kredit mit variablem Zins',loan:'Offener Betrag',spread:'Bankmarge',loanReset:'Zins noch fest für',floor:'Zinsuntergrenze: negativer Euribor zählt als 0 %',
+  gEnergy:'Energie',energy:'Jährliche Energiekosten',elecShare:'Davon Strom',fixed:'Mit Festpreisvertrag',fixedEnd:'Festpreis läuft noch',
+  gInputs:'Material und Wareneinsatz',food:'Jährlicher Einkauf',inputIdx:'Preise folgen',pass:'Weitergegebene Preiserhöhungen',
+  gStaff:'Miete und Personal',rent:'Jahresmiete',indexed:'Indexmiete',rentMonth:'Nächste Mietanpassung in',payroll:'Jährliche Lohnsumme',mwShare:'Zum Mindestlohn bezahlt',payMonth:'Nächste Lohnerhöhung übrige Belegschaft in',
+  gTrade:'Import und Transport',usd:'In US-Dollar bezahlt',fuel:'Kraftstoff und Lieferung',gCash:'Liquidität',cash:'Kontostand heute',credit:'Freier Kreditrahmen',surplus:'Üblicher monatlicher Überschuss',surplusHint:'Nach Tilgung, Steuern und Unternehmerlohn, in einem Monat ohne Preisschocks.',
+  gHedge:'Kosten der Absicherung',fixPremium:'Aufschlag für festen Kreditzins',energyPremium:'Aufschlag für Energie-Festpreis',fwdCost:'Kosten eines Dollar-Termingeschäfts',reset:'Beispiel zurücksetzen',
+  regTitle:'Wo die deutsche Wirtschaft gerade steht',hmmTitle:'Zweite Meinung eines statistischen Modells',cashTitle:'Ihre Liquidität in den nächsten 12 Monaten',cashNote:'Kontostand Monat für Monat ohne Veränderungen, in einem typischen und in einem schlechten Jahr (1 von 20). Das schattierte Band ist Ihr Kreditrahmen.',
+  calTitle:'Wann welche Kosten greifen',calNote:'Preisänderungen wirken erst, wenn ein Vertrag ausläuft oder ein Anpassungstermin kommt. Bekannte Erhöhungen stehen schon fest.',
+  wfTitle:'Wenn sich ein früherer Schock wiederholt',wfNote:'Ihr Jahresgewinn Schritt für Schritt, wenn sich Umsatz, Preise und Zinsen in den nächsten 12 Monaten so entwickeln wie damals. Die Veränderungen bauen sich über das Jahr auf.',
+  hedgeTitle:'Lohnt sich eine Absicherung?',hedgeNote:'Jede Maßnahme verringert den Verlust im schlechten Jahr, kostet aber selbst etwas. Der Nettowert ist die Ersparnis abzüglich dieser Kosten. Haken setzen, um die Maßnahme auf die ganze Seite anzuwenden.',
+  distTitle:'Bandbreite der Ergebnisse im nächsten Jahr',btTitle:'Hält das Modell, was es verspricht?',tlTitle:'Zwanzig Jahre Konjunkturphasen',tlNote:'Inflation und Industrieproduktion in Deutschland, jeweils zum Vorjahr, wie sie damals bekannt waren. Oberes Band: Kompass-Phase, unteres Band: statistisches Modell. Für Details mit der Maus darüberfahren.',
+  upTitle:'Aus der Buchhaltung importieren',upNote:'Laden Sie eine Summen- und Saldenliste als CSV aus DATEV oder von Ihrer Steuerkanzlei hoch. Die Datei bleibt in Ihrem Browser. Die Konten werden nach SKR03 oder SKR04 zugeordnet.',
+  dropHere:'CSV-Datei hier ablegen oder',chooseFile:'Datei auswählen',sampleCsv:'Beispieldatei verwenden',tplCsv:'Vorlage herunterladen',chart:'Kontenrahmen',cancel:'Abbrechen',apply:'Werte übernehmen',
+  months:n=>n===1?'1 Monat':n+' Monate',inMonth:n=>'Monat '+n,now:'jetzt',
+  Recovery:'Erholung',Overheating:'Überhitzung',Stagflation:'Stagflation',Contraction:'Abschwung',
+  dRecovery:'Wachstum zieht an, Inflation lässt nach. Meist die ruhigste Phase für die Kosten.',dOverheating:'Wachstum und Inflation steigen. Zinsen ziehen meist an.',dStagflation:'Preise steigen, während die Produktion schwächelt. Kosten steigen, wenn die Nachfrage nachlässt.',dContraction:'Wachstum und Inflation fallen. Zinsen werden meist gesenkt.',
+  'Expansion':'Aufschwung','Sluggish growth':'Schwaches Wachstum','Inflation shock':'Inflationsschock','Recession':'Rezession',
+  since:(m)=>`Seit ${m}. Die Linie zeigt die letzten 24 Monate.`,dataThrough:m=>'Daten bis '+m,
+  fEuribor:'Euribor 3M',fInfl:'Inflation zum Vorjahr',fEnergy:'Energiepreise zum Vorjahr',fFood:'Lebensmittelpreise zum Vorjahr',fIp:'Industrieproduktion zum Vorjahr',fBrent:'Brent-Öl zum Vorjahr',
+  hmmNote:(s,p,stay,mu)=>`Ein Hidden-Markov-Modell auf Wachstums- und Inflationsniveau sieht Deutschland mit ${p} % Wahrscheinlichkeit in der Phase <b>${s}</b> (im Schnitt ${mu.growth} % Wachstum, ${mu.inflation} % Inflation). Mit ${stay} % hält diese Phase auch im nächsten Monat an.`,
+  ledeLoss:(l,e)=>`In einem schlechten Jahr könnte die Konjunktur <span class="num">${l}</span> von Ihren <span class="base">${e}</span> Gewinn kosten.`,
+  ledeAll:(l,e)=>`In einem schlechten Jahr könnten Sie <span class="num">${l}</span> verlieren, mehr als Ihren gesamten Gewinn von <span class="base">${e}</span>.`,
+  ledeOk:(e,r)=>`Selbst in einem schlechten Jahr in der Phase ${r} bleibt Ihr Gewinn von <span class="base">${e}</span> erhalten.`,
+  keep:'Gewinn im schlechten Jahr',atRisk:'Gefährdet',typical:'Typisches Jahr',basedOn:(n,w)=>`1-von-20-Ergebnis aus ${n} früheren ${w}`,monthsW:'Monaten',
+  alertOn:(n,p,t)=>`<b>Über Ihrer Warnschwelle.</b> ${n}: Ein schlechtes Jahr kostet ${p} % des Gewinns, mehr als Ihre Grenze von ${t} %.`,
+  clientsNote:(c)=>c?'Sortiert nach Verlust im schlechten Jahr im Verhältnis zum Gewinn. Zum Öffnen anklicken.':'Speichern Sie den aktuellen Betrieb, um mehrere zu vergleichen. Praktisch für Kanzleien mit vielen Mandanten.',
+  clientsCloud:'In Ihrem Konto gespeichert.',clientsLocal:'Nur in diesem Browser gespeichert.',namePh:'Name des Betriebs',savedT:n=>`${n} gespeichert`,deletedT:n=>`${n} gelöscht`,
+  noShock:'Ohne Preisschocks',typYear:'Typisches Jahr',badYear:'Schlechtes Jahr (1 von 20)',creditLine:'Kreditrahmen',
+  lowest:'Tiefster Kontostand im schlechten Jahr',runsOut:'Liquidität plus Kreditrahmen erschöpft',never:'Nicht innerhalb von 12 Monaten',inM:m=>'im '+m,lockedIn:'Für nächstes Jahr bereits fest',lockedNote:'Mindestlohn und Indexmiete',
+  calRows:{loan:'Kreditzinsen',energy:'Energie (variabler Teil)',energyFix:'Energie (fester Teil)',inputs:'Material',rent:'Indexmiete',mw:'Mindestlohn-Erhöhung',wages:'Übrige Lohnerhöhungen',usd:'Dollar-Einkäufe',fuel:'Kraftstoff',sales:'Umsatz'},
+  live:'offen',fixedL:'fest',known:'bekannte Erhöhung',
+  steps:{today:'Gewinn heute',sales:'Umsatz',loan:'Kredit',energy:'Energie',inputs:'Material',rent:'Miete',wages:'Löhne',usd:'US-Dollar',fuel:'Kraftstoff',after:'Gewinn danach'},
+  scen:{'2022 energy shock':'Energieschock 2022','Last 12 months':'Letzte 12 Monate','2008 financial crisis':'Finanzkrise 2008','2011 euro crisis':'Eurokrise 2011'},
+  mv:{rate:'Euribor',energy:'Energie',elec:'Strom',gas:'Gas',food:'Lebensmittel',fx:'EUR/USD',oil:'Öl',cpi:'Inflation',retail:'Einzelhandel',foodserv:'Gastronomieumsatz',ip:'Industrieproduktion',ppi_food:'Erzeugerpreise Nahrung',ppi_metal:'Metallpreise',ppi_paper:'Papierpreise',ppi_plastic:'Kunststoffpreise',ppi_wood:'Holzpreise'},
+  hedges:{loan:['Kreditzins festschreiben','Zinsswap oder Umschuldung auf festen Zins.'],energy:['Energiepreise komplett fixieren','Den variablen Teil jetzt in einen Festpreisvertrag überführen.'],pass:['80 % der Preiserhöhungen weitergeben','Preise an die Einkaufskosten koppeln.'],usd:['Dollarkurs absichern','Ein Devisentermingeschäft fixiert die Euro-Kosten von US-Rechnungen.']},
+  hAction:'Maßnahme',hSave:'Ersparnis im schlechten Jahr',hCost:'Jährliche Kosten',hNet:'Nettowert',hVerdict:'',worth:'Lohnt sich',marginal:'Grenzwertig',notWorth:'Lohnt sich nicht',noEffect:'Keine Wirkung',costCustomers:'Einige Kunden',
+  hcToday:'Verlust im schlechten Jahr heute',hcWith:'Mit den gewählten Maßnahmen',hcTick:'Oben eine Maßnahme wählen',hcProt:'Netto geschützter Gewinn',
+  modes:{regime:r=>`Phasen: ${r}`,hmm:'Statistisches Modell',all:'Alle Monate seit 2000'},
+  dsNote:(m)=>m==='hmm'?'Jeder frühere Monat wird danach gewichtet, wie ähnlich er laut statistischem Modell der heutigen Lage ist. Die Balken zeigen, was die folgenden 12 Monate für Ihren Gewinn bedeutet hätten.':'Jeder Balken zählt frühere Monate, deren folgende 12 Monate Ihren Gewinn um diesen Betrag verändert hätten.',
+  good:'Gutes Jahr (1 von 20)',ofProfit:'des Gewinns',
+  btWhere:'Die meisten Fehlschätzungen: ',btLesson:'Das Modell lernt aus der Vergangenheit und unterschätzt daher Schocks, die größer sind als alles Bisherige, etwa 2021–22. Prüfen Sie deshalb auch das Szenario 2022.',btCalib:n=>`Für Ihren Betrieb entspricht das schlechte Jahr eher einem 1-von-${n}-Jahr als 1 von 20.`,
+  btNote:(n)=>`Für jeden Monat seit 2008 hat das Modell nur mit damals verfügbaren Daten einen 1-von-20-Verlust für Ihren Betrieb geschätzt; dann wurden die tatsächlichen 12 Monate danach durchgespielt. Ein solides Modell wird in etwa 5 % der Monate übertroffen. Die Zeitfenster überlappen, die ${n} Prüfungen sind also nicht unabhängig.`,
+  btPred:'Geschätztes schlechtes Jahr (1 von 20)',btReal:'Tatsächliches Ergebnis',btBreach:'Schlechter als geschätzt',btRate:'Monate schlechter als geschätzt',btExpect:'Erwartet bei solidem Modell',btTest:'Statistischer Test (Kupiec)',btPass:p=>`Bestanden, p = ${p}`,btFail:p=>`Nicht bestanden, p = ${p}`,
+  tlInfl:'Inflation',tlIp:'Industrieproduktion',tlTop:'Kompass-Phase',tlBottom:'Statistisches Modell',noData:'k. A.',
+  foot1:'Daten: EZB Data Portal (Euribor, EUR/USD, HVPI Deutschland), Eurostat (Industrieproduktion, Einzelhandel, Erzeugerpreise), FRED (Brent-Öl). Datenstand bis ',
+  foot2:'Methode: Die Kompass-Phase ergibt sich aus der Richtung der 6-Monats-Veränderung von Inflation und Industrieproduktion (3-Monats-Durchschnitt). Das statistische Modell ist ein Gaußsches Hidden-Markov-Modell mit 4 Zuständen auf deren Niveaus, mit gefilterten Wahrscheinlichkeiten. Die Bandbreite wendet die tatsächlichen 12-Monats-Veränderungen nach jedem früheren Monat seit 2000 auf Ihre Zahlen an, linear über das Jahr aufgebaut und hochskaliert, wenn die Märkte heute schwankungsanfälliger sind als damals (gefilterte historische Simulation).',
+  foot3:'Prototyp zur Diskussion. Keine Finanzberatung.',
+  demandOpts:{none:'Nichts (Umsatz ignorieren)',retail:'Einzelhandelsumsatz',foodserv:'Gastronomieumsatz',ip:'Industrieproduktion'},
+  inputOpts:{food:'Lebensmittelpreise',ppi_food:'Erzeugerpreise Nahrung',ppi_metal:'Metallpreise',ppi_paper:'Papierpreise',ppi_plastic:'Kunststoffpreise',ppi_wood:'Holzpreise',cpi:'Allgemeine Inflation'},
+  needsData:'Branchendaten kommen mit der nächsten Datenaktualisierung. Bis dahin wird die allgemeine Inflation verwendet.',
+  hedgeHint:(f)=>f,
+  presetNotes:{restaurant:'Beispiel: ein Restaurant mit 60 Plätzen in München.',bakery:'Beispiel: eine Bäckerei mit zwei Filialen in Bayern.',foodtruck:'Beispiel: ein Foodtruck auf Märkten und Events.',importer:'Beispiel: ein Onlineshop mit Waren von US-Lieferanten.',metal:'Beispiel: ein Metallbaubetrieb mit 18 Beschäftigten für Maschinenbauer.',print:'Beispiel: eine Druckerei mit 12 Beschäftigten.'},
+  presetNames:{restaurant:'Restaurant',bakery:'Bäckerei',foodtruck:'Foodtruck',importer:'Onlineshop (Import)',metal:'Metallbau',print:'Druckerei'},
+  change:' Passen Sie die Zahlen an Ihren Betrieb an.',
+  upFound:(skr,n)=>`${n} Konten nach ${skr} gelesen. Bitte die Werte prüfen, bevor Sie sie übernehmen.`,upNone:'Keine Kontonummern gefunden. Die Datei braucht eine Spalte mit 4-stelligen Kontonummern und eine Saldospalte.',
+  upCols:['Feld','Aus Konten','Betrag'],imported:'Aus der Buchhaltung importiert',
+  pdfTitle:'Makro-Risikobericht',pdfSaved:'Bericht gespeichert',pdfNo:'Downloads sind in dieser Ansicht nicht verfügbar.',pdfFail:'Der Bericht konnte nicht erstellt werden.',
+  report:{prepared:'Erstellt',business:'Betrieb',regime:'Konjunkturphase',summary:'Zusammenfassung',exposures:'Risikopositionen',scenarios:'Stressszenarien',hedges:'Absicherungsmöglichkeiten',cash:'Liquiditätsausblick',method:'Methode und Daten'}
+ }
+};
+let LANG = 'en';
+const t = (k, ...a) => { const v = T[LANG][k] ?? T.en[k]; return typeof v === 'function' ? v(...a) : v; };
+const loc = () => LANG === 'de' ? 'de-DE' : 'en-GB';
+const fmt = n => Math.round(Math.abs(n)).toLocaleString(loc());
+const eur = n => LANG === 'de' ? fmt(n) + ' €' : '€' + fmt(n);
+const seur = n => (n < 0 ? '−' : '+') + eur(n);
+const pct = (v, d = 1) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toLocaleString(loc(), {minimumFractionDigits:d, maximumFractionDigits:d}) + '%';
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const ym = p => { const [y, m] = p.split('-'); return new Date(+y, +m - 1, 1); };
+const month = p => ym(p).toLocaleString(loc(), {month:'short', year:'numeric'});
+const addM = (p, n) => { const d = ym(p); d.setMonth(d.getMonth() + n); return d; };
+const mLabel = d => d.toLocaleString(loc(), {month:'short'});
+const quant = (a, q) => { if (!a.length) return 0; const s = [...a].sort((x, y) => x - y), i = (s.length - 1) * q, lo = Math.floor(i), hi = Math.ceil(i); return s[lo] + (s[hi] - s[lo]) * (i - lo); };
+const wquant = (vals, w, q) => { const idx = vals.map((v, i) => i).sort((a, b) => vals[a] - vals[b]); const tot = w.reduce((a, b) => a + b, 0); let c = 0; for (const i of idx) { c += w[i]; if (c >= q * tot) return vals[i]; } return vals[idx[idx.length - 1]]; };
+function toast(msg) { const el = $('toast'); el.textContent = msg; el.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => el.hidden = true, 2600); }
+
+/* ---------------- presets ---------------- */
+const BASE = {margin:65, beta:1, demandIdx:'foodserv', loanReset:0, floor:true, elecShare:60, fixedEnd:6, inputIdx:'food', indexed:true, rentMonth:6, mwShare:20, payMonth:4,
+  cash:30000, credit:20000, surplus:2000, fixPremium:0.4, energyPremium:8, fwdCost:0};
+const PRESETS = {
+  restaurant:{rev:900000, ebit:72000, margin:65, beta:1.2, demandIdx:'foodserv', loan:250000, spread:2.5, energy:48000, elecShare:60, fixed:50, fixedEnd:5, food:270000, pass:50, inputIdx:'food', rent:84000, indexed:true, rentMonth:4, payroll:330000, mwShare:40, payMonth:4, usd:20000, fuel:6000, cash:35000, credit:25000, surplus:2500},
+  bakery:{rev:620000, ebit:46000, margin:60, beta:0.6, demandIdx:'retail', loan:180000, spread:2.8, energy:64000, elecShare:70, fixed:30, fixedEnd:3, food:190000, pass:40, inputIdx:'food', rent:48000, indexed:true, rentMonth:7, payroll:230000, mwShare:50, payMonth:1, usd:0, fuel:9000, cash:22000, credit:20000, surplus:1500},
+  foodtruck:{rev:210000, ebit:38000, margin:65, beta:1.2, demandIdx:'foodserv', loan:45000, spread:3.5, energy:7000, elecShare:30, fixed:0, fixedEnd:0, food:70000, pass:60, inputIdx:'food', rent:6000, indexed:false, rentMonth:12, payroll:50000, mwShare:80, payMonth:1, usd:0, fuel:12000, cash:8000, credit:5000, surplus:900},
+  importer:{rev:1400000, ebit:110000, margin:35, beta:0.8, demandIdx:'retail', loan:300000, spread:2.2, energy:9000, elecShare:100, fixed:100, fixedEnd:12, food:0, pass:0, inputIdx:'cpi', rent:36000, indexed:true, rentMonth:10, payroll:260000, mwShare:10, payMonth:4, usd:520000, fuel:38000, cash:60000, credit:50000, surplus:4000},
+  metal:{rev:3200000, ebit:210000, margin:45, beta:0.5, demandIdx:'ip', loan:900000, spread:2.0, energy:180000, elecShare:80, fixed:60, fixedEnd:6, food:1100000, pass:50, inputIdx:'ppi_metal', rent:120000, indexed:false, rentMonth:12, payroll:1050000, mwShare:5, payMonth:5, usd:60000, fuel:25000, cash:150000, credit:200000, surplus:9000},
+  print:{rev:1500000, ebit:95000, margin:50, beta:0.6, demandIdx:'ip', loan:400000, spread:2.4, energy:70000, elecShare:85, fixed:40, fixedEnd:4, food:420000, pass:40, inputIdx:'ppi_paper', rent:60000, indexed:true, rentMonth:3, payroll:560000, mwShare:10, payMonth:7, usd:0, fuel:15000, cash:70000, credit:80000, surplus:4500}
+};
+Object.keys(PRESETS).forEach(k => PRESETS[k] = {...BASE, ...PRESETS[k]});
+const MONEY = ['rev','ebit','loan','energy','food','rent','payroll','usd','fuel','cash','credit','surplus'];
+const RANGES = {margin:v=>v+'%', beta:v=>(+v).toFixed(1)+'×', spread:v=>(+v).toFixed(1)+'%', loanReset:v=>t('months',+v), elecShare:v=>v+'%', fixed:v=>v+'%', fixedEnd:v=>t('months',+v), pass:v=>v+'%', rentMonth:v=>t('inMonth',+v), mwShare:v=>v+'%', payMonth:v=>t('inMonth',+v), fixPremium:v=>(+v).toFixed(2)+'%', energyPremium:v=>v+'%', fwdCost:v=>(+v).toFixed(1)+'%', threshold:v=>v+'%'};
+const SELECTS = ['demandIdx','inputIdx'], CHECKS = ['floor','indexed'];
+
+/* hedge cost defaults from market data where available */
+if (D.current.yc1 != null) BASE.fixPremium = Math.max(0, +(D.current.yc1 - D.current.euribor + 0.3).toFixed(2));
+if (D.current.us1 != null && D.current.yc1 != null) BASE.fwdCost = +(D.current.yc1 - D.current.us1).toFixed(1);
+Object.keys(PRESETS).forEach(k => { PRESETS[k].fixPremium = BASE.fixPremium; PRESETS[k].fwdCost = BASE.fwdCost; });
+
+let state = {preset:'restaurant', scen:Object.keys(D.scenarios)[0], mode:'regime', hedges:{}, threshold:40, client:null, name:''};
+try { const s = JSON.parse(localStorage.getItem('mrm3')); if (s) state = Object.assign(state, s); } catch (e) {}
+if (!PRESETS[state.preset]) state.preset = 'restaurant';
+if (!D.scenarios[state.scen]) state.scen = Object.keys(D.scenarios)[0];
+let V = Object.assign({}, PRESETS[state.preset], state.values || {});
+const save = () => { try { localStorage.setItem('mrm3', JSON.stringify({...state, values:V})); } catch (e) {} };
+
+/* ---------------- model ----------------
+   Horizon: 12 months after the data month. Each factor moves linearly from 0 to its 12-month move,
+   so in month k its level is move * k / 12. Positive numbers below are extra costs. */
+const MW_STEP = D.minWage.to / D.minWage.from - 1;
+const MW_MONTH = (() => { const a = ym(D.current.asOf), e = ym(D.minWage.effective); return (e.getFullYear() - a.getFullYear()) * 12 + e.getMonth() - a.getMonth(); })();
+const fval = (s, f) => { if (!(f in F)) return 0; const v = s[SOFF + F[f]]; return v === null || v === undefined ? 0 : v; };
+const VOFF = SOFF + D.factors.length;                                  // per-factor trailing volatility follows the moves
+const VCLIP = [1, 5];                                                  // never assume calmer markets than history; cap at 5x
+const VMED = Object.fromEntries(D.factors.map(f => { const a = D.samples.map(s => s[VOFF + F[f]]).filter(x => x).sort((x, y) => x - y); return [f, a.length ? a[Math.floor(a.length / 2)] : null]; }));
+// a calm past period (e.g. rates stuck at zero) must not blow up the scale factor: never divide by less than the median volatility
+const volOf = (s, f) => { const x = s[VOFF + F[f]]; return x && VMED[f] ? Math.max(x, VMED[f]) : x; };
+// volatility scaling (filtered historical simulation): a past move is scaled by today's volatility / volatility back then
+const movesOf = (s, target = D.current.vol) => Object.fromEntries(D.factors.map(f => {
+  const x = fval(s, f), vs = volOf(s, f), vt = target ? target[f] : null;
+  if (!target || !vs || !vt) return [f, x];
+  return [f, x * Math.min(VCLIP[1], Math.max(VCLIP[0], vt / vs))];
+}));
+const rawMoves = s => Object.fromEntries(D.factors.map(f => [f, fval(s, f)]));
+const volAt = s => Object.fromEntries(D.factors.map(f => [f, s[VOFF + F[f]]]));
+const effInput = v => has(v.inputIdx) ? v.inputIdx : (has('food') && v.inputIdx === 'food' ? 'food' : 'cpi');
+const effDemand = v => v.demandIdx !== 'none' && has(v.demandIdx) ? v.demandIdx : null;
+function energyMove(v, m) {
+  if ('elec' in m && 'gas' in m && has('elec') && has('gas')) return (v.elecShare / 100) * m.elec + (1 - v.elecShare / 100) * m.gas;
+  return m.energy || 0;
+}
+// returns {cats: {name: annual extra cost}, monthly: [12 extra costs], known: annual known rises}
+function project(v, m, ctx = {}) {
+  const E0 = ctx.e0 ?? D.current.euribor, infl0 = (ctx.infl0 ?? D.current.hicp ?? 2) / 100;
+  const rate = r => v.floor ? Math.max(r, 0) : r;
+  const em = energyMove(v, m), im = m[effInput(v)] || 0, dem = effDemand(v) ? (m[effDemand(v)] || 0) : 0;
+  const cats = {sales:0, loan:0, energy:0, inputs:0, rent:0, wages:0, usd:0, fuel:0}, monthly = new Array(12).fill(0);
+  let known = 0;
+  for (let k = 1; k <= 12; k++) {
+    const p = k / 12, c = {};
+    c.sales = -(v.rev / 12) * (v.margin / 100) * v.beta * dem * p;                       // lost contribution from lower sales volume
+    c.loan = k > v.loanReset ? (v.loan / 12) * (rate(E0 + m.rate * p) - rate(E0)) / 100 : 0;
+    const floatShare = (1 - v.fixed / 100) + (k > v.fixedEnd ? v.fixed / 100 : 0);
+    c.energy = (v.energy / 12) * floatShare * em * p;
+    c.inputs = (v.food / 12) * im * p * (1 - v.pass / 100);
+    let rentAdj = 0;
+    if (v.indexed && k >= v.rentMonth) rentAdj = infl0 * (12 - v.rentMonth) / 12 + (m.cpi || 0) * v.rentMonth / 12;
+    c.rent = (v.rent / 12) * rentAdj;
+    const mw = (k >= MW_MONTH && MW_MONTH >= 1) ? (v.payroll / 12) * (v.mwShare / 100) * MW_STEP : 0;
+    let wadj = 0; if (k >= v.payMonth) wadj = infl0 * (12 - v.payMonth) / 12 + (m.cpi || 0) * v.payMonth / 12;
+    const other = (v.payroll / 12) * (1 - v.mwShare / 100) * Math.max(0, wadj);
+    c.wages = mw + other;
+    c.usd = (v.usd / 12) * (1 / (1 + (m.fx || 0) * p) - 1);
+    c.fuel = (v.fuel / 12) * (m.oil || 0) * p;
+    known += mw + (v.indexed && k >= v.rentMonth ? (v.rent / 12) * infl0 * (12 - v.rentMonth) / 12 : 0);
+    let tot = 0; for (const key in c) { cats[key] += c[key]; tot += c[key]; }
+    monthly[k - 1] = tot;
+  }
+  return {cats, monthly, known, total: Object.values(cats).reduce((a, b) => a + b, 0)};
+}
+const dEbit = (v, s) => -project(v, movesOf(s), {}).total;
+
+const HEDGES = [
+  {k:'loan', apply:v => ({...v, loan:0}), cost:v => v.loan * v.fixPremium / 100},
+  {k:'energy', apply:v => ({...v, fixed:100, fixedEnd:12}), cost:v => v.energy * (1 - v.fixed / 100) * v.energyPremium / 100},
+  {k:'pass', apply:v => ({...v, pass:Math.max(v.pass, 80)}), cost:() => null},
+  {k:'usd', apply:v => ({...v, usd:0}), cost:v => v.usd * v.fwdCost / 100}
+];
+const hedged = v => HEDGES.reduce((acc, h) => state.hedges[h.k] ? h.apply(acc) : acc, v);
+const hedgeCost = v => HEDGES.reduce((a, h) => a + (state.hedges[h.k] ? (h.cost(v) || 0) : 0), 0);
+
+function poolFor(mode) {
+  const S = D.samples;
+  if (mode === 'all') return {s:S, w:S.map(() => 1)};
+  if (mode === 'hmm') { const p = D.current.hmm; return {s:S, w:S.map(x => p[x[2]] || 0)}; }
+  const s = S.filter(x => x[1] === D.current.regime); return {s, w:s.map(() => 1)};
+}
+function outcomes(v, mode = state.mode, extraCost = 0) {
+  const {s, w} = poolFor(mode);
+  const vals = s.map(x => dEbit(v, x) - extraCost);
+  return {vals, w, s, q:q => wquant(vals, w, q)};
+}
+
+/* ---------------- inputs ---------------- */
+function fillSelects() {
+  const dem = Object.entries(t('demandOpts')).filter(([k]) => k === 'none' || has(k));
+  $('demandIdx').innerHTML = dem.map(([k, l]) => `<option value="${k}">${l}</option>`).join('');
+  $('inputIdx').innerHTML = Object.entries(t('inputOpts')).map(([k, l]) => `<option value="${k}">${l}${has(k) || k === 'cpi' ? '' : ' *'}</option>`).join('');
+}
+function fillForm() {
+  MONEY.forEach(k => $(k).value = Math.round(V[k] || 0).toLocaleString(loc()));
+  Object.keys(RANGES).forEach(k => { if (k !== 'threshold') $(k).value = V[k]; });
+  SELECTS.forEach(k => { $(k).value = V[k]; if ($(k).value !== V[k] && k === 'demandIdx') { $(k).value = 'none'; } });
+  CHECKS.forEach(k => $(k).checked = !!V[k]);
+  $('threshold').value = state.threshold;
+  const note = state.client ? state.name : (t('presetNotes')[state.preset] + t('change'));
+  $('presetNote').textContent = state.imported ? t('imported') : note;
+  outputs();
+}
+function outputs() {
+  Object.entries(RANGES).forEach(([k, f]) => { const o = $(k + 'O'); if (o) o.textContent = f(k === 'threshold' ? state.threshold : V[k]); });
+  const hint = [];
+  if (D.current.yc1 != null) hint.push(LANG === 'de' ? `Marktdaten: 1-Jahres-Zins ${D.current.yc1.toFixed(2)} %, Euribor ${D.current.euribor.toFixed(2)} %.` : `Market data: 1-year rate ${D.current.yc1.toFixed(2)}%, Euribor ${D.current.euribor.toFixed(2)}%.`);
+  if (!has(V.inputIdx) && V.inputIdx !== 'cpi' && V.inputIdx !== 'food') hint.push(t('needsData'));
+  $('hedgeHint').textContent = hint.join(' ');
+}
+const parseNum = s => { s = String(s).trim(); if (LANG === 'de') s = s.replace(/\./g, '').replace(',', '.'); else s = s.replace(/,/g, ''); const n = parseFloat(s.replace(/[^\d.\-]/g, '')); return isFinite(n) ? n : 0; };
+function readForm() {
+  MONEY.forEach(k => V[k] = parseNum($(k).value));
+  Object.keys(RANGES).forEach(k => { if (k !== 'threshold') V[k] = parseFloat($(k).value) || 0; });
+  SELECTS.forEach(k => V[k] = $(k).value);
+  CHECKS.forEach(k => V[k] = $(k).checked);
+  state.threshold = +$('threshold').value;
+  outputs();
+}
+function renderPresets() {
+  $('presets').innerHTML = Object.keys(PRESETS).map(k => `<button type="button" class="pill" data-p="${k}" aria-pressed="${!state.client && !state.imported && k === state.preset}">${t('presetNames')[k]}</button>`).join('');
+}
+$('presets').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; state.preset = b.dataset.p; state.client = null; state.imported = false; V = {...PRESETS[state.preset]}; renderPresets(); fillForm(); update(); renderClients(); });
+$('form').addEventListener('input', () => { readForm(); update(); });
+$('threshold').addEventListener('input', () => { readForm(); update(); renderClients(); });
+MONEY.forEach(k => $(k).addEventListener('blur', () => $(k).value = Math.round(V[k]).toLocaleString(loc())));
+$('form').addEventListener('submit', e => e.preventDefault());
+$('reset').onclick = () => { V = {...PRESETS[state.preset]}; state.client = null; state.imported = false; fillForm(); renderPresets(); update(); };
+
+/* ---------------- hero ---------------- */
+function hero(v) {
+  const o = outcomes(hedged(v), state.mode, hedgeCost(v)), p5 = o.q(.05), p50 = o.q(.5), E = Math.max(v.ebit, 1);
+  const loss = Math.max(0, -p5), share = loss / E * 100;
+  $('lede').innerHTML = loss <= 0 ? t('ledeOk', eur(v.ebit), t(D.current.regime)) : share >= 100 ? t('ledeAll', eur(loss), eur(v.ebit)) : t('ledeLoss', eur(loss), eur(v.ebit));
+  const keepW = Math.max(0, 100 - Math.min(share, 100));
+  $('pbKeep').style.width = keepW + '%'; $('pbLose').style.left = keepW + '%'; $('pbLose').style.width = Math.min(share, 100) + '%';
+  $('pbTyp').style.left = `calc(${Math.min(100, Math.max(0, 100 + Math.min(0, p50) / E * 100))}% - 1px)`;
+  const words = state.mode === 'all' ? t('monthsW') : (state.mode === 'hmm' ? t('monthsW') : t(D.current.regime) + ' ' + t('monthsW'));
+  $('pbLegend').innerHTML = `<span><i style="background:var(--gain)"></i>${t('keep')} <b>${eur(Math.max(0, v.ebit - loss))}</b></span><span><i style="background:var(--loss)"></i>${t('atRisk')} <b>${Math.round(share)}%</b></span><span><i style="background:var(--ink);width:3px"></i>${t('typical')} <b>${seur(p50)}</b></span><span>${t('basedOn', o.s.length, words)}</span>`;
+  const name = state.client ? state.name : t('presetNames')[state.preset];
+  const al = $('alert'); al.classList.toggle('on', share > state.threshold); al.innerHTML = share > state.threshold ? t('alertOn', name, Math.round(share), state.threshold) : '';
+  return {p5, p50, share};
+}
+
+/* ---------------- regime ---------------- */
+const REG = {Recovery:'--rec', Overheating:'--over', Stagflation:'--stag', Contraction:'--contr'};
+const HMMC = {'Expansion':'--rec', 'Sluggish growth':'--contr', 'Inflation shock':'--over', 'Recession':'--stag'};
+function compass() {
+  const h = D.hist, n = h.period.length, N = 24;
+  const gx = h.g.slice(n - N), iy = h.i.slice(n - N);
+  const ok = a => a.filter(x => x !== null).map(Math.abs);
+  const lx = Math.max(.5, ...ok(gx)) * 1.15, ly = Math.max(.3, ...ok(iy)) * 1.15;
+  const S = 300, P = 26, X = v => P + (v + lx) / (2 * lx) * (S - 2 * P), Y = v => S - P - (v + ly) / (2 * ly) * (S - 2 * P);
+  const cur = D.current.regime;
+  let s = '';
+  [['Stagflation', P, P], ['Overheating', S / 2, P], ['Contraction', P, S / 2], ['Recovery', S / 2, S / 2]].forEach(([name, x, y]) => {
+    const on = name === cur, col = css(REG[name]);
+    s += `<rect x="${x}" y="${y}" width="${S / 2 - P}" height="${S / 2 - P}" fill="${col}" fill-opacity="${on ? .16 : .06}"/>`;
+    const tx = x < S / 2 ? x + 8 : x + S / 2 - P - 8, ty = y < S / 2 ? y + 18 : y + S / 2 - P - 10;
+    s += `<text x="${tx}" y="${ty}" text-anchor="${x < S / 2 ? 'start' : 'end'}" style="fill:${col};font-weight:700;font-size:12px">${t(name)}</text>`;
+  });
+  s += `<line x1="${S / 2}" x2="${S / 2}" y1="${P}" y2="${S - P}" stroke="${css('--line')}"/><line x1="${P}" x2="${S - P}" y1="${S / 2}" y2="${S / 2}" stroke="${css('--line')}"/>`;
+  s += `<text x="${S - P}" y="${S - 8}" text-anchor="end">${LANG === 'de' ? 'Wachstum beschleunigt →' : 'growth speeding up →'}</text>`;
+  s += `<text x="12" y="${S - P}" transform="rotate(-90 12 ${S - P})">${LANG === 'de' ? 'Inflation beschleunigt →' : 'inflation speeding up →'}</text>`;
+  let d = ''; gx.forEach((g, i) => { if (g === null || iy[i] === null) return; d += (d ? 'L' : 'M') + X(g).toFixed(1) + ' ' + Y(iy[i]).toFixed(1); });
+  s += `<path d="${d}" fill="none" stroke="${css('--ink')}" stroke-opacity=".35" stroke-width="1.5" stroke-linejoin="round"/>`;
+  gx.forEach((g, i) => { if (g === null || iy[i] === null) return; const last = i === N - 1;
+    s += `<circle cx="${X(g)}" cy="${Y(iy[i])}" r="${last ? 7 : 2.5}" fill="${last ? css(REG[cur]) : css('--ink')}" fill-opacity="${last ? 1 : .25 + .6 * i / N}" ${last ? `stroke="${css('--surface')}" stroke-width="2.5"` : ''}/>`; });
+  const i0 = gx.findIndex(x => x !== null);
+  s += `<text x="${X(gx[i0]) + 6}" y="${Y(iy[i0]) - 6}" style="font-size:10px">${month(h.period[n - N + i0])}</text>`;
+  s += `<text x="${X(gx[N - 1]) + 10}" y="${Y(iy[N - 1]) + 4}" style="fill:${css('--ink')};font-weight:700;font-size:11px">${t('now')}</text>`;
+  $('compass').innerHTML = s;
+}
+function regimeCard() {
+  const c = D.current;
+  $('regname').textContent = t(c.regime); $('regname').style.color = `var(${REG[c.regime]})`;
+  $('regdesc').textContent = t('d' + c.regime);
+  $('since').textContent = t('since', month(c.since));
+  const f = [[c.euribor.toFixed(2).replace('.', LANG === 'de' ? ',' : '.') + '%', t('fEuribor'), ''], [pct(c.hicp), t('fInfl'), c.hicp > 2 ? 'hot' : ''], [pct(c.energy), t('fEnergy'), c.energy > 0 ? 'hot' : 'cool'],
+    [pct(c.food), t('fFood'), c.food > 2 ? 'hot' : ''], [pct(c.ip), t('fIp'), c.ip < 0 ? 'hot' : 'cool'], [pct(c.brentYoy, 0), t('fBrent'), c.brentYoy > 0 ? 'hot' : 'cool']];
+  $('facts').innerHTML = f.map(([v, l, cl]) => `<div class="fact"><b class="${cl}">${v}</b><span>${l}</span></div>`).join('');
+  $('asof').textContent = t('dataThrough', month(c.asOf));
+  const st = c.hmmState, p = c.hmm;
+  $('hmmNote').innerHTML = t('hmmNote', t(st), Math.round(p[st] * 100), Math.round(c.hmmTrans[st][st] * 100), c.hmmMeans[st]);
+  const order = ['Expansion', 'Sluggish growth', 'Inflation shock', 'Recession'];
+  $('hmmStack').innerHTML = order.map(k => `<i style="width:${(p[k] || 0) * 100}%;background:var(${HMMC[k]})" title="${t(k)}"></i>`).join('');
+  $('hmmLegend').innerHTML = order.map(k => `<span><i style="background:var(${HMMC[k]})"></i>${t(k)} <b>${Math.round((p[k] || 0) * 100)}%</b></span>`).join('');
+}
+
+/* ---------------- cash runway + calendar ---------------- */
+function cashCard(v) {
+  const vh = hedged(v), hc = hedgeCost(v) / 12;
+  const o = outcomes(vh, state.mode, hedgeCost(v));
+  const pick = q => { const target = o.q(q); let best = 0, bd = Infinity; o.vals.forEach((x, i) => { const d = Math.abs(x - target) - (o.w[i] > 0 ? 0 : 1e12); if (d < bd) { bd = d; best = i; } }); return o.s[best]; };
+  const paths = {}, zero = Object.fromEntries(D.factors.map(f => [f, 0]));
+  const run = m => { const pr = project(vh, m); let c = v.cash; return [v.cash, ...pr.monthly.map(x => (c += v.surplus - x - hc))]; };
+  paths.flat = run(zero); paths.typ = run(movesOf(pick(.5))); paths.bad = run(movesOf(pick(.05)));
+  const W = 720, H = 260, L = 60, R = 16, T = 14, B = 30;
+  const all = [...paths.flat, ...paths.typ, ...paths.bad, -v.credit, 0];
+  let lo = Math.min(...all), hi = Math.max(...all); const pad = (hi - lo) * .08 || 1000; lo -= pad; hi += pad;
+  const X = i => L + i / 12 * (W - L - R), Y = y => T + (hi - y) / (hi - lo) * (H - T - B);
+  let s = '';
+  s += `<rect x="${L}" y="${Y(0)}" width="${W - L - R}" height="${Math.max(0, Y(-v.credit) - Y(0))}" fill="${css('--warn')}" fill-opacity=".10"/>`;
+  if (Y(-v.credit) < H - B) s += `<rect x="${L}" y="${Y(-v.credit)}" width="${W - L - R}" height="${H - B - Y(-v.credit)}" fill="${css('--loss')}" fill-opacity=".10"/>`;
+  const step = niceStep((hi - lo) / 5);
+  for (let y = Math.ceil(lo / step) * step; y <= hi; y += step) s += `<line x1="${L}" x2="${W - R}" y1="${Y(y)}" y2="${Y(y)}" stroke="${css('--line')}" stroke-width="${Math.abs(y) < step / 2 ? 1.4 : .6}"/><text x="${L - 8}" y="${Y(y) + 4}" text-anchor="end">${short(y)}</text>`;
+  for (let i = 0; i <= 12; i += (innerWidth < 600 ? 2 : 1)) s += `<text x="${X(i)}" y="${H - 10}" text-anchor="middle">${i === 0 ? t('now') : mLabel(addM(D.current.asOf, i))}</text>`;
+  const line = (a, col, w, dash) => `<path d="${a.map((y, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(y).toFixed(1)).join('')}" fill="none" stroke="${col}" stroke-width="${w}" ${dash ? 'stroke-dasharray="5 4"' : ''} stroke-linejoin="round"/>`;
+  s += line(paths.flat, css('--muted'), 1.5, true) + line(paths.typ, css('--accent'), 2) + line(paths.bad, css('--loss'), 2.6);
+  s += `<circle cx="${X(12)}" cy="${Y(paths.bad[12])}" r="4" fill="${css('--loss')}"/>`;
+  $('cashChart').innerHTML = s;
+  $('cashLegend').innerHTML = `<span><i style="background:var(--muted)"></i>${t('noShock')}</span><span><i style="background:var(--accent)"></i>${t('typYear')}</span><span><i style="background:var(--loss)"></i>${t('badYear')}</span><span><i style="background:var(--warn);opacity:.4"></i>${t('creditLine')}</span>`;
+  const lowest = Math.min(...paths.bad); const outIdx = paths.bad.findIndex(x => x < -v.credit);
+  const known = project(vh, zero).known;
+  $('cashCallout').innerHTML = `<div><span>${t('lowest')}</span><b class="${lowest < 0 ? 'hot' : ''}">${lowest < 0 ? '−' : ''}${eur(lowest)}</b></div>` +
+    `<div><span>${t('runsOut')}</span><b class="${outIdx > 0 ? 'hot' : 'cool'}">${outIdx > 0 ? t('inM', addM(D.current.asOf, outIdx).toLocaleString(loc(), {month:'long', year:'numeric'})) : t('never')}</b></div>` +
+    `<div><span>${t('lockedIn')}</span><b class="warm">${eur(known)}</b> <span style="display:inline">${t('lockedNote')}</span></div>`;
+  return {lowest, outIdx, paths};
+}
+function calendar(v) {
+  const vh = hedged(v), R = t('calRows'), rows = [];
+  const live = (from, kind) => ({from, kind});
+  if (effDemand(vh) && vh.beta > 0) rows.push([R.sales, [live(1, 'live')]]);
+  if (vh.loan > 0) rows.push([R.loan, vh.loanReset > 0 ? [{from:1, to:vh.loanReset, kind:'fixed'}, live(vh.loanReset + 1, 'live')] : [live(1, 'live')]]);
+  if (vh.energy > 0 && vh.fixed < 100) rows.push([R.energy, [live(1, 'live')]]);
+  if (vh.energy > 0 && vh.fixed > 0) rows.push([R.energyFix, vh.fixedEnd >= 12 ? [{from:1, to:12, kind:'fixed'}] : [{from:1, to:vh.fixedEnd, kind:'fixed'}, live(vh.fixedEnd + 1, 'live')]]);
+  if (vh.food > 0 && vh.pass < 100) rows.push([R.inputs, [live(1, 'live')]]);
+  if (vh.rent > 0 && vh.indexed) rows.push([R.rent, [{from:1, to:vh.rentMonth - 1, kind:'fixed'}, live(vh.rentMonth, 'known')]]);
+  if (vh.payroll > 0 && vh.mwShare > 0 && MW_MONTH >= 1 && MW_MONTH <= 12) rows.push([R.mw, [{from:1, to:MW_MONTH - 1, kind:'fixed'}, live(MW_MONTH, 'known')]]);
+  if (vh.payroll > 0 && vh.mwShare < 100) rows.push([R.wages, [{from:1, to:vh.payMonth - 1, kind:'fixed'}, live(vh.payMonth, 'known')]]);
+  if (vh.usd > 0) rows.push([R.usd, [live(1, 'live')]]);
+  if (vh.fuel > 0) rows.push([R.fuel, [live(1, 'live')]]);
+  const W = 720, L = 200, Rr = 10, T = 26, rh = 22, H = T + rows.length * rh + 26;
+  $('calendar').setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const X = m => L + (m - 1) / 12 * (W - L - Rr), cw = (W - L - Rr) / 12;
+  let s = '';
+  for (let i = 1; i <= 12; i++) s += `<text x="${X(i) + cw / 2}" y="16" text-anchor="middle">${mLabel(addM(D.current.asOf, i))}</text>`;
+  rows.forEach(([name, segs], r) => {
+    const y = T + r * rh;
+    s += `<text x="${L - 10}" y="${y + 14}" text-anchor="end" style="fill:${css('--ink')};font-size:12px">${name}</text>`;
+    s += `<rect x="${L}" y="${y + 3}" width="${W - L - Rr}" height="${rh - 8}" rx="4" fill="${css('--sunk')}"/>`;
+    segs.forEach(g => { const to = g.to ?? 12; if (to < g.from) return;
+      const col = g.kind === 'fixed' ? css('--gain') : g.kind === 'known' ? css('--warn') : css('--loss');
+      s += `<rect x="${X(g.from) + 1}" y="${y + 3}" width="${(to - g.from + 1) * cw - 2}" height="${rh - 8}" rx="4" fill="${col}" fill-opacity="${g.kind === 'fixed' ? .35 : .8}"/>`; });
+  });
+  s += `<g transform="translate(${L},${H - 8})"><rect width="10" height="10" y="-9" rx="2" fill="${css('--gain')}" fill-opacity=".35"/><text x="14">${t('fixedL')}</text><rect x="70" width="10" height="10" y="-9" rx="2" fill="${css('--loss')}" fill-opacity=".8"/><text x="84">${t('live')}</text><rect x="150" width="10" height="10" y="-9" rx="2" fill="${css('--warn')}" fill-opacity=".8"/><text x="164">${t('known')}</text></g>`;
+  $('calendar').innerHTML = s;
+}
+
+/* ---------------- waterfall ---------------- */
+function niceStep(x) { const p = Math.pow(10, Math.floor(Math.log10(Math.abs(x) || 1))), f = x / p; return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * p; }
+function short(n) { const a = Math.abs(n), sg = n < 0 ? '−' : '', c = LANG === 'de'; const u = a >= 1e6 ? (a / 1e6).toFixed(a % 1e6 ? 1 : 0) + (c ? ' Mio.' : 'm') : a >= 1e3 ? Math.round(a / 1e3) + 'k' : Math.round(a) + ''; return c ? sg + u + ' €' : sg + '€' + u; }
+function renderTabs() {
+  $('scen').innerHTML = Object.keys(D.scenarios).map(k => `<button type="button" class="tab" data-s="${k}" aria-pressed="${k === state.scen}">${t('scen')[k] || k}</button>`).join('');
+  const n = D.samples.filter(s => s[1] === D.current.regime).length;
+  $('mode').innerHTML = `<button type="button" class="tab" data-m="regime" aria-pressed="${state.mode === 'regime'}">${t('modes').regime(t(D.current.regime))} (${n})</button><button type="button" class="tab" data-m="hmm" aria-pressed="${state.mode === 'hmm'}">${t('modes').hmm}</button><button type="button" class="tab" data-m="all" aria-pressed="${state.mode === 'all'}">${t('modes').all} (${D.samples.length})</button>`;
+}
+$('scen').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; state.scen = b.dataset.s; renderTabs(); update(); });
+$('mode').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; state.mode = b.dataset.m; renderTabs(); update(); });
+function waterfall(v) {
+  const sc = D.scenarios[state.scen], m = Object.fromEntries(D.factors.map(f => [f, sc.moves[f] ?? 0]));
+  const vh = hedged(v), pr = project(vh, m), S = t('steps'), hc = hedgeCost(v);
+  const steps = [[S.today, v.ebit, 'base']]; let run = v.ebit;
+  [['sales', S.sales], ['loan', S.loan], ['energy', S.energy], ['inputs', S.inputs], ['rent', S.rent], ['wages', S.wages], ['usd', S.usd], ['fuel', S.fuel]].forEach(([k, name]) => {
+    let x = pr.cats[k]; if (k === 'loan') x += hc;                       // protection cost shown with the loan step when hedged
+    if (Math.abs(x) < 0.5 && !['loan', 'energy', 'inputs'].includes(k)) return;
+    steps.push([name, -x, 'delta', run]); run -= x; });
+  steps.push([S.after, run, 'base']);
+  const W = 760, H = 310, L = 58, R = 10, T = 26, B = 40;
+  const tops = steps.flatMap(s => s[2] === 'base' ? [0, s[1]] : [s[3], s[3] + s[1]]);
+  let lo = Math.min(0, ...tops), hi = Math.max(0, ...tops); const pad = (hi - lo) * .1; hi += pad; lo = lo < 0 ? lo - pad : 0;
+  const Y = y => T + (hi - y) / (hi - lo) * (H - T - B), bw = (W - L - R) / steps.length;
+  let s = ''; const tick = niceStep((hi - lo) / 5);
+  for (let y = Math.ceil(lo / tick) * tick; y <= hi; y += tick) s += `<line x1="${L}" x2="${W - R}" y1="${Y(y)}" y2="${Y(y)}" stroke="${css('--line')}" stroke-width="${Math.abs(y) < tick / 2 ? 1.4 : .7}"/><text x="${L - 8}" y="${Y(y) + 4}" text-anchor="end">${short(y)}</text>`;
+  steps.forEach(([name, val, kind, start], i) => {
+    const x = L + i * bw + bw * .16, w = bw * .68; let y0, y1, col;
+    if (kind === 'base') { y0 = 0; y1 = val; col = val >= 0 ? css('--accent') : css('--loss'); } else { y0 = start; y1 = start + val; col = val < 0 ? css('--loss') : css('--gain'); }
+    const top = Y(Math.max(y0, y1)), h = Math.max(1.5, Math.abs(Y(y0) - Y(y1)));
+    s += `<rect x="${x}" y="${top}" width="${w}" height="${h}" rx="3" fill="${col}"/>`;
+    if (i < steps.length - 1) { const yy = Y(kind === 'base' ? val : start + val); s += `<line x1="${x + w}" x2="${x + bw}" y1="${yy}" y2="${yy}" stroke="${css('--muted')}" stroke-dasharray="2 3"/>`; }
+    const label = kind === 'base' ? (val < 0 ? '−' : '') + eur(val) : (Math.abs(val) < 1 ? eur(0) : seur(val));
+    s += `<text x="${x + w / 2}" y="${top - 7}" text-anchor="middle" style="fill:${kind === 'base' ? css('--ink') : col};font-weight:700;font-size:11px">${label}</text>`;
+    s += `<text x="${x + w / 2}" y="${H - 16}" text-anchor="middle" style="fill:${css('--ink')};font-size:11.5px">${name}</text>`;
+  });
+  $('wf').innerHTML = s;
+  const MV = t('mv'), show = ['rate', 'energy', 'food', effInput(v), 'cpi', 'fx', 'oil', effDemand(v)].filter((f, i, a) => f && a.indexOf(f) === i && f in sc.moves && sc.moves[f] !== null);
+  $('moves').innerHTML = `<span>${month(sc.from)} → ${month(sc.to)}</span>` + show.map(f => `<span>${MV[f] || f} <b>${f === 'rate' ? (sc.moves[f] >= 0 ? '+' : '−') + Math.abs(sc.moves[f]).toFixed(2) + ' pp' : pct(sc.moves[f] * 100)}</b></span>`).join('');
+  return {after:run, pr};
+}
+
+/* ---------------- protection ---------------- */
+function hedgeCard(v) {
+  const base = outcomes(v, state.mode).q(.05), H = t('hedges');
+  const rows = HEDGES.map(h => {
+    const vv = h.apply(v), save = outcomes(vv, state.mode).q(.05) - base, cost = h.cost(v);
+    const effect = save > 1;
+    const net = cost === null ? null : save - cost;
+    let verdict = '', cls = '';
+    if (!effect) { if ((cost || 0) > 0 || save < -1) { verdict = t('notWorth'); cls = 'v-bad'; } else { verdict = t('noEffect'); cls = 'v-meh'; } }
+    else if (net === null) { verdict = t('marginal'); cls = 'v-meh'; }
+    else if (net > 0.25 * save) { verdict = t('worth'); cls = 'v-good'; }
+    else if (net > 0) { verdict = t('marginal'); cls = 'v-meh'; }
+    else { verdict = t('notWorth'); cls = 'v-bad'; }
+    return {h, save, cost, net, verdict, cls};
+  });
+  $('hedgeTable').innerHTML = `<thead><tr><th>${t('hAction')}</th><th class="n">${t('hSave')}</th><th class="n">${t('hCost')}</th><th class="n">${t('hNet')}</th><th></th></tr></thead><tbody>` +
+    rows.map(r => `<tr class="hedge-row"><td><label><input type="checkbox" data-h="${r.h.k}" ${state.hedges[r.h.k] ? 'checked' : ''}><b>${H[r.h.k][0]}</b></label><small>${H[r.h.k][1]}</small></td><td class="n">${Math.abs(r.save) > 1 ? seur(r.save) : '–'}</td><td class="n">${r.cost === null ? t('costCustomers') : (r.cost < 0 ? '−' : '') + eur(r.cost)}</td><td class="n"><b class="${r.net > 0 ? 'cool' : r.net < 0 ? 'hot' : ''}">${r.net === null ? '–' : seur(r.net)}</b></td><td><span class="verdict ${r.cls}">${r.verdict}</span></td></tr>`).join('') + '</tbody>';
+  const any = Object.values(state.hedges).some(Boolean);
+  const after = outcomes(hedged(v), state.mode, hedgeCost(v)).q(.05);
+  $('hedgeCallout').innerHTML = `<div><span>${t('hcToday')}</span><b class="hot">${seur(Math.min(0, base))}</b></div><div><span>${any ? t('hcWith') : t('hcTick')}</span><b class="${any ? 'cool' : ''}">${any ? seur(Math.min(0, after)) : '–'}</b></div><div><span>${t('hcProt')}</span><b class="cool">${any ? eur(Math.max(0, after - base)) : '–'}</b></div>`;
+  return rows;
+}
+$('hedgeTable').addEventListener('change', e => { const k = e.target.dataset.h; if (!k) return; state.hedges[k] = e.target.checked; update(); });
+
+/* ---------------- distribution ---------------- */
+function distribution(v) {
+  const o = outcomes(hedged(v), state.mode, hedgeCost(v)), p5 = o.q(.05), p50 = o.q(.5), p95 = o.q(.95);
+  const res = o.vals, w = o.w;
+  const W = 520, H = 200, L = 8, R = 8, T = 12, B = 38;
+  const used = res.filter((x, i) => w[i] > 0.001);
+  const lo = Math.min(...used, 0), hi = Math.max(...used, 0), bins = 26, step = (hi - lo) / bins || 1;
+  const cnt = new Array(bins).fill(0); res.forEach((x, i) => { if (w[i] > 0) cnt[Math.max(0, Math.min(bins - 1, Math.floor((x - lo) / step)))] += w[i]; });
+  const mx = Math.max(...cnt) || 1, bw = (W - L - R) / bins, X = x => L + (x - lo) / ((hi - lo) || 1) * (W - L - R);
+  let s = '';
+  [.5, 1].forEach(f => { const y = T + (H - T - B) * (1 - f); s += `<line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}" stroke="${css('--line')}" stroke-width=".7"/>`; });
+  cnt.forEach((c, i) => { const mid = lo + (i + .5) * step, h = (H - T - B) * c / mx; if (!c) return; s += `<rect x="${L + i * bw + 1}" y="${H - B - h}" width="${bw - 2}" height="${h}" rx="2" fill="${css(mid < 0 ? '--loss' : '--gain')}" fill-opacity="${mid <= p5 ? 1 : .45}"/>`; });
+  const xp = X(p5), x0 = X(0), xm = X(p50);
+  s += `<line x1="${x0}" x2="${x0}" y1="${T}" y2="${H - B}" stroke="${css('--muted')}" stroke-dasharray="3 3"/><line x1="${xp}" x2="${xp}" y1="${T}" y2="${H - B + 4}" stroke="${css('--loss')}" stroke-width="2"/><line x1="${xm}" x2="${xm}" y1="${T}" y2="${H - B + 4}" stroke="${css('--ink')}" stroke-width="1.5"/>`;
+  s += `<text x="${Math.max(xp, 34)}" y="${H - B + 17}" text-anchor="middle" style="fill:${css('--loss')};font-weight:700">1/20</text><text x="${Math.min(Math.max(xm, xp + 50), W - 40)}" y="${H - B + 17}" text-anchor="middle" style="fill:${css('--ink')};font-weight:700">${t('typical')}</text>`;
+  s += `<text x="${L}" y="${H - 4}">${short(lo)}</text><text x="${W - R}" y="${H - 4}" text-anchor="end">${short(hi)}</text>`;
+  $('hist').innerHTML = s;
+  const E = Math.max(v.ebit, 1);
+  $('stats').innerHTML = [[t('badYear'), p5], [t('typYear'), p50], [t('good'), p95]].map(([l, x]) => `<div class="stat"><span>${l}</span><b class="${x < 0 ? 'hot' : 'cool'}">${seur(x)}</b> <span style="display:inline">${pct(x / E * 100, 0)} ${t('ofProfit')}</span></div>`).join('');
+  $('dsnote').textContent = t('dsNote', state.mode);
+}
+
+/* ---------------- backtest ---------------- */
+function erfc(x) { const z = Math.abs(x), tt = 1 / (1 + .5 * z); const r = tt * Math.exp(-z * z - 1.26551223 + tt * (1.00002368 + tt * (.37409196 + tt * (.09678418 + tt * (-.18628806 + tt * (.27886807 + tt * (-1.13520398 + tt * (1.48851587 + tt * (-.82215223 + tt * .17087277))))))))); return x >= 0 ? r : 2 - r; }
+function kupiec(n, x, p = .05) {
+  if (n === 0) return {lr:0, pval:1};
+  const ph = x / n, l0 = (n - x) * Math.log(1 - p) + x * Math.log(p), l1 = (x === 0 ? 0 : x * Math.log(ph)) + (x === n ? 0 : (n - x) * Math.log(1 - ph));
+  const lr = Math.max(0, -2 * (l0 - l1)); return {lr, pval:erfc(Math.sqrt(lr / 2))};
+}
+function backtest(v) {
+  const S = D.samples, out = [];
+  const vh = hedged(v);
+  const val = (x, at) => -project(vh, movesOf(x, volAt(at)), {e0:at[3], infl0:at[4]}).total;
+  const real = x => -project(vh, rawMoves(x), {e0:x[3], infl0:x[4]}).total;
+  for (let i = 0; i < S.length; i++) {
+    const tP = S[i][0]; if (tP < '2008-01') continue;
+    const elig = S.filter(x => { const d = ym(tP), e = ym(x[0]); return (d - e) / 2.6e9 >= 12 - 0.01 && e < d; });
+    if (elig.length < 24) continue;
+    let pool = elig.filter(x => x[1] === S[i][1]); if (pool.length < 12) pool = elig;
+    const pred = quant(pool.map(x => val(x, S[i])), .05), act = real(S[i]);
+    out.push({p:tP, pred, real:act, breach:act < pred});
+  }
+  return out;
+}
+function backtestCard(v) {
+  const bt = backtest(v), n = bt.length, x = bt.filter(b => b.breach).length, k = kupiec(n, x);
+  $('btNote').textContent = t('btNote', n);
+  const W = 760, H = 240, L = 58, R = 10, T = 12, B = 28;
+  const all = bt.flatMap(b => [b.pred, b.real]); let lo = Math.min(...all, 0), hi = Math.max(...all, 0); const pad = (hi - lo) * .06; lo -= pad; hi += pad;
+  const X = i => L + i / Math.max(1, n - 1) * (W - L - R), Y = y => T + (hi - y) / (hi - lo) * (H - T - B);
+  let s = ''; const st = niceStep((hi - lo) / 5);
+  for (let y = Math.ceil(lo / st) * st; y <= hi; y += st) s += `<line x1="${L}" x2="${W - R}" y1="${Y(y)}" y2="${Y(y)}" stroke="${css('--line')}" stroke-width="${Math.abs(y) < st / 2 ? 1.3 : .6}"/><text x="${L - 8}" y="${Y(y) + 4}" text-anchor="end">${short(y)}</text>`;
+  bt.forEach((b, i) => { if (b.p.endsWith('-01') && (+b.p.slice(0, 4)) % 3 === 1) s += `<text x="${X(i)}" y="${H - 8}" text-anchor="middle">${b.p.slice(0, 4)}</text>`; });
+  s += `<path d="${bt.map((b, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(b.real).toFixed(1)).join('')}" fill="none" stroke="${css('--accent')}" stroke-width="1.6"/>`;
+  s += `<path d="${bt.map((b, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(b.pred).toFixed(1)).join('')}" fill="none" stroke="${css('--loss')}" stroke-width="1.6" stroke-dasharray="4 3"/>`;
+  bt.forEach((b, i) => { if (b.breach) s += `<circle cx="${X(i)}" cy="${Y(b.real)}" r="3.5" fill="${css('--loss')}"/>`; });
+  $('bt').innerHTML = s;
+  $('btLegend').innerHTML = `<span><i style="background:var(--accent)"></i>${t('btReal')}</span><span><i style="background:var(--loss)"></i>${t('btPred')}</span><span><i style="background:var(--loss);border-radius:50%"></i>${t('btBreach')}</span>`;
+  const pass = k.pval > .05, rate = n ? x / n * 100 : 0;
+  const yrs = {}; bt.forEach(b => { if (b.breach) yrs[b.p.slice(0, 4)] = (yrs[b.p.slice(0, 4)] || 0) + 1; });
+  const top = Object.entries(yrs).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([y, c]) => `${y} (${c})`).join(', ');
+  $('btCallout').innerHTML = `<div><span>${t('btRate')}</span><b class="${rate > 8 ? 'hot' : 'cool'}">${rate.toFixed(1)}%</b> <span style="display:inline">(${x} / ${n})</span></div><div><span>${t('btExpect')}</span><b>5%</b></div><div><span>${t('btTest')}</span><b class="${pass ? 'cool' : 'hot'}">${pass ? t('btPass', k.pval.toFixed(2)) : t('btFail', k.pval.toFixed(3))}</b></div>` + (x ? `<div style="flex-basis:100%"><span>${t('btWhere')}</span>${top}. ${t('btLesson')}${rate > 7.5 ? ' ' + t('btCalib', Math.round(100 / rate)) : ''}</div>` : '');
+  return {n, x, rate, pval:k.pval, top};
+}
+
+/* ---------------- timeline ---------------- */
+function timeline() {
+  const h = D.hist, n = h.period.length, W = 760, H = 270, L = 38, R = 12, T = 12, B = 30;
+  const vals = [...h.hicp, ...h.ip].filter(x => x !== null);
+  const lo = Math.max(-25, Math.floor(Math.min(...vals) / 5) * 5), hi = Math.min(40, Math.ceil(Math.max(...vals) / 5) * 5);
+  const X = i => L + i / (n - 1) * (W - L - R), Y = v => T + (hi - Math.min(hi, Math.max(lo, v))) / (hi - lo) * (H - T - B - 26);
+  let s = ''; const bw = (W - L - R) / (n - 1) + 1;
+  for (let i = 0; i < n; i++) { if (h.reg[i]) s += `<rect x="${X(i) - .5}" y="${H - B - 22}" width="${bw}" height="9" fill="${css(REG[h.reg[i]])}"/>`; if (h.hmm[i]) s += `<rect x="${X(i) - .5}" y="${H - B - 10}" width="${bw}" height="9" fill="${css(HMMC[h.hmm[i]])}"/>`; }
+  for (let v = lo; v <= hi; v += 5) s += `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="${css('--line')}" stroke-width="${v === 0 ? 1.3 : .6}"/><text x="${L - 6}" y="${Y(v) + 4}" text-anchor="end">${v}%</text>`;
+  h.period.forEach((p, i) => { if (p.endsWith('-01') && (+p.slice(0, 4)) % 3 === 2) s += `<text x="${X(i)}" y="${H - 8}" text-anchor="middle">${p.slice(0, 4)}</text>`; });
+  const line = (a, col, w) => { let d = ''; a.forEach((v, i) => { if (v === null) return; d += (d ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1); }); return `<path d="${d}" fill="none" stroke="${col}" stroke-width="${w}" stroke-linejoin="round"/>`; };
+  s += line(h.ip, css('--muted'), 1.2) + line(h.hicp, css('--accent'), 2.2);
+  s += `<line id="cross" x1="0" x2="0" y1="${T}" y2="${H - B}" stroke="${css('--ink')}" stroke-width="1" opacity="0"/><rect id="hit" x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}" fill="transparent"/>`;
+  $('tl').innerHTML = s;
+  $('tlleg').innerHTML = `<span><i style="background:var(--accent)"></i>${t('tlInfl')}</span><span><i style="background:var(--muted)"></i>${t('tlIp')}</span>` + `<span style="flex-basis:100%;height:0"></span><span><b>${t('tlTop')}:</b></span>` + Object.keys(REG).map(r => `<span><i style="background:var(${REG[r]})"></i>${t(r)}</span>`).join('') + `<span style="flex-basis:100%;height:0"></span><span><b>${t('tlBottom')}:</b></span>` + Object.keys(HMMC).map(r => `<span><i style="background:var(${HMMC[r]})"></i>${t(r)}</span>`).join('');
+  const svg = $('tl'), tip = $('tip'), cross = svg.querySelector('#cross');
+  const hide = () => { tip.hidden = true; cross.setAttribute('opacity', 0); };
+  const move = e => { const pt = e.touches ? e.touches[0] : e, rc = svg.getBoundingClientRect(); const x = (pt.clientX - rc.left) / rc.width * W, i = Math.round((x - L) / (W - L - R) * (n - 1));
+    if (i < 0 || i >= n) return hide(); cross.setAttribute('x1', X(i)); cross.setAttribute('x2', X(i)); cross.setAttribute('opacity', .4); tip.hidden = false;
+    const nd = t('noData'); tip.innerHTML = `<b>${month(h.period[i])}</b><br>${t('tlTop')}: ${h.reg[i] ? t(h.reg[i]) : nd}<br>${t('tlBottom')}: ${h.hmm[i] ? t(h.hmm[i]) : nd}<br>${t('tlInfl')} ${h.hicp[i] === null ? nd : pct(h.hicp[i])}<br>${t('tlIp')} ${h.ip[i] === null ? nd : pct(h.ip[i])}<br>Euribor ${h.euribor[i] === null ? nd : h.euribor[i].toFixed(2) + '%'}`;
+    tip.style.left = Math.min(pt.clientX + 14, innerWidth - tip.offsetWidth - 8) + 'px'; tip.style.top = (pt.clientY + 14) + 'px'; };
+  svg.onmousemove = move; svg.onmouseleave = hide; svg.ontouchstart = move; svg.ontouchmove = move; svg.ontouchend = hide;
+}
+
+/* ---------------- saved businesses (advisor mode) ---------------- */
+let store = null, clients = [];
+const LOCAL_KEY = 'mrm3-clients';
+async function initStore() {
+  try {
+    const [db, user] = await Promise.all([window.claude?.use?.('db'), window.claude?.use?.('user')]);
+    if (db && user) { const id = await user.id(); if (id) store = {db, col: db.collection('data/users/' + id + '/clients')}; }
+  } catch (e) { store = null; }
+  await loadClients(); renderClients();
+}
+async function loadClients() {
+  if (store) { try { const snap = await store.col.get(); clients = snap.docs.map(d => ({id:d.id, ...d.data()})); return; } catch (e) { store = null; } }
+  try { clients = JSON.parse(localStorage.getItem(LOCAL_KEY)) || []; } catch (e) { clients = []; }
+}
+async function saveClient(name) {
+  const rec = {name, values:{...V}, updated:new Date().toISOString()};
+  const existing = clients.find(c => c.name.toLowerCase() === name.toLowerCase());
+  if (store) { try { const ref = existing ? store.col.doc(existing.id) : store.col.doc(); await ref.set(rec); rec.id = ref.id; } catch (e) { store = null; } }
+  if (!rec.id) rec.id = existing ? existing.id : 'c' + Date.now();
+  clients = clients.filter(c => c.id !== rec.id).concat(rec);
+  if (!store) try { localStorage.setItem(LOCAL_KEY, JSON.stringify(clients)); } catch (e) {}
+  state.client = rec.id; state.name = name; renderClients(); renderPresets(); toast(t('savedT', name));
+}
+async function deleteClient(id) {
+  const c = clients.find(x => x.id === id); if (!c) return;
+  if (store) { try { await store.col.doc(id).delete(); } catch (e) {} }
+  clients = clients.filter(x => x.id !== id);
+  if (!store) try { localStorage.setItem(LOCAL_KEY, JSON.stringify(clients)); } catch (e) {}
+  if (state.client === id) state.client = null;
+  renderClients(); toast(t('deletedT', c.name));
+}
+function renderClients() {
+  $('clientName').placeholder = t('namePh');
+  $('clientsNote').textContent = t('clientsNote', clients.length) + (clients.length ? ' ' + (store ? t('clientsCloud') : t('clientsLocal')) : '');
+  const rows = clients.map(c => { const v = {...PRESETS.restaurant, ...c.values}; const p5 = outcomes(v, 'regime').q(.05); return {c, share: Math.max(0, -p5) / Math.max(1, v.ebit) * 100}; }).sort((a, b) => b.share - a.share);
+  $('clist').innerHTML = rows.map(({c, share}) => { const col = share > state.threshold ? '--loss' : share > state.threshold / 2 ? '--warn' : '--gain';
+    return `<div class="crow ${state.client === c.id ? 'active' : ''}" data-id="${c.id}" role="button" tabindex="0"><span><span class="flag" style="background:var(${col})"></span>${c.name.replace(/[<>&]/g, '')}</span><span class="risk" style="color:var(${col})">${Math.round(share)}%</span><button type="button" class="x" data-del="${c.id}" aria-label="Delete">×</button></div>`; }).join('');
+}
+$('clist').addEventListener('click', e => {
+  const del = e.target.closest('[data-del]'); if (del) { e.stopPropagation(); deleteClient(del.dataset.del); return; }
+  const row = e.target.closest('.crow'); if (!row) return; const c = clients.find(x => x.id === row.dataset.id); if (!c) return;
+  V = {...PRESETS.restaurant, ...c.values}; state.client = c.id; state.name = c.name; state.imported = false; fillForm(); renderPresets(); renderClients(); update();
+});
+$('clist').addEventListener('keydown', e => { if (e.key === 'Enter') e.target.click(); });
+$('saveClient').onclick = () => { const n = $('clientName').value.trim() || state.name || t('presetNames')[state.preset]; saveClient(n); $('clientName').value = ''; };
+
+/* ---------------- accounts import (SKR03 / SKR04) ---------------- */
+const SKR = {
+  '03': {rev:[[8000, 8999]], food:[[3000, 3999]], payroll:[[4100, 4199]], rent:[[4210, 4219]], energy:[[4230, 4249]], fuel:[[4500, 4599]], interest:[[2100, 2149]], loan:[[630, 699]], cash:[[1000, 1099], [1200, 1299]], opex:[[3000, 4999]]},
+  '04': {rev:[[4000, 4999]], food:[[5000, 5999]], payroll:[[6000, 6199]], rent:[[6310, 6319]], energy:[[6320, 6329]], fuel:[[6500, 6599]], interest:[[7300, 7349]], loan:[[3150, 3199]], cash:[[1600, 1699], [1800, 1899]], opex:[[5000, 6999]]}
+};
+const SAMPLE_CSV = `Konto;Kontobezeichnung;Saldo Soll;Saldo Haben
+1000;Kasse;3.420,00;
+1200;Bank;31.580,00;
+0640;Verbindlichkeiten ggü. Kreditinstituten;;250.000,00
+2110;Zinsaufwendungen für Darlehen;12.900,00;
+3400;Wareneingang 19 % Vorsteuer;198.400,00;
+3300;Wareneingang 7 % Vorsteuer;71.600,00;
+4120;Gehälter;262.000,00;
+4130;Gesetzliche soziale Aufwendungen;68.000,00;
+4210;Miete;84.000,00;
+4240;Gas, Strom, Wasser;48.000,00;
+4530;Laufende Kfz-Betriebskosten;6.000,00;
+4900;Sonstige betriebliche Aufwendungen;57.600,00;
+4980;Betriebsbedarf;20.000,00;
+8400;Erlöse 19 % USt;;640.000,00
+8300;Erlöse 7 % USt;;260.000,00`;
+const TEMPLATE_CSV = 'Konto;Kontobezeichnung;Saldo Soll;Saldo Haben\n';
+const deNum = s => { s = String(s ?? '').trim().replace(/\s/g, ''); if (!s) return 0; const neg = /^-|-$|S$|H$/.test(s) && s.endsWith('H'); s = s.replace(/[SH]$/, ''); if (/,\d{1,2}$/.test(s)) s = s.replace(/\./g, '').replace(',', '.'); else s = s.replace(/,/g, ''); const n = parseFloat(s); return isFinite(n) ? (neg ? -n : n) : 0; };
+function parseSusa(text, skrSel) {
+  const lines = text.replace(/\r/g, '').split('\n').filter(l => l.trim());
+  if (!lines.length) return null;
+  const delim = (lines[0].match(/;/g) || []).length >= (lines[0].match(/,/g) || []).length ? ';' : ',';
+  const rows = lines.map(l => l.split(delim).map(c => c.replace(/^"|"$/g, '').trim()));
+  const head = rows[0].map(h => h.toLowerCase());
+  let acc = head.findIndex(h => /konto|account/.test(h) && !/bezeich|name/.test(h));
+  if (acc < 0) acc = rows[1] ? rows[1].findIndex(c => /^\d{3,5}$/.test(c)) : -1;
+  const soll = head.findIndex(h => /saldo.*soll|soll.*saldo/.test(h)), haben = head.findIndex(h => /saldo.*haben|haben.*saldo/.test(h));
+  let bal = head.findIndex(h => /^saldo$|balance|betrag|amount/.test(h));
+  const recs = [];
+  rows.slice(1).forEach(r => { const a = parseInt(r[acc], 10); if (!isFinite(a)) return;
+    let amt; if (soll >= 0 || haben >= 0) amt = deNum(r[soll]) - deNum(r[haben]); else if (bal >= 0) amt = deNum(r[bal]); else { const nums = r.filter((c, i) => i !== acc && /\d/.test(c)); amt = deNum(nums[nums.length - 1]); }
+    recs.push({a, amt}); });
+  if (!recs.length) return {recs:[], skr:null};
+  let skr = skrSel;
+  if (skr === 'auto') { const s8 = recs.filter(r => r.a >= 8000 && r.a <= 8999).reduce((x, r) => x - r.amt, 0), s4 = recs.filter(r => r.a >= 4000 && r.a <= 4999).reduce((x, r) => x - r.amt, 0); skr = s8 > s4 ? '03' : '04'; }
+  const M = SKR[skr], sumR = ranges => recs.filter(r => ranges.some(([lo, hi]) => r.a >= lo && r.a <= hi)).reduce((x, r) => x + r.amt, 0);
+  const out = {rev:-sumR(M.rev), food:sumR(M.food), payroll:sumR(M.payroll), rent:sumR(M.rent), energy:sumR(M.energy), fuel:sumR(M.fuel), loan:-sumR(M.loan), cash:sumR(M.cash)};
+  const opex = sumR(M.opex) - (skr === '03' ? 0 : 0); out.ebit = out.rev - opex;
+  return {recs, skr, out, M};
+}
+let pending = null;
+function showParse(res) {
+  if (!res || !res.recs.length) { $('upResult').innerHTML = `<p class="note">${t('upNone')}</p>`; $('upApply').disabled = true; pending = null; return; }
+  const C = t('upCols'), lab = {rev:t('rev'), ebit:t('ebit'), food:t('food'), payroll:t('payroll'), rent:t('rent'), energy:t('energy'), fuel:t('fuel'), loan:t('loan'), cash:t('cash')};
+  const rng = k => k === 'ebit' ? (res.skr === '03' ? '8000–8999 − 3000–4999' : '4000–4999 − 5000–6999') : (res.M[k] || []).map(([a, b]) => String(a).padStart(4, '0') + '–' + String(b).padStart(4, '0')).join(', ');
+  $('upResult').innerHTML = `<p class="note">${t('upFound', 'SKR' + res.skr, res.recs.length)}</p><div class="scroll"><table><thead><tr><th>${C[0]}</th><th>${C[1]}</th><th class="n">${C[2]}</th></tr></thead><tbody>${Object.keys(lab).map(k => `<tr><td>${lab[k]}</td><td class="small">${rng(k)}</td><td class="n">${eur(res.out[k])}</td></tr>`).join('')}</tbody></table></div>`;
+  $('upApply').disabled = false; pending = res.out;
+}
+let lastText = '';
+const parseNow = () => { if (lastText) showParse(parseSusa(lastText, $('skr').value)); };
+$('openUpload').onclick = () => { $('upModal').hidden = false; };
+$('upClose').onclick = () => { $('upModal').hidden = true; };
+$('upModal').addEventListener('click', e => { if (e.target === $('upModal')) $('upModal').hidden = true; });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') $('upModal').hidden = true; });
+$('skr').onchange = parseNow;
+$('sampleCsv').onclick = () => { lastText = SAMPLE_CSV; parseNow(); };
+const readFile = f => { const r = new FileReader(); r.onload = () => { lastText = r.result; parseNow(); }; r.readAsText(f, 'utf-8'); };
+$('file').onchange = e => { if (e.target.files[0]) readFile(e.target.files[0]); };
+['dragover', 'dragenter'].forEach(ev => $('drop').addEventListener(ev, e => { e.preventDefault(); $('drop').classList.add('over'); }));
+['dragleave', 'drop'].forEach(ev => $('drop').addEventListener(ev, e => { e.preventDefault(); $('drop').classList.remove('over'); }));
+$('drop').addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) readFile(f); });
+$('upApply').onclick = () => { if (!pending) return; Object.entries(pending).forEach(([k, x]) => { if (x > 0 || k === 'ebit') V[k] = Math.round(x); }); state.imported = true; state.client = null; $('upModal').hidden = true; fillForm(); renderPresets(); update(); };
+$('tplCsv').onclick = async () => { const data = TEMPLATE_CSV + SAMPLE_CSV.split('\n').slice(1).join('\n'); const dl = await window.claude?.use?.('downloads');
+  if (dl) { try { await dl.save({filename:'susa-template.csv', data}); } catch (e) {} return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], {type:'text/csv'})); a.download = 'susa-template.csv'; a.click(); };
+
+/* ---------------- PDF report ---------------- */
+let LAST = {};
+async function makePdf() {
+  const dl = await window.claude?.use?.('downloads');
+  try {
+    const {jsPDF} = window.jspdf; const doc = new jsPDF({unit:'mm', format:'a4'}); const R = t('report');
+    const v = {...V}, name = state.client ? state.name : (state.imported ? t('imported') : t('presetNames')[state.preset]);
+    let y = 18; const L = 16, W = 178;
+    const txt = (s, size = 10, bold = false, color = [20, 30, 40]) => { doc.setFont('helvetica', bold ? 'bold' : 'normal'); doc.setFontSize(size); doc.setTextColor(...color); const lines = doc.splitTextToSize(String(s).replace(/−/g, '-').replace(/→/g, '->'), W); if (y + lines.length * size * .45 > 285) { doc.addPage(); y = 18; } doc.text(lines, L, y); y += lines.length * size * .45 + 2; };
+    const plain = h => h.replace(/<[^>]+>/g, '');
+    const row = (a, b) => { doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(60, 70, 80); doc.text(String(a).replace(/−/g, '-'), L, y); doc.setTextColor(20, 30, 40); doc.setFont('helvetica', 'bold'); doc.text(String(b).replace(/−/g, '-').replace(/→/g, '->'), L + W, y, {align:'right'}); y += 6; if (y > 280) { doc.addPage(); y = 18; } };
+    txt(t('pdfTitle'), 20, true); txt(`${R.business}: ${name}   ·   ${R.prepared}: ${new Date().toLocaleDateString(loc())}   ·   ${t('dataThrough', month(D.current.asOf))}`, 9, false, [90, 100, 110]); y += 2;
+    txt(R.summary, 13, true); txt(plain($('lede').innerHTML), 12);
+    const cc = LAST.cash; row(t('lowest'), (cc.lowest < 0 ? '-' : '') + eur(cc.lowest)); row(t('runsOut'), cc.outIdx > 0 ? addM(D.current.asOf, cc.outIdx).toLocaleString(loc(), {month:'long', year:'numeric'}) : t('never'));
+    y += 2; txt(R.regime, 13, true); txt(`${t(D.current.regime)}: ${t('d' + D.current.regime)}`); txt(plain($('hmmNote').innerHTML), 9, false, [80, 90, 100]);
+    y += 2; txt(R.exposures, 13, true);
+    [['rev', v.rev], ['ebit', v.ebit], ['loan', v.loan], ['energy', v.energy], ['food', v.food], ['rent', v.rent], ['payroll', v.payroll], ['usd', v.usd], ['fuel', v.fuel], ['cash', v.cash], ['credit', v.credit]].forEach(([k, x]) => { if (x) row(t(k), eur(x)); });
+    y += 2; txt(R.scenarios, 13, true);
+    Object.keys(D.scenarios).forEach(k => { const sc = D.scenarios[k], m = Object.fromEntries(D.factors.map(f => [f, sc.moves[f] ?? 0])); const pr = project(hedged(v), m); row(`${t('scen')[k] || k} (${month(sc.from)} - ${month(sc.to)})`, seur(-pr.total - hedgeCost(v))); });
+    try { // chart snapshot
+      const svg = $('wf'), clone = svg.cloneNode(true); clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg'); clone.setAttribute('width', 1520); clone.setAttribute('height', 620);
+      clone.insertAdjacentHTML('afterbegin', `<rect width="100%" height="100%" fill="#ffffff"/>`);
+      const src = new XMLSerializer().serializeToString(clone).replace(/font-family:[^;"]*/g, '');
+      const img = new Image(); await new Promise((ok, no) => { img.onload = ok; img.onerror = no; img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(src); });
+      const cv = document.createElement('canvas'); cv.width = 1520; cv.height = 620; cv.getContext('2d').drawImage(img, 0, 0);
+      if (y + 75 > 285) { doc.addPage(); y = 18; }
+      txt(t('scen')[state.scen] || state.scen, 10, true); doc.addImage(cv.toDataURL('image/png'), 'PNG', L, y, W, W * 620 / 1520); y += W * 620 / 1520 + 4;
+    } catch (e) {}
+    txt(R.hedges, 13, true);
+    LAST.hedges.forEach(r => row(t('hedges')[r.h.k][0], r.save > 1 ? `${t('hSave')} ${eur(r.save)}  ·  ${t('hNet')} ${r.net === null ? '-' : seur(r.net)}  ·  ${r.verdict}` : t('noEffect')));
+    y += 2; txt(t('btTitle'), 13, true); const b = LAST.bt; txt(`${t('btRate')}: ${b.rate.toFixed(1)}% (${b.x}/${b.n}). ${t('btExpect')}: 5%. ${t('btTest')}: ${b.pval > .05 ? t('btPass', b.pval.toFixed(2)) : t('btFail', b.pval.toFixed(3))}.`);
+    y += 2; txt(R.method, 13, true); txt($('foot1').textContent + ' ' + $('foot2').textContent + ' ' + $('foot3').textContent, 8.5, false, [90, 100, 110]);
+    const blob = doc.output('blob');
+    const fname = `macro-risk-report-${(name || 'business').toLowerCase().replace(/[^a-z0-9äöüß]+/gi, '-')}.pdf`;
+    if (dl) await dl.save({filename:fname, data:blob}); else doc.save(fname);   // plain web hosting: normal browser download
+    toast(t('pdfSaved'));
+  } catch (e) { if (e && e.code === 'declined') return; toast(t('pdfFail')); }
+}
+$('pdfBtn').onclick = makePdf;
+
+/* ---------------- language ---------------- */
+function applyLang() {
+  document.documentElement.lang = LANG;
+  document.querySelectorAll('[data-t]').forEach(el => { const v = t(el.dataset.t); if (typeof v === 'string') el.textContent = v; });
+  document.querySelectorAll('.seg [data-lang]').forEach(b => b.setAttribute('aria-pressed', b.dataset.lang === LANG));
+  $('foot1').textContent = t('foot1') + month(D.current.asOf) + '.'; $('foot2').textContent = t('foot2'); $('foot3').textContent = t('foot3');
+  fillSelects(); renderPresets(); renderTabs(); fillForm(); regimeCard(); compass(); timeline(); renderClients(); update();
+}
+document.querySelectorAll('.seg [data-lang]').forEach(b => b.onclick = () => { LANG = b.dataset.lang; state.lang = LANG; save(); applyLang(); });
+
+/* ---------------- orchestration ---------------- */
+let busy = null;
+function update() {
+  const v = {...V};
+  hero(v);
+  LAST.cash = cashCard(v); calendar(v); waterfall(v); LAST.hedges = hedgeCard(v); distribution(v);
+  clearTimeout(busy); busy = setTimeout(() => { LAST.bt = backtestCard(v); }, 60);   // heaviest step, after first paint
+  save();
+}
+LANG = state.lang === 'de' ? 'de' : 'en';
+LAST.bt = {n:0, x:0, rate:0, pval:1};
+applyLang();
+LAST.bt = backtestCard({...V});
+initStore();
+const redraw = () => { compass(); timeline(); regimeCard(); update(); };
+matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', redraw);
+new MutationObserver(redraw).observe(document.documentElement, {attributes:true, attributeFilter:['data-theme']});
+</script>

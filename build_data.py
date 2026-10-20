@@ -40,7 +40,16 @@ SCENARIOS = {
     "Last 12 months": (None, None),          # filled with the latest 12 months
     "2008 financial crisis": ("2008-09", "2009-09"),
     "2011 euro crisis": ("2011-06", "2012-06"),
+    "2020 pandemic lockdown": ("2020-02", "2021-02"),
 }
+
+# Covid rules (lockdowns, then 2G/3G access rules) legally closed or restricted restaurants and shops from
+# March 2020 until most measures ended in March 2022. That was a public-health order, not a macro shock, so
+# sales windows touching it are left out of the history used for the risk range and the backtest, and the
+# lockdown is offered as a separate stress scenario instead.
+LOCKDOWN = ("2020-03", "2022-03")
+DEMAND_FACTORS = {"retail", "foodserv"}
+LOCKDOWN_SCENARIO = "2020 pandemic lockdown"
 
 
 def load_raw(db=None, csv=None):
@@ -127,13 +136,21 @@ def main(db=None, csv=None, out="data.json"):
         s, kind = FACTORS[f]
         fwd[f] = (r[s].shift(-12) - r[s]) if kind == "pp" else (r[s].shift(-12) / r[s] - 1)
     F = pd.DataFrame(fwd)
+    in_lockdown = (r.index >= LOCKDOWN[0]) & (r.index <= LOCKDOWN[1])
+    # windows that start up to 12 months before the lockdown and end after it began overlap it
+    starts = pd.PeriodIndex(r.index, freq="M")
+    lo, hi = pd.Period(LOCKDOWN[0], "M"), pd.Period(LOCKDOWN[1], "M")
+    overlaps = np.array([(p + 12 >= lo) and (p <= hi) for p in starts])
+    for f in DEMAND_FACTORS & set(factors):
+        F.loc[overlaps, f] = np.nan
     # trailing 12-month volatility of monthly changes, as knowable at each month (for volatility scaling)
     vol = {}
     for f in factors:
         s, kind = FACTORS[f]
-        x = r[s].shift(LAG.get(s, 0))
-        ch = x.diff() if kind == "pp" else x.pct_change()
-        vol[f] = ch.rolling(12, min_periods=9).std()
+        ch = r[s].diff() if kind == "pp" else r[s].pct_change()
+        if f in DEMAND_FACTORS:
+            ch = ch.mask(in_lockdown)                    # lockdown swings must not inflate later volatility
+        vol[f] = ch.shift(LAG.get(s, 0)).rolling(12, min_periods=9).std()
     VOL = pd.DataFrame(vol)
     base_cols = ["rate", "fx", "energy", "food", "oil", "cpi"]
     S = pd.concat([reg.rename("reg"), hstate.rename("hmm"), F], axis=1).dropna(subset=["reg", "hmm"] + base_cols)
@@ -147,12 +164,18 @@ def main(db=None, csv=None, out="data.json"):
 
     scen = {}
     last12 = (r.index[r.index.get_loc(asof) - 12], asof)
+    # Other scenarios that overlap the Covid rules would mix closures and reopenings into their sales move
+    # (2022: restaurant sales rose as rules ended). Their sales move is measured over the first 12 months
+    # after the rules ended instead; prices, rates and output keep the scenario's own window.
+    first_free = pd.Period(LOCKDOWN[1], "M") + 1
+    post = (str(first_free), str(first_free + 12))
     for name, (a, b) in SCENARIOS.items():
         latest = a is None
         a, b = (last12 if latest else (a, b))
+        touches = name != LOCKDOWN_SCENARIO and a <= LOCKDOWN[1] and b >= LOCKDOWN[0]
         mv = {}
         for f in factors:
-            x = move(r, f, a, b)
+            x = move(r, f, *(post if touches and f in DEMAND_FACTORS else (a, b)))
             if x is None and latest:                  # series that publish later: use their own latest 12 months
                 s = FACTORS[f][0]
                 bb = r[s].dropna().index.max()
@@ -160,6 +183,8 @@ def main(db=None, csv=None, out="data.json"):
                 x = move(r, f, aa, bb)
             mv[f] = None if x is None else round(x, 5)
         scen[name] = {"from": a, "to": b, "moves": mv}
+        if touches:
+            scen[name]["salesFrom"], scen[name]["salesTo"] = post
 
     rr = reg.dropna()
     i = len(rr) - 1
@@ -191,7 +216,8 @@ def main(db=None, csv=None, out="data.json"):
         hist[c] = [None if pd.isna(x) else round(float(x) * mult, 3) for x in h[c]]
 
     D = {"current": cur, "factors": factors, "samples": samples, "scenarios": scen, "hist": hist,
-         "minWage": {"from": 13.90, "to": 14.60, "effective": "2027-01"}}
+         "minWage": {"from": 13.90, "to": 14.60, "effective": "2027-01"},
+         "lockdown": {"from": LOCKDOWN[0], "to": LOCKDOWN[1]}}
     with open(out, "w") as fh:
         json.dump(D, fh, separators=(",", ":"))
     print(f"as of {asof}: regime {cur['regime']} since {cur['since']}; HMM {cur['hmm']}; "

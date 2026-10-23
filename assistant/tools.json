@@ -1,0 +1,60 @@
+[
+  {
+    "name": "what_if",
+    "description": "Recalculate the business on the page with changed figures and/or protection actions. Returns the bad year (1-in-20 loss), typical year, share of profit at risk and lowest cash balance, before and after. Pass only what changes. Money is EUR per year. Any field name from DATA.business is also accepted.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "revenue": {"type": "number", "description": "annual revenue, EUR"},
+        "profit": {"type": "number", "description": "annual profit (EBIT), EUR"},
+        "loan": {"type": "number", "description": "floating-rate loan outstanding, EUR"},
+        "rate_fixed_months": {"type": "number", "description": "months the current loan rate stays fixed, 0 to 12"},
+        "energy_bill": {"type": "number", "description": "annual energy bill, EUR"},
+        "energy_fixed_pct": {"type": "number", "description": "share of energy on a fixed-price contract, 0 to 100"},
+        "energy_fixed_months": {"type": "number", "description": "months the fixed energy contract still runs, 0 to 12"},
+        "purchases": {"type": "number", "description": "annual purchases of materials or goods, EUR"},
+        "pass_on_pct": {"type": "number", "description": "share of purchase price rises passed on to customers, 0 to 100"},
+        "rent": {"type": "number", "description": "annual rent, EUR"},
+        "payroll": {"type": "number", "description": "annual payroll, EUR"},
+        "minimum_wage_share_pct": {"type": "number", "description": "share of payroll paid at minimum wage, 0 to 100"},
+        "usd_purchases": {"type": "number", "description": "annual purchases paid in US dollars, EUR"},
+        "cash": {"type": "number", "description": "cash in the bank today, EUR"},
+        "credit_line": {"type": "number", "description": "unused credit line, EUR"},
+        "monthly_surplus": {"type": "number", "description": "normal monthly cash surplus, EUR"},
+        "fix_loan_rate": {"type": "boolean", "description": "true to fix the loan rate with a swap or refinancing"},
+        "fix_energy_prices": {"type": "boolean", "description": "true to move all energy to a fixed-price contract now"},
+        "pass_on_80pct": {"type": "boolean", "description": "true to pass on 80% of purchase price rises"},
+        "lock_dollar_rate": {"type": "boolean", "description": "true to hedge US dollar purchases with a forward contract"}
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "shock",
+    "description": "Apply a custom 12-month economic shock to the business on the page. Moves build up over the year and fixed contracts are respected. Returns the effect on annual profit by cost line, profit after the shock and the lowest cash balance. Pass only what moves.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "energy_pct": {"type": "number", "description": "change in energy prices, percent, e.g. 30"},
+        "euribor_pp": {"type": "number", "description": "change in 3-month Euribor, percentage points, e.g. 1 or -0.5"},
+        "purchase_prices_pct": {"type": "number", "description": "change in the prices of what the business buys, percent"},
+        "inflation_pct": {"type": "number", "description": "general inflation over the next 12 months, percent; drives indexed rent and pay rises"},
+        "sales_index_pct": {"type": "number", "description": "change in the sales index the business follows, percent, e.g. -5"},
+        "eur_usd_pct": {"type": "number", "description": "change in the EUR/USD rate, percent; negative means a weaker euro and dearer US goods"},
+        "oil_pct": {"type": "number", "description": "change in oil prices, percent; affects fuel and delivery"}
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "compare_clients",
+    "description": "List the advisor's saved client businesses, worst first: bad-year loss, share of profit at risk, biggest risk, whether cash runs short and whether the alert level is crossed. Clients appear as codes (C1, C2, ...); write the code and the page shows the name.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "limit": {"type": "number", "description": "how many clients to return, default 10"}
+      },
+      "required": []
+    }
+  }
+]

@@ -5,3 +5,5 @@ __pycache__/
 probe*_out.txt
 previous.json
 alert.md
+worker/node_modules/
+worker/.wrangler/

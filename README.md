@@ -2,25 +2,33 @@
 
 A risk tool for German small and mid-sized businesses (Mittelstand). It turns live macro data into one question an owner can act on: **how much of next year's profit could the economy take, and what is protection worth?**
 
+The page answers first and explains after: a one-sentence headline, four tiles (biggest risks, whether cash lasts, the economy now, the best protection), eight basic inputs with the rest under "More detail", and the technical charts folded into one "How reliable is this?" section. It comes in three plans: **Free** for a quick check, **Pro** for the full analysis and **Business** for tax advisors and banks, with an AI risk assistant.
+
 Built by Eiden Wilson Neralaily (data and modelling) and Channappa (finance and risk), ISM Munich.
 
 ## What it does
 
-| Feature | What the owner sees |
-|---|---|
-| Regime compass | Whether Germany is in Recovery, Overheating, Stagflation or Contraction, and the path over the last 24 months |
-| Statistical second opinion | A 4-state hidden Markov model on growth and inflation levels with filtered probabilities |
-| Profit at risk | A 1-in-20 bad-year loss for the business, from 280+ historical 12-month windows |
-| Cash runway | Month-by-month bank balance in a flat, typical and bad year, against the credit line |
-| Contract calendar | When each exposure becomes live: loan resets, energy contract end, Indexmiete adjustment, minimum wage rise |
-| Stress scenarios | Profit bridge if 2008, 2011, 2022, the 2020 lockdown or the last 12 months repeated |
-| Protection value | Net value of fixing the loan rate, fixing energy, passing on costs, hedging USD, after the cost of each |
-| Backtest | Out-of-sample check of the bad-year forecast since 2008 with a Kupiec test, and which shocks the misses came from |
-| DATEV import | Reads a Summen- und Saldenliste (SKR03 or SKR04) in the browser and fills the exposures |
-| Report | One-page PDF for a bank or tax advisor meeting |
-| Advisor mode | Save many businesses and rank them by risk, with an alert threshold |
-| English and German | Full UI in both languages; reads 900.000 and 900,000 either way |
-| Phone layout | Results first; the inputs open as a sheet from the bottom |
+| Feature | What the owner sees | Plan |
+|---|---|---|
+| Profit at risk | A 1-in-20 bad-year loss for the business, from 280+ historical 12-month windows | Free |
+| Biggest risks | Where a bad year hits: each cost line's share of the loss, averaged over the worst 1-in-20 outcomes | Free |
+| Cash check | Whether cash and the credit line last a bad year, and the lowest balance | Free |
+| Regime compass | Whether Germany is in Recovery, Overheating, Stagflation or Contraction, and the path over the last 24 months | Free |
+| Stress scenario | Profit bridge if the 2022 energy shock repeated | Free |
+| More stress scenarios | 2008, 2011, the 2020 lockdown and the last 12 months as well | Pro |
+| Cash runway | Month-by-month bank balance in a flat, typical and bad year, against the credit line | Pro |
+| Contract calendar | When each exposure becomes live: loan resets, energy contract end, Indexmiete adjustment, minimum wage rise | Pro |
+| Protection value | Net value of fixing the loan rate, fixing energy, passing on costs, hedging USD, after the cost of each | Pro |
+| Backtest | Out-of-sample check of the bad-year forecast since 2008 with a Kupiec test, and which shocks the misses came from | Pro |
+| Statistical second opinion | A 4-state hidden Markov model on growth and inflation levels with filtered probabilities | Pro |
+| DATEV import | Reads a Summen- und Saldenliste (SKR03 or SKR04) in the browser and fills the exposures | Pro |
+| Report | One-page PDF for a bank or tax advisor meeting | Pro |
+| Advisor mode | Save many businesses and rank them by risk, with an alert threshold | Business |
+| Risk assistant | Chat that explains the results, runs what-ifs on the model, compares clients and drafts client notes | Business |
+| English and German | Full UI in both languages; reads 900.000 and 900,000 either way | All |
+| Phone layout | Results first; the inputs open as a sheet from the bottom | All |
+
+Prices on the plans dialog (Free, Pro €19 a month, Business €149 a month per office for up to 50 clients) are placeholders. This is a prototype, so anyone can switch plans to try them; `?plan=business` (or `#business` in the Claude preview) opens a plan directly.
 
 ## How it works
 
@@ -38,6 +46,23 @@ FRED ────────────┘                        │
                                           │
                                check_alerts.py ──> GitHub issue on regime change
 ```
+
+**Risk assistant (Business).** The language model never computes a number. Each question goes out with a short summary of the page (about 3 KB of figures); anything new comes from three tools that run the same in-browser model as the charts:
+
+```
+ question ──> page ──> model (Claude in the preview, Workers AI on the website)
+               ^          │ asks for a tool: what_if, shock or compare_clients
+               │          v
+               └── page runs the tool on the in-browser model and sends back the result
+                          │
+                          v
+                answer, with an "Apply these changes to the page" button after a what-if
+```
+
+- `what_if` recalculates the business with changed figures and protection actions, `shock` applies a custom 12-month move (energy, Euribor, purchase prices, inflation, sales, the dollar, oil), `compare_clients` ranks the saved clients.
+- Client names never leave the browser: the model sees codes (C1, C2, ...), a name typed into a question is swapped for its code before sending, and the page puts the names back into the answer.
+- The instructions and tool definitions live in `assistant/` and are shared by the page and the server, so the two always agree.
+- In the Claude preview the page asks Claude through the viewer's own account (it asks for permission once). On the website it talks to a small Cloudflare Worker in `worker/`, which adds the fixed instructions, calls a Workers AI model with function calling and returns text or tool calls in one shape whatever format the model answers in. The Worker only accepts requests from the site, limits each visitor to 12 requests a minute, can require an access code and stores nothing.
 
 **Data.** Euribor 3M, EUR/USD, the AAA yield curve and German HICP (headline, food, energy, electricity, gas) from the ECB; industrial production, retail and food-service sales, consumer confidence and producer prices for food, metals, paper, plastics and wood from Eurostat; Brent, EU gas and the US 1-year rate from FRED. 21 series in total. Each series is shifted by its publication lag so every month only uses what was public at the time. The ECB replaced its ICP dataset with HICP (ECOICOP 2) in February 2026; the pipeline uses the new codes.
 
@@ -60,7 +85,7 @@ FRED ────────────┘                        │
 
 The model learns from history, so it misses shocks bigger than anything it had seen; the page says which shock each business's misses came from and, when it fails, how to read the bad year instead (for the print shop, roughly 1 in 6 rather than 1 in 20). Volatility scaling cut the restaurant's miss rate from about 21%, and taking Covid closures out of the history from 8.5%.
 
-**Privacy and speed.** The page sets no cookies, loads nothing from third parties (the Archivo font is embedded and jsPDF is served from `docs/vendor/`), processes DATEV files and builds the PDF in the browser, and only writes to the browser's local storage once someone uses it (with a button to delete it). The backtest runs only when its section comes into view.
+**Privacy and speed.** The page sets no cookies, loads nothing from third parties (the Archivo font is embedded and jsPDF is served from `docs/vendor/`), processes DATEV files and builds the PDF in the browser, and only writes to the browser's local storage once someone uses it (with a button to delete it). The one exception is the Business assistant: when someone asks it a question, the question and the page's computed figures (never client names or ledger lines) go to the assistant server and the model behind it. The privacy page needs a paragraph on this before the assistant goes live. The backtest runs only when its section is opened.
 
 ## Run it locally
 
@@ -79,6 +104,29 @@ python build_page.py                           # writes docs/index.html (font fr
 3. Settings → Pages → deploy from branch `main`, folder `/docs`.
 4. Actions → "Refresh data and site" → Run workflow. It then runs twice a month by itself and opens an issue (which GitHub emails you) when the regime changes.
 
+### The assistant server (Business plan, free)
+
+The Workers Free plan covers it: 100,000 requests a day and 10,000 Workers AI neurons a day, about 40 questions with the default model (Mistral Small 3.1, Apache 2.0). When the allowance is used up, the assistant says so until 00:00 UTC; nothing is billed. No API keys are involved.
+
+```bash
+cd worker
+npm install
+npx wrangler login        # opens the browser; a free Cloudflare account is enough
+npx wrangler deploy       # prints the URL, e.g. https://mrm-assistant.<your-subdomain>.workers.dev
+curl https://mrm-assistant.<your-subdomain>.workers.dev/health
+```
+
+Then put that URL in `assistant/config.json` (`{"url": "https://mrm-assistant..."}`), run `python build_page.py` and push. Optional: `npx wrangler secret put ACCESS_CODE` so only people you give the code to can use it. The model and the allowed origins are set in `worker/wrangler.toml`.
+
+## Tests
+
+```bash
+cd worker && npm test                                   # assistant server: CORS, limits, access code, all model output formats
+python build_page.py && python tests/test_page.py       # browser: plans, phone layout, tools, assistant loop with a fake server and a fake Claude
+```
+
+The browser checks need Playwright (`pip install playwright && python -m playwright install chromium`). They check that the assistant's tools reproduce the page's own numbers and that no client name appears in anything sent to the server or to Claude.
+
 ## Legal pages
 
 Germany requires a legal notice (Impressum) and a privacy policy. Put `impressum.html` and `datenschutz.html` in `docs/`; `build_page.py` links them in the footer once neither contains a `[[placeholder]]`.
@@ -92,4 +140,6 @@ Archivo font: SIL Open Font License 1.1 (`assets/OFL.txt`). jsPDF: MIT (`docs/ve
 - History starts in 2000, so the model has seen only a handful of big shocks; it underestimates anything larger than 2022.
 - Overlapping 12-month windows mean the backtest's observations are not independent.
 - Hedge costs are editable assumptions; the loan fixing cost uses the ECB 1-year rate when available.
+- The assistant explains the model's figures; how well it phrases them depends on the model behind it, so advisors should check an answer before passing it to a client.
+- Plans are not enforced: there are no accounts or payments yet. Only the assistant server is protected (origin check, rate limit, optional access code).
 - Not financial advice.

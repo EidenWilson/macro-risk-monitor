@@ -1,0 +1,27 @@
+# Assistant server for the Business plan. Free on the Cloudflare Workers Free plan:
+# 100,000 requests a day for the Worker and 10,000 Workers AI "neurons" a day (roughly 40 questions with
+# Mistral Small). When the daily allowance is used up, the model stops answering until 00:00 UTC; nothing is billed.
+name = "mrm-assistant"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+workers_dev = true
+
+[ai]
+binding = "AI"
+
+[vars]
+# Any Workers AI model with function calling works. Alternatives:
+#   "@cf/qwen/qwen3-30b-a3b-fp8"   cheaper, about 4x more questions a day
+#   "@cf/openai/gpt-oss-120b"      stronger reasoning, fewer questions a day
+MODEL = "@cf/mistralai/mistral-small-3.1-24b-instruct"
+# Pages allowed to call the assistant, comma-separated. Add "http://localhost:8000" while testing locally.
+ALLOWED_ORIGINS = "https://eidenwilson.github.io"
+
+# At most 12 requests a minute per visitor (one question is one to four requests).
+[[ratelimits]]
+name = "RATE_LIMITER"
+namespace_id = "7341"
+simple = { limit = 12, period = 60 }
+
+# Optional: require an access code you hand out, so only invited advisors can use the assistant.
+#   npx wrangler secret put ACCESS_CODE

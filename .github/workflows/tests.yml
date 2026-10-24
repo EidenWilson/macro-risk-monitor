@@ -1,0 +1,40 @@
+name: Tests
+
+# Runs on every push and pull request: the assistant server's tests and the browser checks of the page
+# (plans, phone layout, the assistant's tools and conversation loop with a fake server and a fake Claude).
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  server:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: Assistant server tests
+        working-directory: worker
+        run: node --test
+
+  page:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install Playwright
+        run: |
+          pip install playwright
+          python -m playwright install --with-deps chromium
+      - name: Build the page from the template
+        run: python build_page.py
+      - name: Browser checks
+        run: python tests/test_page.py

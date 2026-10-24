@@ -22,6 +22,7 @@ ap.add_argument("--font", default="assets/archivo-latin-wdth-normal.woff2")
 ap.add_argument("--out", default="docs/index.html")
 ap.add_argument("--assistant", default="assistant", help="folder with prompt.txt, tools.json and config.json")
 ap.add_argument("--bare", action="store_true", help="page only, without the <html>/<head> wrapper")
+ap.add_argument("--site-url", default="https://eidenwilson.github.io/macro-risk-monitor/", help="public address, for link previews")
 a = ap.parse_args()
 
 out = pathlib.Path(a.out)
@@ -55,11 +56,23 @@ else:
     # the template starts with its <title> and <meta> tags; they belong in the document head
     m = re.match(r"\s*(?:(?:<title>.*?</title>|<meta\b[^>]*>)\s*)+", page, re.S)
     head_tags, body = (m.group(0).strip(), page[m.end():]) if m else ("", page)
+    # link previews (LinkedIn, WhatsApp, Slack) and a small icon for the browser tab
+    desc = "How much of next year's profit could the economy take? A free macro risk check for German small businesses, built on live ECB, Eurostat and FRED data."
+    site = a.site_url.rstrip("/") + "/"
+    share = (f'<meta property="og:type" content="website"><meta property="og:title" content="Macro Risk Monitor">'
+             f'<meta property="og:description" content="{desc}"><meta property="og:url" content="{site}">'
+             f'<meta name="twitter:card" content="summary_large_image"><meta name="theme-color" content="#ffffff">')
+    if (out.parent / "og.png").exists():                                 # made by assets/og_image.py
+        share += (f'<meta property="og:image" content="{site}og.png"><meta property="og:image:width" content="1200">'
+                  f'<meta property="og:image:height" content="630"><meta property="og:image:alt" content="Macro Risk Monitor: in a bad year, the economy could take €44,300 out of a €72,000 profit.">')
+    icon = ("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%233358f0'/>"
+            "<rect x='5' y='12' width='22' height='8' rx='4' fill='%23ffffff'/><rect x='5' y='12' width='9' height='8' rx='4' fill='%2310a37f'/>"
+            "<rect x='14' y='12' width='13' height='8' rx='4' fill='%23f0483e'/></svg>")
+    share += f'<link rel="icon" href="data:image/svg+xml,{icon}">'
     html = ("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
             "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1,viewport-fit=cover\">"
             + head_tags +
-            "<meta name=\"description\" content=\"How much of next year's profit could the economy take? "
-            "A free macro risk check for German small businesses, built on live ECB, Eurostat and FRED data.\">"
+            f"<meta name=\"description\" content=\"{desc}\">" + share +
             "<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}"
             "body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>"
             + (f"<script>{''.join(f'window.{k}={json.dumps(v)};' for k, v in flags.items())}</script>" if flags else "")

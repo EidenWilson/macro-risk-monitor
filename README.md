@@ -1,10 +1,28 @@
 # Macro Risk Monitor
 
+[![Tests](https://github.com/EidenWilson/macro-risk-monitor/actions/workflows/tests.yml/badge.svg)](https://github.com/EidenWilson/macro-risk-monitor/actions/workflows/tests.yml)
+
+**Live:** [eidenwilson.github.io/macro-risk-monitor](https://eidenwilson.github.io/macro-risk-monitor/) · [Business plan with the AI assistant](https://eidenwilson.github.io/macro-risk-monitor/?plan=business)
+
+![The page for the example restaurant: in a bad year the economy could take €44,300 of its €72,000 profit, with the biggest risks, the cash outlook and the economy below](assets/screenshot.png)
+
 A risk tool for German small and mid-sized businesses (Mittelstand). It turns live macro data into one question an owner can act on: **how much of next year's profit could the economy take, and what is protection worth?**
 
 The page answers first and explains after: a one-sentence headline, four tiles (biggest risks, whether cash lasts, the economy now, the best protection), eight basic inputs with the rest under "More detail", and the technical charts folded into one "How reliable is this?" section. It comes in three plans: **Free** for a quick check, **Pro** for the full analysis and **Business** for tax advisors and banks, with an AI risk assistant.
 
 Built by Eiden Wilson Neralaily (data and modelling) and Channappa (finance and risk), ISM Munich.
+
+## Highlights
+
+- **End-to-end data pipeline.** 21 series from the ECB, Eurostat and FRED, each shifted by its publication lag, stored in SQLite and refreshed twice a month by GitHub Actions, which also opens an issue when the economic regime changes.
+- **Risk model.** Filtered historical simulation over 280+ past 12-month windows, conditional on the current regime, with a 4-state hidden Markov model as a second opinion and an out-of-sample backtest since 2008 (Kupiec test).
+- **Product.** Answer first, Free, Pro and Business plans, DATEV import (SKR03 and SKR04), a PDF report, English and German, a phone layout, no cookies, and no third-party requests outside the Business assistant.
+- **AI assistant (Business).** An open model (Gemma 4) on Cloudflare Workers AI, on the free plan. It never computes numbers itself: it calls tools that run the page's own risk model. Client names never leave the browser, and a routing step plus a check of every euro amount keep it from inventing figures.
+- **Tested.** Server tests and browser checks (plans, phone layout, the assistant's tools and conversation loop) run on every push.
+
+**Stack:** Python (pandas, NumPy, SciPy, hmmlearn, SQLite) · JavaScript without a framework · Cloudflare Workers and Workers AI · GitHub Actions and Pages · Playwright
+
+<img src="assets/assistant.jpg" width="560" alt="The risk assistant on the live site: asked what happens if energy prices rise 30%, it applies the shock with the page's model and answers that next year's profit would be €55,400, €7,000 less than without the shock">
 
 ## What it does
 
@@ -95,6 +113,7 @@ echo "FRED_API_KEY=your_key" > .env          # free key from fred.stlouisfed.org
 python pipeline.py --db macro.db --start 2000-01
 python build_data.py --db macro.db --out docs/data.json
 python build_page.py                           # writes docs/index.html (font from assets/, jsPDF from docs/vendor/)
+python assets/og_image.py                      # optional: the link-preview picture docs/og.png
 ```
 
 ## Deploy (free)

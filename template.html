@@ -40,6 +40,7 @@ button,input,select{font:inherit}
 .seg button[aria-pressed=true]{background:var(--accent);color:var(--on-accent)}
 
 .hero{padding-block:36px 28px;background:var(--hero)}
+.eyebrow{margin:0 0 12px;font-size:12.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .lede{font-size:clamp(24px,3.6vw,40px);line-height:1.15;font-weight:500;font-stretch:88%;letter-spacing:-.015em;max-width:30ch;margin:0;text-wrap:balance}
 .lede .num{font-weight:800;font-stretch:112%;color:var(--loss-ink);white-space:nowrap}
 .lede .ok{font-weight:800;font-stretch:112%;color:var(--gain-ink);white-space:nowrap}
@@ -358,6 +359,7 @@ svg.chart{width:100%;height:auto}
 
 <main id="content">
 <section class="hero gutter"><div class="inner">
+  <p class="eyebrow"><span data-t="eyebrow">Macro risk check for German small businesses</span><span class="long"> · <span data-t="eyebrowData">live ECB, Eurostat and FRED data</span></span></p>
   <h1 class="lede" id="lede"></h1>
   <p class="asof-m" id="asofM"></p>
   <div class="profitbar" id="profitbar" aria-hidden="true"><div class="pb-track"><div class="pb-keep" id="pbKeep"></div><div class="pb-lose" id="pbLose"></div><div class="pb-typ" id="pbTyp"></div></div></div>
@@ -668,6 +670,7 @@ const T = {
   upCols:['Field','From accounts','Amount'],imported:'Imported from accounts',
   pdfTitle:'Macro risk report',pdfSaved:'Report saved',pdfNo:'Downloads are not available in this view.',pdfFail:'The report could not be created.',
   report:{prepared:'Prepared',business:'Business',regime:'Economic regime',summary:'Summary',exposures:'Exposures',scenarios:'Stress scenarios',hedges:'Protection options',cash:'Cash outlook',method:'Method and data'},
+  eyebrow:'Macro risk check for German small businesses',eyebrowData:'live ECB, Eurostat and FRED data',
   plansBtn:'Plans',planNames:{free:'Free',pro:'Pro',business:'Business'},plansTitle:'Choose a plan',plansNote:'Prototype: switch plans freely to see what each one includes. No payment or account needed.',
   planFor:{free:'For owners who want a quick check',pro:'For owners who want a plan',business:'For tax advisors and banks'},
   planPrice:{free:'€0',pro:'€19',business:'€149'},perMonth:'/ month',planUnit:{business:'per office, up to 50 clients'},
@@ -772,6 +775,7 @@ const T = {
   upCols:['Feld','Aus Konten','Betrag'],imported:'Aus der Buchhaltung importiert',
   pdfTitle:'Makro-Risikobericht',pdfSaved:'Bericht gespeichert',pdfNo:'Downloads sind in dieser Ansicht nicht verfügbar.',pdfFail:'Der Bericht konnte nicht erstellt werden.',
   report:{prepared:'Erstellt',business:'Betrieb',regime:'Konjunkturphase',summary:'Zusammenfassung',exposures:'Risikopositionen',scenarios:'Stressszenarien',hedges:'Absicherungsmöglichkeiten',cash:'Liquiditätsausblick',method:'Methode und Daten'},
+  eyebrow:'Makro-Risikocheck für den Mittelstand',eyebrowData:'Live-Daten von EZB, Eurostat und FRED',
   plansBtn:'Tarife',planNames:{free:'Free',pro:'Pro',business:'Business'},plansTitle:'Tarif wählen',plansNote:'Prototyp: Wechseln Sie frei zwischen den Tarifen, um zu sehen, was jeder enthält. Ohne Zahlung und ohne Konto.',
   planFor:{free:'Für Inhaber, die schnell prüfen wollen',pro:'Für Inhaber, die einen Plan wollen',business:'Für Steuerkanzleien und Banken'},
   planPrice:{free:'0 €',pro:'19 €',business:'149 €'},perMonth:'/ Monat',planUnit:{business:'pro Kanzlei, bis 50 Mandanten'},
@@ -808,8 +812,10 @@ let LANG = 'en';
 const t = (k, ...a) => { const v = T[LANG][k] ?? T.en[k]; return typeof v === 'function' ? v(...a) : v; };
 const loc = () => LANG === 'de' ? 'de-DE' : 'en-GB';
 const fmt = n => Math.round(Math.abs(n)).toLocaleString(loc());
-const eur = n => LANG === 'de' ? fmt(n) + ' €' : '€' + fmt(n);
-const seur = n => Math.abs(n) < .5 ? eur(0) : (n < 0 ? '−' : '+') + eur(n);
+const eurX = n => LANG === 'de' ? fmt(n) + '\u00a0€' : '€' + fmt(n);              // exact: the user's own figures and imported accounts
+const rnd = n => Math.round(n / 100) * 100;
+const eur = n => eurX(rnd(n));                                                    // estimates: to the nearest €100, no false precision
+const seur = n => { const r = rnd(n); return r === 0 ? eurX(0) : (r < 0 ? '−' : '+') + eurX(r); };
 const pct = (v, d = 1) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toLocaleString(loc(), {minimumFractionDigits:d, maximumFractionDigits:d}) + '%';
 const CSSV = {};   // colours never change at runtime; reading computed styles after each redraw forces a style recalculation
 const css = n => CSSV[n] ??= getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -1029,9 +1035,9 @@ function hero(v) {
   const o = outcomes(hedged(v), state.mode, hedgeCost(v)), p5 = o.q(.05), p50 = o.q(.5);
   const loss = Math.max(0, -p5), pos = v.ebit > 0, share = pos ? loss / v.ebit * 100 : null;
   let lede;
-  if (!pos) lede = v.ebit < 0 ? t('ledeNeg', eur(loss), eur(v.ebit)) : t('ledeZero', eur(loss));
-  else if (loss <= 0) lede = t('ledeOk', eur(v.ebit), t(D.current.regime));
-  else lede = share >= 100 ? t('ledeAll', eur(loss), eur(v.ebit)) : t('ledeLoss', eur(loss), eur(v.ebit));
+  if (!pos) lede = v.ebit < 0 ? t('ledeNeg', eur(loss), eurX(v.ebit)) : t('ledeZero', eur(loss));
+  else if (loss <= 0) lede = t('ledeOk', eurX(v.ebit), t(D.current.regime));
+  else lede = share >= 100 ? t('ledeAll', eur(loss), eurX(v.ebit)) : t('ledeLoss', eur(loss), eurX(v.ebit));
   $('lede').innerHTML = lede;
   $('profitbar').hidden = !pos;
   if (pos) {
@@ -1192,7 +1198,7 @@ function calendar(v) {
 
 /* ---------------- waterfall ---------------- */
 function niceStep(x) { const p = Math.pow(10, Math.floor(Math.log10(Math.abs(x) || 1))), f = x / p; return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * p; }
-function short(n) { const a = Math.abs(n), sg = n < 0 ? '−' : '', c = LANG === 'de'; const u = a >= 1e6 ? (a / 1e6).toFixed(a % 1e6 ? 1 : 0) + (c ? ' Mio.' : 'm') : a >= 1e3 ? Math.round(a / 1e3) + 'k' : Math.round(a) + ''; return c ? sg + u + ' €' : sg + '€' + u; }
+function short(n) { const a = Math.abs(n), sg = n < 0 ? '−' : '', c = LANG === 'de'; const u = a >= 1e6 ? (a / 1e6).toFixed(a % 1e6 ? 1 : 0) + (c ? ' Mio.' : 'm') : a >= 1e3 ? Math.round(a / 1e3) + 'k' : Math.round(a) + ''; return c ? sg + u + '\u00a0€' : sg + '€' + u; }
 function renderTabs() {
   const keys = Object.keys(D.scenarios), shown = can('pro') ? keys : keys.slice(0, 1);
   if (!shown.includes(state.scen)) state.scen = shown[0];
@@ -1499,7 +1505,7 @@ function showParse(res) {
   if (!res || !res.recs.length) { $('upResult').innerHTML = `<p class="note">${t('upNone')}</p>`; $('upApply').disabled = true; pending = null; return; }
   const C = t('upCols'), lab = {rev:t('rev'), ebit:t('ebit'), food:t('food'), payroll:t('payroll'), rent:t('rent'), energy:t('energy'), fuel:t('fuel'), loan:t('loan'), cash:t('cash')};
   const rng = k => k === 'ebit' ? (res.skr === '03' ? '8000–8999 − 3000–4999' : '4000–4999 − 5000–6999') : (res.M[k] || []).map(([a, b]) => String(a).padStart(4, '0') + '–' + String(b).padStart(4, '0')).join(', ');
-  $('upResult').innerHTML = `<p class="note">${t('upFound', 'SKR' + res.skr, res.recs.length)}</p><div class="scroll"><table><thead><tr><th>${C[0]}</th><th>${C[1]}</th><th class="n">${C[2]}</th></tr></thead><tbody>${Object.keys(lab).map(k => `<tr><td>${lab[k]}</td><td class="small">${rng(k)}</td><td class="n">${eur(res.out[k])}</td></tr>`).join('')}</tbody></table></div>`;
+  $('upResult').innerHTML = `<p class="note">${t('upFound', 'SKR' + res.skr, res.recs.length)}</p><div class="scroll"><table><thead><tr><th>${C[0]}</th><th>${C[1]}</th><th class="n">${C[2]}</th></tr></thead><tbody>${Object.keys(lab).map(k => `<tr><td>${lab[k]}</td><td class="small">${rng(k)}</td><td class="n">${eurX(res.out[k])}</td></tr>`).join('')}</tbody></table></div>`;
   $('upApply').disabled = false; pending = res.out;
 }
 let lastText = '';
@@ -1546,7 +1552,7 @@ async function makePdf() {
     const cc = LAST.cash; row(t('lowest'), (cc.lowest < 0 ? '-' : '') + eur(cc.lowest)); row(t('runsOut'), cc.outIdx > 0 ? addM(D.current.asOf, cc.outIdx).toLocaleString(loc(), {month:'long', year:'numeric'}) : t('never'));
     y += 2; txt(R.regime, 13, true); txt(`${t(D.current.regime)}: ${t('d' + D.current.regime)}`); txt(plain($('hmmNote').innerHTML), 9, false, [80, 90, 100]);
     y += 2; txt(R.exposures, 13, true);
-    [['rev', v.rev], ['ebit', v.ebit], ['loan', v.loan], ['energy', v.energy], ['food', v.food], ['rent', v.rent], ['payroll', v.payroll], ['usd', v.usd], ['fuel', v.fuel], ['cash', v.cash], ['credit', v.credit]].forEach(([k, x]) => { if (x) row(t(k), eur(x)); });
+    [['rev', v.rev], ['ebit', v.ebit], ['loan', v.loan], ['energy', v.energy], ['food', v.food], ['rent', v.rent], ['payroll', v.payroll], ['usd', v.usd], ['fuel', v.fuel], ['cash', v.cash], ['credit', v.credit]].forEach(([k, x]) => { if (x) row(t(k), eurX(x)); });
     y += 2; txt(R.scenarios, 13, true);
     Object.keys(D.scenarios).forEach(k => { const sc = D.scenarios[k], m = Object.fromEntries(D.factors.map(f => [f, sc.moves[f] ?? 0])); const pr = project(hedged(v), m); row(`${t('scen')[k] || k} (${month(sc.from)} - ${month(sc.to)})`, seur(-pr.total - hedgeCost(v))); });
     try { // chart snapshot
@@ -1603,7 +1609,7 @@ function coerce(k, kind, raw) {
   if (kind === 'range') { const el = $(k), st = +el.step || 1; return +clamp(Math.round(x / st) * st, +el.min, +el.max).toFixed(2); }
   return kind === 'eur' ? Math.max(0, Math.round(x)) : Math.round(x);
 }
-const fmtField = (k, kind, x) => kind === 'bool' ? t(x ? 'yes' : 'no') : kind === 'range' ? RANGES[k](x) : (x < 0 ? '−' : '') + eur(x);
+const fmtField = (k, kind, x) => kind === 'bool' ? t(x ? 'yes' : 'no') : kind === 'range' ? RANGES[k](x) : (x < 0 ? '−' : '') + eurX(x);
 function codeFor(c) {
   if (!chat.codes.has(c.id)) { const code = 'C' + (chat.codes.size + 1); chat.codes.set(c.id, code); chat.byCode.set(code, c.id); }
   return chat.codes.get(c.id);
@@ -1816,7 +1822,7 @@ async function viaServer(ctx, history, q, exec) {
 }
 // open models often keep English number style in German answers: €1,400 becomes 1.400 €
 const looksGerman = x => (String(x).toLowerCase().match(/\b(der|die|das|und|nicht|wenn|was|wie|ist|ich|wir|sie|ein|eine|wird|würde|mit|auf|für|den|dem|des|um|mein|meine|unser|unsere)\b/g) || []).length >= 2;
-const deMoney = x => String(x).replace(/(−|-)?€\s?(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d+))?(?!\d|,\d)/g, (m, sg, n, d) => `${sg || ''}${n.replace(/,/g, '.')}${d ? ',' + d : ''} €`);
+const deMoney = x => String(x).replace(/(−|-)?€\s?(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d+))?(?!\d|,\d)/g, (m, sg, n, d) => `${sg || ''}${n.replace(/,/g, '.')}${d ? ',' + d : ''}\u00a0€`);
 // Euro amounts in an answer that match nothing the page computed (allowing rounding), nor a number from the
 // conversation, nor a percentage from it applied to one of the business's figures. Shown as a caution.
 function uncheckedFigures(text, sources, said) {

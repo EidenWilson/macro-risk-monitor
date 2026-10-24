@@ -243,11 +243,103 @@ def test_claude_transport(browser, base):
     pg.close()
 
 
+def test_languages(browser, base):
+    print("languages")
+    pg = page_with(browser, f"{base}?plan=business")
+    r = pg.evaluate("""() => {
+      const kind = v => Array.isArray(v) ? 'list of ' + v.length : v && typeof v === 'object' ? 'object' : typeof v;
+      const diff = (a, b, path, out) => {                         // keys a translation lacks, adds or shapes differently
+        for (const k of Object.keys(a)) {
+          if (k === '_') continue;
+          if (!(k in b)) out.push(path + k + ' missing');
+          else if (kind(a[k]) !== kind(b[k])) out.push(`${path}${k}: ${kind(b[k])}, English has ${kind(a[k])}`);
+          else if (kind(a[k]) === 'object') diff(a[k], b[k], path + k + '.', out);
+        }
+        for (const k of Object.keys(b)) if (!(k in a)) out.push(path + k + ' is not in English');
+        return out;
+      };
+      const calls = (o, path, out) => { for (const [k, v] of Object.entries(o)) {   // every text function, with sample figures
+        if (typeof v === 'function') for (const n of [0, 1, 2, 5, 12, 49]) {
+          let x; try { x = String(v(n, '€44,300', '€72,000', '62%', '40%', '1.5%')); } catch (e) { out.push(path + k + ' throws ' + e.message); break; }
+          if (/undefined|NaN|\\[object|null/.test(x)) { out.push(path + k + ': ' + x.slice(0, 80)); break; }
+        } else if (v && typeof v === 'object' && !Array.isArray(v)) calls(v, path + k + '.', out); } return out; };
+      const lostInPdf = l => {                                    // report text the PDF fonts could not write
+        const {ops} = withLang(T[l]._.pdf ? l : 'en', () => reportContent({...V}));
+        return ops.flatMap(o => o.slice(1)).filter(x => typeof x === 'string' && pdfText(x).includes('?') && !x.includes('?')).slice(0, 2);
+      };
+      return {langs: LANGS, packs: Object.fromEntries(LANGS.map(l => [l, {diff: diff(T.en, T[l], '', []), bad: withLang(l, () => calls(T[l], '', [])), pdf: lostInPdf(l)}]))};
+    }""")
+    check(len(r["langs"]) == 13, f"13 languages in the menu: {r['langs']}")
+    for l, x in r["packs"].items():
+        check(not x["diff"], f"{l}: same keys as English {x['diff'][:4]}")
+        check(not x["bad"], f"{l}: every text function reads well with sample figures {x['bad'][:3]}")
+        check(not x["pdf"], f"{l}: the PDF report has no letters its fonts lack {x['pdf']}")
+    pg.close()
+    for lang in r["langs"]:
+        for width in (1280, 390):
+            pg = page_with(browser, f"{base}?plan=business&lang={lang}", width)
+            pg.click("#relBtn")
+            if width == 1280:
+                pg.click("#askBtn")
+            v = pg.evaluate("""() => ({lang: document.documentElement.lang, dir: document.documentElement.dir, code: document.getElementById('langCode').textContent,
+              sel: document.getElementById('langSel').value, chartDir: getComputedStyle(document.getElementById('cashChart')).direction,
+              wide: document.documentElement.scrollWidth, text: document.body.innerText})""")
+            bad = [w for w in ("undefined", "NaN", "[object") if w in v["text"]]
+            check(not pg.errors and not bad, f"{lang} at {width}px: no errors or broken text {pg.errors[:1]} {bad}")
+            check(v["wide"] <= width, f"{lang} at {width}px: no sideways scroll ({v['wide']}px)")
+            if width == 1280:
+                check(v["sel"] == lang and v["code"] == lang.upper(), f"{lang}: the menu shows the language")
+                check(v["dir"] == ("rtl" if lang == "ar" else "ltr") and v["chartDir"] == "ltr", f"{lang}: page direction {v['dir']}, charts left to right")
+            pg.close()
+    pg = page_with(browser, f"{base}?lang=fr")
+    pg.select_option("#langSel", "ar")
+    v = pg.evaluate("({dir: document.documentElement.dir, url: location.search, saved: JSON.parse(localStorage.getItem('mrm3') || '{}').lang})")
+    check(v["dir"] == "rtl" and "lang=ar" in v["url"] and v["saved"] == "ar", f"choosing a language switches the page, the link and the saved choice {v}")
+    pg.close()
+    pg = page_with(browser, base, init="Object.defineProperty(navigator, 'languages', {get: () => ['pt-BR', 'en']});")
+    check(pg.evaluate("LANG") == "pt", "a first visit follows the browser's language")
+    pg.close()
+
+
+def test_formats(browser, base):
+    print("numbers and money in each language")
+    pg = page_with(browser, base)
+    r = pg.evaluate("""() => {
+      const fmt = l => withLang(l, () => ({money: eur(-44312), signed: seur(14380), pct: pct(3.3), share: pc(62), axis: short(-20000),
+        local: localMoney('Der Gewinn sinkt um €14,400 auf €58,600, nicht €1.2m.'), page: inPageLanguage('Der Gewinn sinkt, wenn die Energiepreise steigen und die Nachfrage nachlässt.'),
+        english: inPageLanguage('Profit falls when energy prices rise and the demand for the product softens.')}));
+      return {de: fmt('de'), fr: fmt('fr'), en: fmt('en'), ar: fmt('ar'), hi: fmt('hi'),
+        parse: [parseNum('\u0664\u0664\u066c\u0663\u0660\u0660'), parseNum('9,00,000'), parseNum('44\u202f300 €'), parseNum('\u200f\u200e-72,000'), parseNum('1.200.000,50'), parseNum('12,5')]};
+    }""")
+    de, fr, en = r["de"], r["fr"], r["en"]
+    check(en["money"] == "€44,300" and en["signed"] == "+€14,400" and en["pct"] == "+3.3%" and en["axis"] == "−€20k", f"English formats unchanged {en}")
+    check(de["money"] == "44.300\u00a0€" and de["share"] == "62\u00a0%" and de["axis"] == "−20k\u00a0€", f"German formats {de}")
+    check(fr["money"] == "44\u202f300\u00a0€", f"French groups thousands with a narrow space {fr['money']!r}")
+    check(r["hi"]["money"] == "€44,300" and r["ar"]["money"].endswith("€"), f"Hindi and Arabic money {r['hi']['money']!r} {r['ar']['money']!r}")
+    check(de["local"] == "Der Gewinn sinkt um 14.400\u00a0€ auf 58.600\u00a0€, nicht €1.2m.", f"English-style amounts in a German answer are rewritten: {de['local']!r}")
+    check(de["page"] and not de["english"], "an answer in the page's language is recognised, an English one is not")
+    check(r["parse"] == [44300, 900000, 44300, -72000, 1200000.5, 12.5], f"typed numbers in any style and digit script {r['parse']}")
+    pg.close()
+
+
+def test_pdf_language(browser, base):
+    print("PDF report language")
+    init = "window.__saved = []; window.claude = {use: async n => n === 'downloads' ? {save: async f => { window.__saved.push(f.filename); }} : null};"
+    for lang, english in (("fr", False), ("ru", True)):
+        pg = page_with(browser, f"{base}?plan=pro&lang={lang}", init=init)
+        pg.click("#pdfBtn")
+        pg.wait_for_function("window.__saved.length > 0 || !document.getElementById('toast').hidden", timeout=15000)
+        pg.wait_for_function("!document.getElementById('toast').hidden", timeout=15000)
+        toast, want = pg.evaluate("[document.getElementById('toast').textContent, t(" + ("'pdfInEnglish'" if english else "'pdfSaved'") + ")]")
+        check(toast == want and pg.evaluate("window.__saved.length") == 1, f"{lang}: report saved{' in English, and the toast says so' if english else ' in French'} ({toast})")
+        pg.close()
+
+
 if __name__ == "__main__":
     base = serve()
     with sync_playwright() as p:
         browser = p.chromium.launch()
-        for t in (test_plans, test_tools, test_server_transport, test_claude_transport):
+        for t in (test_plans, test_tools, test_server_transport, test_claude_transport, test_languages, test_formats, test_pdf_language):
             t(browser, base)
         browser.close()
     print(f"\n{len(failures)} failed" if failures else "\nall checks passed")

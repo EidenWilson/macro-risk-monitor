@@ -3,6 +3,7 @@
 <style>
 /* Archivo (SIL Open Font License 1.1) is embedded, so visitors' browsers never contact a font server */
 @font-face{font-family:"Archivo";font-style:normal;font-display:swap;font-weight:100 900;font-stretch:62% 125%;src:url(data:font/woff2;base64,__FONT_WOFF2__) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Archivo";font-style:normal;font-display:swap;font-weight:100 900;font-stretch:62% 125%;src:url(data:font/woff2;base64,__FONT_EXT_WOFF2__) format("woff2");unicode-range:U+0104-0107,U+0118-0119,U+011E-011F,U+0130,U+0141-0144,U+015A-015B,U+015E-015F,U+0179-017C}
 /* Layout: sticky bar; hero sentence + profit bar; inputs rail (left) + analysis column (right); stacks on phones */
 :root{
   /* bright, friendly single light theme (deliberately not following dark mode) */
@@ -17,6 +18,12 @@
   --shadow:0 1px 2px rgba(61,99,255,.06),0 10px 28px -14px rgba(28,37,65,.22);
   color-scheme:light;
 }
+/* Cyrillic, Arabic, Devanagari and Chinese: Archivo has no such letters, so the whole page uses the system's font and digits match the words */
+html:is([lang|=ru],[lang|=uk],[lang|=hi]){--f:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans","Noto Sans Devanagari","Nirmala UI",sans-serif}
+html[lang|=ar]{--f:system-ui,-apple-system,"Segoe UI","Noto Sans Arabic","Geeza Pro",Tahoma,sans-serif}
+html[lang|=zh]{--f:system-ui,-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Noto Sans SC",sans-serif}
+html:is([lang|=ar],[lang|=hi]) *{letter-spacing:0!important}   /* spacing breaks joined letters */
+html:is([lang|=ar],[lang|=hi]) :is(.lede,.regname,.price,.tile .tv,h2){line-height:1.45}   /* room for marks above and below */
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:15px;line-height:1.5;font-variant-numeric:tabular-nums}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
@@ -35,9 +42,11 @@ button,input,select{font:inherit}
 .btn:hover:not(:disabled){border-color:var(--accent)}
 .btn.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 .btn:disabled{cursor:default;opacity:.6}
-.seg{display:inline-flex;border:1px solid var(--line);border-radius:99px;overflow:hidden}
-.seg button{border:0;background:var(--surface);color:var(--muted);font-size:12.5px;font-weight:700;padding:6px 10px;cursor:pointer}
-.seg button[aria-pressed=true]{background:var(--accent);color:var(--on-accent)}
+/* language menu: a native select (keyboard, screen readers and phone pickers for free) laid over a small pill */
+.langpick{position:relative;display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font-size:12.5px;font-weight:700;white-space:nowrap;cursor:pointer}
+.langpick:hover{border-color:var(--accent);color:var(--ink)}
+.langpick:has(select:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
+.langpick select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:16px;border:0;padding:0}
 
 .hero{padding-block:36px 28px;background:var(--hero)}
 .eyebrow{margin:0 0 12px;font-size:12.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
@@ -46,18 +55,18 @@ button,input,select{font:inherit}
 .lede .ok{font-weight:800;font-stretch:112%;color:var(--gain-ink);white-space:nowrap}
 .lede .base{font-weight:700;white-space:nowrap}
 .profitbar{margin-top:20px;max-width:880px}
-.pb-track{position:relative;height:36px;border-radius:99px;background:var(--gain-soft);overflow:hidden;border:1px solid var(--line)}
+.pb-track{direction:ltr;position:relative;height:36px;border-radius:99px;background:var(--gain-soft);overflow:hidden;border:1px solid var(--line)}
 .pb-keep{position:absolute;inset:0 auto 0 0;background:var(--gain);transition:width .5s cubic-bezier(.2,.8,.2,1)}
 .pb-lose{position:absolute;top:0;bottom:0;background:repeating-linear-gradient(135deg,var(--loss) 0 8px,color-mix(in srgb,var(--loss) 75%,transparent) 8px 16px);transition:left .5s cubic-bezier(.2,.8,.2,1),width .5s cubic-bezier(.2,.8,.2,1)}
 .pb-typ{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink);transition:left .5s cubic-bezier(.2,.8,.2,1)}
 .pb-legend{display:flex;flex-wrap:wrap;gap:6px 20px;margin-top:10px;font-size:13px;color:var(--muted)}
-.pb-legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-2px}
+.pb-legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-inline-end:6px;vertical-align:-2px}
 .pb-legend b{color:var(--ink);font-weight:600}
 .alert{display:none;margin-top:16px;max-width:880px;padding:12px 16px;border-radius:14px;background:var(--warn-soft);color:var(--ink);font-size:14px;border:1px solid color-mix(in srgb,var(--warn) 40%,transparent)}
 .alert.on{display:block}
 .alert b{color:var(--warn-ink)}
 .presets{display:flex;gap:8px;flex-wrap:wrap;margin-top:22px;align-items:center}
-.presets>span{font-size:13px;color:var(--muted);margin-right:4px}
+.presets>span{font-size:13px;color:var(--muted);margin-inline-end:4px}
 .pill{font-size:13.5px;font-weight:600;padding:7px 14px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
 .pill:hover{border-color:var(--accent)}
 .pill[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
@@ -76,7 +85,7 @@ h3{font-size:15px;font-weight:700;margin:0 0 8px}
 html:not([data-plan=pro]):not([data-plan=business]) [data-need=pro],
 html:not([data-plan=business]) [data-need=business]{display:none!important}
 html[data-plan=pro] [data-only=free],html[data-plan=business] [data-only=free],html[data-plan=business] [data-upto=pro]{display:none!important}
-.planbtn{display:inline-flex;align-items:center;gap:7px;padding-left:6px}
+.planbtn{display:inline-flex;align-items:center;gap:7px;padding-inline-start:6px}
 .tier{font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:99px;background:var(--sunk);color:var(--muted);line-height:1.2}
 html[data-plan=pro] .tier{background:var(--accent-soft);color:var(--accent)}
 html[data-plan=business] .tier{background:var(--ink);color:var(--surface)}
@@ -90,18 +99,18 @@ html[data-plan=business] .tier{background:var(--ink);color:var(--surface)}
 .tile .tv{font-size:19px;font-weight:800;font-stretch:106%;line-height:1.2;letter-spacing:-.01em;overflow-wrap:anywhere}
 .tile .ts{font-size:13px;color:var(--muted);line-height:1.4}
 .tile.lock{background:color-mix(in srgb,var(--surface) 55%,transparent);border-style:dashed}
-.tile .linkbtn{align-self:flex-start;margin-top:auto;text-align:left}
+.tile .linkbtn{align-self:flex-start;margin-top:auto;text-align:start}
 .drv{display:grid;grid-template-columns:auto minmax(36px,1fr) auto;gap:6px 10px;align-items:center;font-size:13.5px}
 .drv span{white-space:nowrap}
 .drv i{display:block;height:7px;border-radius:4px;background:var(--loss)}
-.drv b{font-weight:700;text-align:right}
+.drv b{font-weight:700;text-align:end}
 
 /* inputs */
 details.more{border-top:1px solid var(--line);margin-top:6px}
 details.more>summary{list-style:none;cursor:pointer;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;min-height:44px}
 details.more>summary::-webkit-details-marker{display:none}
 details.more>summary small{font-weight:500;color:var(--muted);font-size:12.5px}
-details.more>summary::after{content:"+";color:var(--muted);font-weight:500;font-size:18px;line-height:1;margin-left:auto}
+details.more>summary::after{content:"+";color:var(--muted);font-weight:500;font-size:18px;line-height:1;margin-inline-start:auto}
 details.more[open]>summary::after{content:"–"}
 .sub{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin:16px 0 10px;padding-top:14px;border-top:1px solid var(--line)}
 details.more>.sub:first-of-type{border-top:0;padding-top:0;margin-top:4px}
@@ -109,11 +118,11 @@ details.more>.sub:first-of-type{border-top:0;padding-top:0;margin-top:4px}
 .field>label{font-size:13px;color:var(--muted)}
 .money{display:flex;align-items:center;background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:0 10px;width:128px}
 .money span{color:var(--muted);font-size:13px}
-.money input{border:0;background:transparent;font-weight:600;font-size:14.5px;color:var(--ink);width:100%;padding:6px 0 6px 4px;text-align:right}
+.money input{border:0;background:transparent;font-weight:600;font-size:14.5px;color:var(--ink);width:100%;padding:6px 0;padding-inline-start:4px;text-align:end}
 .money input:focus{outline:none}
 .money:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 .range{grid-column:1/-1;display:grid;grid-template-columns:1fr 64px;gap:10px;align-items:center}
-.range output{font-weight:700;text-align:right;font-size:13.5px}
+.range output{font-weight:700;text-align:end;font-size:13.5px}
 input[type=range]{width:100%;accent-color:var(--accent)}
 select{background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:6px 8px;color:var(--ink);font-size:13.5px;max-width:100%}
 .field>select{grid-column:1/-1;width:100%}
@@ -129,8 +138,8 @@ select{background:var(--sunk);border:1px solid var(--line);border-radius:8px;pad
 .crow.active{border-color:var(--accent);background:var(--accent-soft)}
 .crow .risk{font-weight:700}
 .crow .x{background:none;border:0;color:var(--muted);cursor:pointer;font-size:16px;line-height:1;padding:0 2px}
-.crow .open{background:none;border:0;padding:0;font:inherit;color:inherit;text-align:left;cursor:pointer;display:flex;align-items:center;min-width:0;overflow-wrap:anywhere}
-.flag{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+.crow .open{background:none;border:0;padding:0;font:inherit;color:inherit;text-align:start;cursor:pointer;display:flex;align-items:center;min-width:0;overflow-wrap:anywhere}
+.flag{display:inline-block;width:8px;height:8px;border-radius:50%;margin-inline-end:6px}
 .saverow{display:flex;gap:6px}
 .saverow input{flex:1;min-width:0;background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:6px 8px;color:var(--ink);font-size:13.5px}
 
@@ -149,13 +158,13 @@ select{background:var(--sunk);border:1px solid var(--line);border-radius:8px;pad
 .stack i{display:block;height:100%}
 .slegend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12.5px;color:var(--muted)}
 .slegend b{color:var(--ink)}
-.slegend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.slegend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-inline-end:5px;vertical-align:-1px}
 
 .tabs{display:flex;gap:4px;padding:4px;background:var(--sunk);border-radius:10px;width:fit-content;max-width:100%;flex-wrap:wrap;margin-bottom:16px}
 .tab{font-size:13.5px;font-weight:600;padding:7px 12px;border-radius:7px;border:0;background:transparent;color:var(--muted);cursor:pointer}
 .tab[aria-pressed=true]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
 .scroll{overflow-x:auto}
-svg{display:block}
+svg{display:block;direction:ltr}   /* charts keep a left-to-right axis in every language */
 svg text{font-family:var(--f);fill:var(--muted);font-size:11px}
 .moves{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
 .moves span{font-size:12.5px;padding:3px 9px;border-radius:6px;background:var(--sunk);color:var(--muted)}
@@ -166,13 +175,13 @@ svg text{font-family:var(--f);fill:var(--muted);font-size:11px}
 .callout b{font-size:20px;font-weight:800;font-stretch:108%}
 
 table{border-collapse:collapse;width:100%;font-size:13.5px}
-th{text-align:left;font-weight:600;color:var(--muted);font-size:12.5px;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{text-align:start;font-weight:600;color:var(--muted);font-size:12.5px;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
 td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
-td.n,th.n{text-align:right;white-space:nowrap}
+td.n,th.n{text-align:end;white-space:nowrap}
 tr:last-child td{border-bottom:0}
-.hedge-row input{width:16px;height:16px;accent-color:var(--accent);vertical-align:-3px;margin-right:8px}
+.hedge-row input{width:16px;height:16px;accent-color:var(--accent);vertical-align:-3px;margin-inline-end:8px}
 .hedge-row td:first-child{min-width:220px}
-.hedge-row small{display:block;color:var(--muted);font-size:12.5px;margin-left:24px}
+.hedge-row small{display:block;color:var(--muted);font-size:12.5px;margin-inline-start:24px}
 .verdict{font-weight:700;font-size:12.5px;padding:2px 8px;border-radius:99px;white-space:nowrap}
 .v-good{background:var(--gain-soft);color:var(--gain-ink)} .v-meh{background:var(--sunk);color:var(--muted)} .v-bad{background:var(--loss-soft);color:var(--loss-ink)}
 
@@ -184,7 +193,7 @@ tr:last-child td{border-bottom:0}
 .stat b{font-size:21px;font-weight:800;font-stretch:108%}
 
 .legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--muted);margin-top:10px}
-.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-inline-end:6px;vertical-align:-1px}
 .tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12.5px;padding:8px 10px;border-radius:8px;line-height:1.4;z-index:20;max-width:240px}
 
 /* modal */
@@ -225,7 +234,7 @@ tr:last-child td{border-bottom:0}
 .pcard h3{font-size:18px;font-weight:800;font-stretch:110%;margin:0}
 .pcard .who{font-size:13px;color:var(--muted);margin:0}
 .price{font-size:30px;font-weight:800;font-stretch:108%;letter-spacing:-.02em;line-height:1;margin-top:6px}
-.price small{font-size:13px;font-weight:500;color:var(--muted);letter-spacing:0;margin-left:4px}
+.price small{font-size:13px;font-weight:500;color:var(--muted);letter-spacing:0;margin-inline-start:4px}
 .punit{font-size:12.5px;color:var(--muted);margin:0}
 .pcard .ticks{margin:8px 0 12px}
 .pcard .btn{margin-top:auto;min-height:40px}
@@ -234,8 +243,11 @@ tr:last-child td{border-bottom:0}
 .fab{position:fixed;right:calc(20px + env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:22;display:inline-flex;align-items:center;gap:8px;padding:12px 18px 12px 15px;border-radius:99px;border:0;background:var(--ink);color:var(--surface);font:inherit;font-weight:700;font-size:14px;box-shadow:0 12px 30px -10px rgba(28,37,65,.55);cursor:pointer}
 .fab svg,.ask svg{width:18px;height:18px;flex:none}
 body.chat-open .fab{display:none}
+[dir=rtl] .fab{right:auto;left:calc(20px + env(safe-area-inset-left,0px))}
+[dir=rtl] .pb-track{transform:scaleX(-1)}   /* the profit bar fills from the right, like the text */
 .chat{position:fixed;top:0;right:0;bottom:0;z-index:28;width:min(440px,100%);display:flex;flex-direction:column;background:var(--surface);border-left:1px solid var(--line);box-shadow:-18px 0 40px -24px rgba(28,37,65,.45);padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) 0}
-.chat-head{display:flex;align-items:center;gap:8px;padding:12px 10px 12px 18px;border-bottom:1px solid var(--line)}
+[dir=rtl] .chat{right:auto;left:0;border-left:0;border-right:1px solid var(--line);box-shadow:18px 0 40px -24px rgba(28,37,65,.45);padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
+.chat-head{display:flex;align-items:center;gap:8px;padding:12px;padding-inline:18px 10px;border-bottom:1px solid var(--line)}
 .chat-head>div{flex:1;min-width:0}
 .chat-head h2{font-size:17px;margin:0}
 .chat-head .small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -244,37 +256,37 @@ body.chat-open .fab{display:none}
 .hello p{margin:0 0 10px;font-size:14px;max-width:52ch}
 .hello .small{display:block;margin-bottom:16px}
 .sugg{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
-.sugg button{font:inherit;font-size:13.5px;text-align:left;padding:8px 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;line-height:1.35}
+.sugg button{font:inherit;font-size:13.5px;text-align:start;padding:8px 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;line-height:1.35}
 .sugg button:hover{border-color:var(--accent)}
 .msg{font-size:14px;line-height:1.5;overflow-wrap:anywhere;min-width:0}
-.msg.u{align-self:flex-end;max-width:88%;background:var(--accent);color:var(--on-accent);padding:9px 13px;border-radius:16px 16px 4px 16px;white-space:pre-wrap}
-.msg.a .body{background:var(--sunk);padding:10px 14px;border-radius:16px 16px 16px 4px}
+.msg.u{align-self:flex-end;max-width:88%;background:var(--accent);color:var(--on-accent);padding:9px 13px;border-radius:16px;border-end-end-radius:4px;white-space:pre-wrap}
+.msg.a .body{background:var(--sunk);padding:10px 14px;border-radius:16px;border-end-start-radius:4px}
 .msg.a p{margin:0 0 8px}.msg.a p:last-child{margin-bottom:0}
-.msg.a ul,.msg.a ol{margin:4px 0 8px;padding-left:20px}
+.msg.a ul,.msg.a ol{margin:4px 0 8px;padding-inline-start:20px}
 .msg.a li{margin:3px 0}
-.acts{display:flex;flex-direction:column;gap:3px;margin:0 0 6px 4px}
+.acts{display:flex;flex-direction:column;gap:3px;margin:0 0 6px;margin-inline-start:4px}
 .acts span{font-size:12.5px;color:var(--muted)}
-.acts span::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--gain);margin-right:7px;vertical-align:1px}
+.acts span::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--gain);margin-inline-end:7px;vertical-align:1px}
 .msg .err{color:var(--loss-ink);font-size:13.5px;margin:8px 4px 0}
 .msg .err.quiet{color:var(--muted)}
 .msg .chk{margin:6px 4px 0;font-size:12.5px;color:var(--warn-ink)}
-.msg .btns{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0 4px}
+.msg .btns{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0;margin-inline-start:4px}
 .thinking{color:var(--muted)}
 .dots i{display:inline-block;width:4px;height:4px;margin-left:3px;border-radius:50%;background:currentColor;vertical-align:middle;animation:blink 1.2s infinite both}
 .dots i:nth-child(2){animation-delay:.2s}.dots i:nth-child(3){animation-delay:.4s}
 @keyframes blink{0%,80%,100%{opacity:.2}40%{opacity:1}}
 @media (prefers-reduced-motion:reduce){.dots i{animation:none;opacity:.6}}
-.chat-form{display:flex;gap:8px;align-items:flex-end;padding:10px 14px 8px 18px;border-top:1px solid var(--line)}
+.chat-form{display:flex;gap:8px;align-items:flex-end;padding:10px 14px 8px;padding-inline-start:18px;border-top:1px solid var(--line)}
 .chat-form textarea{flex:1;min-width:0;resize:none;font:inherit;font-size:14.5px;line-height:1.4;border:1px solid var(--line);border-radius:12px;padding:9px 12px;background:var(--sunk);color:var(--ink);max-height:140px}
 .chat-form textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 .chat-form .btn{min-height:40px}
 .chat-foot{margin:0;padding:0 18px 12px;font-size:12px;color:var(--muted)}
 .clink{background:none;border:0;padding:0;font:inherit;font-weight:700;color:var(--accent);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
-.codeform{display:flex;gap:6px;margin:8px 0 0 4px}
+.codeform{display:flex;gap:6px;margin:8px 0 0;margin-inline-start:4px}
 .codeform input{flex:1;min-width:0;font:inherit;font-size:14px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
 .ask{display:none}
 .ebtns{display:flex;gap:8px;flex:none}
-@media (min-width:1280px){body.chat-open{padding-right:440px}}
+@media (min-width:1280px){body.chat-open{padding-right:440px}[dir=rtl] body.chat-open{padding-right:0;padding-left:440px}}
 footer{color:var(--muted);font-size:12.5px;padding-block:0 40px}
 footer p{margin:0 0 6px;max-width:90ch}
 footer a{color:var(--accent);font-weight:600}
@@ -312,7 +324,7 @@ svg.chart{width:100%;height:auto}
   body{padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))}
   body.sheet-open{overflow:hidden}
   .btn,.pill,.tab,select,.linkbtn{min-height:40px}
-  .seg button{min-height:36px;min-width:40px}
+  .langpick{min-height:40px}
   input[type=range]{height:32px}
   .toggle{min-height:40px}
   .toggle input,.hedge-row input{width:22px;height:22px}
@@ -337,11 +349,11 @@ svg.chart{width:100%;height:auto}
   #hedgeTable,#hedgeTable tbody,#hedgeTable tr,#hedgeTable td{display:block;width:100%}
   #hedgeTable tr{padding:12px 0;border-bottom:1px solid var(--line)}
   #hedgeTable tr:last-child{border-bottom:0}
-  #hedgeTable td{border:0;padding:4px 0;display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:right}
-  #hedgeTable td:first-child{display:block;text-align:left}
-  #hedgeTable td[data-label]::before{content:attr(data-label);color:var(--muted);font-size:12.5px;text-align:left}
+  #hedgeTable td{border:0;padding:4px 0;display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:end}
+  #hedgeTable td:first-child{display:block;text-align:start}
+  #hedgeTable td[data-label]::before{content:attr(data-label);color:var(--muted);font-size:12.5px;text-align:start}
   .hedge-row td:first-child{min-width:0}
-  .hedge-row small{margin-left:30px}
+  .hedge-row small{margin-inline-start:30px}
 }
 @media (prefers-reduced-motion:reduce){.main>#inputs,.main>#inputs.open{transition:none}}
 </style>
@@ -353,7 +365,7 @@ svg.chart{width:100%;height:auto}
     <button type="button" class="btn planbtn" id="planBtn" aria-haspopup="dialog"><span class="tier" id="planTier">Free</span><span class="long" data-t="plansBtn">Plans</span></button>
     <button type="button" class="btn" id="openUpload" data-t="uploadBtn" data-need="pro">Import accounts</button>
     <button type="button" class="btn primary" id="pdfBtn" data-need="pro"><span class="long" data-t="pdfBtn">Download report</span><span class="short"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14"/></svg><span class="sr" data-t="pdfShort">Report</span></span></button>
-    <div class="seg" role="group" aria-label="Language"><button type="button" data-lang="en" aria-pressed="true">EN</button><button type="button" data-lang="de" aria-pressed="false">DE</button></div>
+    <label class="langpick"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span id="langCode" aria-hidden="true">EN</span><select id="langSel" aria-label="Language"></select></label>
   </div>
 </div></header>
 
@@ -380,7 +392,7 @@ svg.chart{width:100%;height:auto}
       <h2 id="h-cl" data-t="clientsTitle">Saved businesses</h2>
       <p class="note" id="clientsNote" style="margin-bottom:6px"></p>
       <div class="clist" id="clist"></div>
-      <div class="saverow"><input id="clientName" maxlength="60" aria-label="Business name"><button type="button" class="btn" id="saveClient" data-t="save">Save</button></div>
+      <div class="saverow"><input id="clientName" maxlength="60" aria-label="Business name" data-tl="namePh"><button type="button" class="btn" id="saveClient" data-t="save">Save</button></div>
       <div class="field" style="margin:12px 0 0"><label for="threshold" data-t="alertAt">Warn me when a bad year costs more than</label><div class="range"><input type="range" id="threshold" min="10" max="100" step="5"><output id="thresholdO"></output></div></div>
     </section>
 
@@ -448,19 +460,19 @@ svg.chart{width:100%;height:auto}
     <section class="card" aria-labelledby="h-cash" data-need="pro">
       <h2 id="h-cash" data-t="cashTitle">Your cash over the next 12 months</h2>
       <p class="note" data-t="cashNote">Bank balance month by month if nothing changes, in a typical year, and in a bad year (1 in 20). The shaded band is your credit line.</p>
-      <div class="scroll"><svg id="cashChart" class="chart" viewBox="0 0 720 260" role="img" aria-label="Cash balance over the next 12 months"></svg></div>
+      <div class="scroll"><svg id="cashChart" class="chart" viewBox="0 0 720 260" role="img" aria-label="Cash balance over the next 12 months" data-tl="svgCash"></svg></div>
       <div class="legend" id="cashLegend"></div>
       <div class="callout" id="cashCallout"></div>
       <h3 style="margin-top:22px" data-t="calTitle">When each cost starts to bite</h3>
       <p class="note" data-t="calNote">Exposures only feel price moves once a contract runs out or an adjustment date arrives. Known rises are already locked in.</p>
-      <div class="scroll"><svg id="calendar" class="chart" viewBox="0 0 720 230" role="img" aria-label="When each cost becomes exposed"></svg></div>
+      <div class="scroll"><svg id="calendar" class="chart" viewBox="0 0 720 230" role="img" aria-label="When each cost becomes exposed" data-tl="svgCal"></svg></div>
     </section>
 
     <section class="card" aria-labelledby="h-wf">
       <h2 id="h-wf" data-t="wfTitle">If a past shock repeated next year</h2>
       <p class="note" data-t="wfNote">Your annual profit, step by step, if sales, prices and rates moved over the next 12 months the way they did in that period. Moves build up gradually over the year.</p>
       <div class="tabs" id="scen" role="group"></div>
-      <div class="scroll"><svg id="wf" class="chart" viewBox="0 0 760 310" role="img" aria-label="Profit bridge for the selected scenario"></svg></div>
+      <div class="scroll"><svg id="wf" class="chart" viewBox="0 0 760 310" role="img" aria-label="Profit bridge for the selected scenario" data-tl="svgWf"></svg></div>
       <div class="moves" id="moves"></div>
       <p class="note" id="scenNote" hidden></p>
     </section>
@@ -474,7 +486,7 @@ svg.chart{width:100%;height:auto}
 
     <section class="card" aria-labelledby="h-reg">
       <div class="regime">
-        <div class="scroll"><svg class="compass" id="compass" viewBox="0 0 300 300" role="img" aria-label="Regime compass"></svg></div>
+        <div class="scroll"><svg class="compass" id="compass" viewBox="0 0 300 300" role="img" aria-label="Regime compass" data-tl="svgCompass"></svg></div>
         <div>
           <h2 id="h-reg" data-t="regTitle">Where the German economy is now</h2>
           <div class="regname" id="regname"></div>
@@ -502,14 +514,14 @@ svg.chart{width:100%;height:auto}
           <p class="note" id="dsnote"></p>
           <div class="tabs" id="mode" role="group"></div>
           <div class="dist">
-            <div class="scroll"><svg id="hist" class="chart" viewBox="0 0 520 200" role="img" aria-label="Distribution of outcomes for next year"></svg></div>
+            <div class="scroll"><svg id="hist" class="chart" viewBox="0 0 520 200" role="img" aria-label="Distribution of outcomes for next year" data-tl="svgHist"></svg></div>
             <div id="stats"></div>
           </div>
         </section>
         <section aria-labelledby="h-bt">
           <h3 id="h-bt" data-t="btTitle">Does the model hold up?</h3>
           <p class="note" id="btNote"></p>
-          <div class="scroll"><svg id="bt" class="chart" viewBox="0 0 760 240" role="img" aria-label="Backtest of the bad-year forecast"></svg></div>
+          <div class="scroll"><svg id="bt" class="chart" viewBox="0 0 760 240" role="img" aria-label="Backtest of the bad-year forecast" data-tl="svgBt"></svg></div>
           <div class="legend" id="btLegend"></div>
           <div class="callout" id="btCallout"></div>
         </section>
@@ -522,7 +534,7 @@ svg.chart{width:100%;height:auto}
         <section aria-labelledby="h-tl">
           <h3 id="h-tl" data-t="tlTitle">Twenty years of regimes</h3>
           <p class="note" data-t="tlNote">German inflation and industrial output, year on year, as they were known at the time. The top band shows the compass regime, the bottom band the statistical model. Hover to inspect a month.</p>
-          <div class="scroll"><svg id="tl" class="chart" viewBox="0 0 760 270" role="img" aria-label="Inflation, industrial output and regimes since 2005"></svg></div>
+          <div class="scroll"><svg id="tl" class="chart" viewBox="0 0 760 270" role="img" aria-label="Inflation, industrial output and regimes since 2005" data-tl="svgTl"></svg></div>
           <div class="legend" id="tlleg"></div>
         </section>
       </div>
@@ -550,7 +562,7 @@ svg.chart{width:100%;height:auto}
     <p class="note" data-t="upNote">Upload a trial balance (Summen- und Saldenliste) exported as CSV from DATEV or your tax advisor. The file stays in your browser. Accounts are mapped using the SKR03 or SKR04 chart of accounts.</p>
     <div class="drop" id="drop"><span data-t="dropHere">Drop a CSV file here, or</span> <label class="linkbtn" style="cursor:pointer"><input type="file" id="file" accept=".csv,.txt" hidden><span data-t="chooseFile">choose a file</span></label></div>
     <div class="row" style="margin-bottom:12px"><button type="button" class="btn" id="sampleCsv" data-t="sampleCsv">Use a sample export</button><button type="button" class="btn" id="tplCsv" data-t="tplCsv">Download a template</button>
-      <label class="small"><span data-t="chart">Chart of accounts</span> <select id="skr"><option value="auto">Auto</option><option value="03">SKR03</option><option value="04">SKR04</option></select></label></div>
+      <label class="small"><span data-t="chart">Chart of accounts</span> <select id="skr"><option value="auto" data-t="auto">Auto</option><option value="03">SKR03</option><option value="04">SKR04</option></select></label></div>
     <div id="upResult"></div>
     <div class="row" style="justify-content:flex-end;margin-top:14px"><button type="button" class="btn" id="upClose" data-t="cancel">Cancel</button><button type="button" class="btn primary" id="upApply" disabled data-t="apply">Use these figures</button></div>
   </div>
@@ -560,7 +572,7 @@ svg.chart{width:100%;height:auto}
   <div class="sheet wide">
     <div class="mhead">
       <div><h2 id="h-plans" data-t="plansTitle">Choose a plan</h2><p class="note" data-t="plansNote">Prototype: switch plans freely to see what each one includes. No payment or account needed.</p></div>
-      <button type="button" class="iconbtn" id="planClose" aria-label="Close">×</button>
+      <button type="button" class="iconbtn" id="planClose" aria-label="Close" data-tl="close">×</button>
     </div>
     <div class="plans" id="plans"></div>
   </div>
@@ -571,7 +583,7 @@ svg.chart{width:100%;height:auto}
   <div class="chat-head">
     <div><h2 id="h-chat" data-t="chatTitle">Risk assistant</h2><span class="small" id="chatSub"></span></div>
     <button type="button" class="btn" id="chatNew" data-t="chatNew">New chat</button>
-    <button type="button" class="iconbtn" id="chatClose" aria-label="Close">×</button>
+    <button type="button" class="iconbtn" id="chatClose" aria-label="Close" data-tl="close">×</button>
   </div>
   <div class="chat-log" id="chatLog"></div>
   <form class="chat-form" id="chatForm" autocomplete="off">
@@ -595,228 +607,37 @@ const HAS = Object.fromEntries(D.factors.map(f => [f, D.samples.some(s => s[SOFF
 const has = f => !!HAS[f];                                             // computed once: the model calls this thousands of times
 const MI = D.samples.map(s => +s[0].slice(0, 4) * 12 + (+s[0].slice(5, 7)) - 1);   // month index of each sample (samples are sorted)
 
-/* ---------------- text ---------------- */
-const T = {
- en:{brand:'Macro Risk Monitor',uploadBtn:'Import accounts',pdfBtn:'Download report',tryExample:'Try an example:',clientsTitle:'Saved businesses',save:'Save',alertAt:'Warn me when a bad year costs more than',
-  yourBusiness:'Your business',gSales:'Sales and profit',rev:'Annual revenue',ebit:'Annual profit (EBIT)',margin:'Contribution margin',demandIdx:'Your sales follow',beta:'Sensitivity of your sales',
-  gLoan:'Floating-rate loan',loan:'Floating-rate loan',spread:'Bank margin',loanReset:'Rate fixed for another',floor:'Rate floor: negative Euribor counts as 0%',
-  gEnergy:'Energy',energy:'Annual energy bill',elecShare:'Of which electricity',fixed:'On a fixed-price contract',fixedEnd:'Fixed contract runs for another',
-  gInputs:'Materials and ingredients',food:'Annual purchases',inputIdx:'Prices follow',pass:'Price rises you pass on',
-  gStaff:'Rent and staff',rent:'Annual rent',indexed:'Index-linked rent (Indexmiete)',rentMonth:'Next rent adjustment in',payroll:'Annual payroll',mwShare:'Paid at minimum wage',payMonth:'Next pay rise for other staff in',
-  gTrade:'Imports and transport',usd:'Paid in US dollars',fuel:'Fuel and delivery',gCash:'Cash',cash:'Cash in the bank today',credit:'Unused credit line',surplus:'Normal monthly cash surplus',surplusHint:'After loan repayments, tax and owner pay, in a month with no price shocks.',
-  gHedge:'Cost of protection',fixPremium:'Extra cost to fix the loan rate',energyPremium:'Premium for a fixed energy price',fwdCost:'Cost of a dollar forward',reset:'Reset this example',
-  regTitle:'Where the German economy is now',hmmTitle:'Second opinion from a statistical model',cashTitle:'Your cash over the next 12 months',cashNote:'Bank balance month by month if nothing changes, in a typical year, and in a bad year (1 in 20). The shaded band is your credit line.',
-  calTitle:'When each cost starts to bite',calNote:'Exposures only feel price moves once a contract runs out or an adjustment date arrives. Known rises are already locked in.',
-  wfTitle:'If a past shock repeated next year',wfNote:'Your annual profit, step by step, if sales, prices and rates moved over the next 12 months the way they did in that period. Moves build up gradually over the year.',
-  hedgeTitle:'Is protection worth it?',hedgeNote:'Each action reduces your bad-year loss but has a cost of its own. Net value is the bad-year saving minus that cost. Tick actions to apply them to the whole page.',
-  distTitle:'Range of outcomes for next year',btTitle:'Does the model hold up?',tlTitle:'Twenty years of regimes',tlNote:'German inflation and industrial output, year on year, as they were known at the time. The top band shows the compass regime, the bottom band the statistical model. Hover to inspect a month.',
-  upTitle:'Import from your accounts',upNote:'Upload a trial balance (Summen- und Saldenliste) exported as CSV from DATEV or your tax advisor. The file stays in your browser. Accounts are mapped using the SKR03 or SKR04 chart of accounts.',
-  dropHere:'Drop a CSV file here, or',chooseFile:'choose a file',sampleCsv:'Use a sample export',tplCsv:'Download a template',chart:'Chart of accounts',cancel:'Cancel',apply:'Use these figures',
-  months:n=>n===1?'1 month':n+' months',inMonth:n=>'month '+n,now:'now',
-  Recovery:'Recovery',Overheating:'Overheating',Stagflation:'Stagflation',Contraction:'Contraction',
-  dRecovery:'Growth picking up while inflation eases. Usually the calmest regime for costs.',dOverheating:'Growth and inflation both rising. Interest rates tend to go up.',dStagflation:'Prices rising while output weakens. Costs climb just as demand softens.',dContraction:'Growth and inflation both falling. Interest rates tend to be cut.',
-  'Expansion':'Expansion','Sluggish growth':'Sluggish growth','Inflation shock':'Inflation shock','Recession':'Recession',
-  since:(m)=>`Since ${m}. The path shows the last 24 months.`,dataThrough:m=>'Data through '+m,
-  fEuribor:'Euribor 3M',fInfl:'Inflation, year on year',fEnergy:'Energy prices, year on year',fFood:'Food prices, year on year',fIp:'Industrial output, year on year',fBrent:'Brent crude, year on year',
-  hmmNote:(s,p,stay,mu)=>`A hidden Markov model fitted to growth and inflation levels puts Germany in <b>${s}</b> with ${p}% probability (average growth ${mu.growth}%, inflation ${mu.inflation}% in this state). It gives a ${stay}% chance the state still holds next month.`,
-  ledeLoss:(l,e)=>`In a bad year, the economy could take <span class="num">${l}</span> out of your <span class="base">${e}</span> profit.`,
-  ledeAll:(l,e)=>`In a bad year, macro moves could cost you <span class="num">${l}</span>, more than your entire <span class="base">${e}</span> profit.`,
-  ledeOk:(e,r)=>`Even in a bad year in a ${r} economy, your <span class="base">${e}</span> profit stays intact.`,
-  keep:'Profit left in a bad year',atRisk:'At risk',typical:'Typical year',basedOn:(n,r)=>`1-in-20 outcome from ${n} past ${r ? r + ' ' : ''}months`,monthsW:'months',
-  alertOn:(n,p,t)=>`<b>Above your alert level.</b> ${n}: a bad year would cost ${p}% of profit, above your ${t}% limit.`,
-  clientsNote:(c)=>c?'Ranked by bad-year loss as a share of profit. Click one to open it.':'Save the business you are looking at to compare several side by side. Useful for advisors with many clients.',
-  clientsCloud:'Saved to your account.',clientsLocal:'Saved in this browser only.',namePh:'Business name',savedT:n=>`Saved ${n}`,deletedT:n=>`Deleted ${n}`,
-  noShock:'No price shocks',typYear:'Typical year',badYear:'Bad year (1 in 20)',creditLine:'Credit line',
-  lowest:'Lowest balance in a bad year',runsOut:'Cash plus credit runs out',never:'Not within 12 months',inM:m=>'in '+m,lockedIn:'Already locked in for next year',lockedNote:'minimum wage and index-linked rent',
-  calRows:{loan:'Loan interest',energy:'Energy (floating part)',energyFix:'Energy (fixed part)',inputs:'Materials',rent:'Rent indexation',mw:'Minimum wage rise',wages:'Other pay rises',usd:'US dollar purchases',fuel:'Fuel',sales:'Sales'},
-  live:'exposed',fixedL:'fixed',known:'known rise',
-  steps:{today:'Profit today',sales:'Sales',loan:'Loan',energy:'Energy',inputs:'Materials',rent:'Rent',wages:'Wages',usd:'US dollar',fuel:'Fuel',after:'Profit after'},
-  scen:{'2022 energy shock':'2022 energy shock','Last 12 months':'Last 12 months','2008 financial crisis':'2008 crisis','2011 euro crisis':'2011 euro crisis','2020 pandemic lockdown':'2020 lockdown'},
-  mv:{rate:'Euribor',energy:'Energy',elec:'Electricity',gas:'Gas',food:'Food',fx:'EUR/USD',oil:'Oil',cpi:'Inflation',retail:'Retail sales',foodserv:'Restaurant sales',ip:'Industrial output',ppi_food:'Food producer prices',ppi_metal:'Metal prices',ppi_paper:'Paper prices',ppi_plastic:'Plastics prices',ppi_wood:'Wood prices'},
-  hedges:{loan:['Fix the loan rate','Swap or refinance to a fixed rate.'],energy:['Fix all energy prices','Move the floating part to a fixed-price contract now.'],pass:['Pass on 80% of price rises','Index menu or product prices to input costs.'],usd:['Lock the dollar rate','A forward contract fixes the euro cost of US invoices.']},
-  hAction:'Action',hSave:'Bad-year saving',hCost:'Yearly cost',hNet:'Net value',hVerdict:'',worth:'Worth it',marginal:'Marginal',notWorth:'Not worth it',noEffect:'No effect',costCustomers:'Some customers',
-  hcToday:'Bad-year loss today',hcWith:'With the actions ticked',hcTick:'Tick an action above',hcProt:'Net profit protected',
-  modes:{regime:r=>`${r} periods`,hmm:'Statistical model',all:'All months since 2000'},
-  dsNote:(m)=>m==='hmm'?'Each past month is weighted by how likely the statistical model thinks today resembles it. Bars count what the following 12 months would do to your profit.':'Each bar counts past months whose following 12 months, applied to your business, would have changed your profit by that amount.',
-  good:'Good year (1 in 20)',ofProfit:'of profit',
-  btNote:(n)=>`For every month since 2008 the model forecast a 1-in-20 loss for your business using only data available at the time, then the actual next 12 months played out. A sound model is beaten in about 5% of months. Windows overlap, so the ${n} checks are not independent.`,
-  btCalib:n=>`For your business, read the bad-year figure as roughly a 1-in-${n} year rather than 1 in 20.`,
-  btPred:'Forecast bad year (1 in 20)',btReal:'What actually happened',btBreach:'Worse than forecast',btRate:'Months worse than forecast',btExpect:'Expected for a sound model',btTest:'Statistical test (Kupiec)',btPass:p=>`Passes, p = ${p}`,btFail:p=>`Fails, p = ${p}`,
-  tlInfl:'Inflation',tlIp:'Industrial output',tlTop:'Compass regime',tlBottom:'Statistical model',noData:'n/a',
-  foot1:'Data: ECB Data Portal (Euribor, EUR/USD, HICP Germany), Eurostat (industrial production, retail and producer prices), FRED (Brent crude). Snapshot of data through ',
-  foot2:'Method: the compass regime is the direction of the 6-month change in 3-month-average inflation and industrial output. The statistical model is a 4-state Gaussian hidden Markov model on their levels, with filtered probabilities. The range of outcomes applies the actual 12-month moves that followed each past month since 2000 to your figures, building up linearly through the year and scaled up when markets are more volatile today than they were then (filtered historical simulation).',
-  foot3:'Prototype for discussion. Not financial advice.',forget:'Delete the numbers this page saved in your browser',
-  pdfShort:'Report',editNumbers:'Edit your numbers',showResults:'Show results',yourNumbers:'Your numbers',verdictTh:'Verdict',
-  barSum:(l,s)=>`Bad year <b>${l}</b>${s ? ' · ' + s + ' of profit' : ''}`,
-  ledeNeg:(l,e)=>`You expect a loss of <span class="base">${e}</span>. In a bad year, the economy could add <span class="num">${l}</span> to it.`,
-  ledeZero:(l)=>`You expect to break even. In a bad year, the economy could cost you <span class="num">${l}</span>.`,
-  btEpisode:(k,x,ep,novel,hint)=>`${k === x ? 'All ' + x : k + ' of the ' + x} misses came in periods running into ${ep}${novel ? ", a shock bigger than anything in the model's history at the time" : ''}. ${hint}`,
-  btMost:(list)=>`Most misses came in ${list}.`,yearL:y=>y,and:' and ',
-  btCautious:'The bad-year figure was beaten less often than expected, so for this business it errs on the cautious side.',
-  episodes:{gfc:'the 2008–09 financial crisis',euro:'the 2011–12 euro crisis',usd:'the 2014–15 dollar surge',covid:'the 2020 Covid slump',energy:'the 2021–23 energy and inflation shock'},
-  epHint:{gfc:'Check the 2008 crisis scenario as well.',euro:'Check the 2011 euro crisis scenario as well.',usd:'Check what locking the dollar rate would be worth.',covid:'Check the 2020 lockdown scenario as well.',energy:'Check the 2022 energy shock scenario as well.'},
-  salesWindow:(a,b)=>`Sales measured ${a} → ${b}, after the Covid rules ended`,
-  lockNote:'Before government support. In 2020–21, short-time work (Kurzarbeit) and bridging aid covered a large part of losses like these.',
-  covidNote:'Sales moves during the Covid rules (March 2020 to March 2022) are left out, because they came from closures rather than the economy. The 2020 lockdown scenario shows them separately.',
-  legalNotice:'Legal notice',privacy:'Privacy',
-  demandOpts:{none:'Nothing (ignore sales)',retail:'Retail sales',foodserv:'Restaurant and café sales',ip:'Industrial output'},
-  inputOpts:{food:'Food prices',ppi_food:'Food producer prices',ppi_metal:'Metal prices',ppi_paper:'Paper prices',ppi_plastic:'Plastics prices',ppi_wood:'Wood prices',cpi:'General inflation'},
-  needsData:'Sector data loads with the next data refresh. Using general inflation for now.',
-  hedgeHint:(f)=>f,
-  presetNotes:{restaurant:'Example: a 60-seat restaurant in Munich.',bakery:'Example: a bakery with two shops in Bavaria.',foodtruck:'Example: a food truck working markets and events.',importer:'Example: an online shop selling goods bought from US suppliers.',metal:'Example: a metal workshop with 18 staff supplying machine builders.',print:'Example: a print shop with 12 staff.'},
-  presetNames:{restaurant:'Restaurant',bakery:'Bakery',foodtruck:'Food truck',importer:'Online importer',metal:'Metal workshop',print:'Print shop'},
-  change:' Change any figure to match your own business.',
-  upFound:(skr,n)=>`Read ${n} accounts using ${skr}. Check the figures below before using them.`,upNone:'No account numbers found. The file needs a column with 4-digit account numbers and a balance column.',
-  upCols:['Field','From accounts','Amount'],imported:'Imported from accounts',
-  pdfTitle:'Macro risk report',pdfSaved:'Report saved',pdfNo:'Downloads are not available in this view.',pdfFail:'The report could not be created.',
-  report:{prepared:'Prepared',business:'Business',regime:'Economic regime',summary:'Summary',exposures:'Exposures',scenarios:'Stress scenarios',hedges:'Protection options',cash:'Cash outlook',method:'Method and data'},
-  eyebrow:'Macro risk check for German small businesses',eyebrowData:'live ECB, Eurostat and FRED data',
-  plansBtn:'Plans',planNames:{free:'Free',pro:'Pro',business:'Business'},plansTitle:'Choose a plan',plansNote:'Prototype: switch plans freely to see what each one includes. No payment or account needed.',
-  planFor:{free:'For owners who want a quick check',pro:'For owners who want a plan',business:'For tax advisors and banks'},
-  planPrice:{free:'€0',pro:'€19',business:'€149'},perMonth:'/ month',planUnit:{business:'per office, up to 50 clients'},
-  planFeat:{free:['Bad-year risk for one business','Your biggest risks, ranked','Whether your cash lasts the year','Where the economy is now','The 2022 energy shock replayed'],
-    pro:['Everything in Free','Cash month by month, and when each contract bites','All five stress scenarios','Which protection pays off after its cost','Import from DATEV (SKR03 or SKR04)','PDF report for your bank or tax advisor','Track record of the model since 2008'],
-    business:['Everything in Pro','All your client businesses, ranked by risk','An alert when a client crosses your limit','AI assistant: explains results, runs what-ifs, compares clients and drafts client notes','Client names never leave your browser']},
-  planUse:{free:'Use Free',pro:'Try Pro',business:'Try Business'},planCurrent:'Current plan',planSwitched:n=>`Switched to ${n}`,
-  tRisk:'Biggest risks',tRiskSub:'Share of a bad-year loss',tNone:'No real risk in a bad year',
-  tCash:'Will cash last?',tCashYes:'Yes, all year',tCashCredit:'Yes, using the credit line',tCashNo:m=>`Runs short in ${m}`,tCashLow:x=>`Lowest balance in a bad year: ${x}`,tCashNoSub:'In a bad year, cash and the credit line run out.',
-  tEcon:'Economy now',tAct:'Best protection',tActNone:'Nothing pays off now',tActNoneSub:'No action saves more than it costs.',tActSub:(s,n)=>`Saves ${s} in a bad year, ${n} after its cost`,tActCust:s=>`Saves ${s} in a bad year; customers carry the cost`,tApplied:'on',
-  tLock:'What should you do?',tLockSub:'Pro shows which protection pays off after its cost.',seePlans:'See plans',
-  drvNames:{sales:'Sales',loan:'Loan rate',energy:'Energy',inputs:'Materials',rent:'Rent',wages:'Wages',usd:'US dollar',fuel:'Fuel'},
-  moreDetail:'More detail',optional:'optional',sSales:'Sales',sLoan:'Loan',sEnergy:'Energy',sPurch:'Purchases',
-  relTitle:'How reliable is this?',relSub:'Range of outcomes, track record since 2008, a statistical second opinion and 20 years of history.',show:'Show',hide:'Hide',
-  upsTitle:'Get the full picture with Pro',upsList:['Cash month by month, and when each contract bites','All five stress scenarios, from 2008 to today','Which protection pays off after its cost','DATEV import and a PDF report for your bank'],
-  bizTitle:'Advising many businesses?',bizNote:'Business ranks all your clients by risk, warns you when one crosses your limit, and adds an AI assistant that explains results and runs what-ifs.',bizBtn:'See Business',
-  moreScen:n=>`+${n} more with Pro`,
-  askBtn:'Ask the assistant',chatTitle:'Risk assistant',chatNew:'New chat',chatPh:'Ask about this business',chatSend:'Send',chatStop:'Stop',
-  chatHello:'Ask about this business',chatIntro:'I explain the results on this page and run what-ifs on the model behind it. I never guess numbers.',
-  chatPrivClaude:'Questions and the figures on this page go to Claude, on your Claude account. Client names stay in your browser.',
-  chatPrivServer:'Questions and the figures on this page go to the assistant server, which runs an open model on Cloudflare. Client names stay in your browser and nothing is stored.',
-  chatPrivNone:'The assistant is not connected on this copy of the page.',chatFoot:'Answers use the figures on this page. Not financial advice.',chatThinking:'Thinking',chatDone:'Answer ready',
-  sugg:['What is the biggest risk for this business?','What if energy prices rise 30%?','Is fixing the loan rate worth it?','Which of my clients need a call first?','Write a short note to the client about these results.'],
-  actWhatIf:s=>`Recalculated with ${s}`,actShock:s=>`Applied a shock: ${s}`,actCompare:n=>`Compared ${n} saved ${n === 1 ? 'client' : 'clients'}`,actNoClients:'No saved clients to compare',actPurch:'Purchase prices',actSales:'Sales',
-  apply:'Apply these changes to the page',undo:'Undo',applied:'Changes applied to the page',undone:'Changes undone',yes:'yes',no:'no',
-  errLimit:'Too many questions in a short time. Wait a minute, then try again.',errQuota:"The assistant has used up today's free allowance. It resets overnight.",
-  errOffline:'The assistant could not be reached. Check your connection and try again.',errNoClaude:'Claude is not available to this page, so the assistant cannot answer here.',
-  errSession:'Sign in to Claude again, then try once more.',errNone:'The assistant is not connected on this copy of the page.',errEmpty:'No answer came back. Try asking another way.',
-  errOrigin:'This page is not allowed to use the assistant server.',errBad:'The question could not be sent. Try a shorter one.',stopped:'Stopped.',retry:'Try again',
-  codeAsk:'The assistant needs an access code. Ask the person who invited you.',codePh:'Access code',codeSave:'Save and retry',deleteX:n=>`Delete ${n}`,unchecked:l=>`Not from the model on this page: ${l}. Check before using.`
- },
- de:{brand:'Makro-Risikomonitor',uploadBtn:'Buchhaltung importieren',pdfBtn:'Bericht herunterladen',tryExample:'Beispiel ansehen:',clientsTitle:'Gespeicherte Betriebe',save:'Speichern',alertAt:'Warnen, wenn ein schlechtes Jahr mehr kostet als',
-  yourBusiness:'Ihr Betrieb',gSales:'Umsatz und Gewinn',rev:'Jahresumsatz',ebit:'Jahresgewinn (EBIT)',margin:'Deckungsbeitrag',demandIdx:'Ihr Umsatz folgt',beta:'Empfindlichkeit Ihres Umsatzes',
-  gLoan:'Kredit mit variablem Zins',loan:'Kredit mit variablem Zins',spread:'Bankmarge',loanReset:'Zins noch fest für',floor:'Zinsuntergrenze: negativer Euribor zählt als 0 %',
-  gEnergy:'Energie',energy:'Jährliche Energiekosten',elecShare:'Davon Strom',fixed:'Mit Festpreisvertrag',fixedEnd:'Festpreis läuft noch',
-  gInputs:'Material und Wareneinsatz',food:'Jährlicher Einkauf',inputIdx:'Preise folgen',pass:'Weitergegebene Preiserhöhungen',
-  gStaff:'Miete und Personal',rent:'Jahresmiete',indexed:'Indexmiete',rentMonth:'Nächste Mietanpassung in',payroll:'Jährliche Lohnsumme',mwShare:'Zum Mindestlohn bezahlt',payMonth:'Nächste Lohnerhöhung übrige Belegschaft in',
-  gTrade:'Import und Transport',usd:'In US-Dollar bezahlt',fuel:'Kraftstoff und Lieferung',gCash:'Liquidität',cash:'Kontostand heute',credit:'Freier Kreditrahmen',surplus:'Üblicher monatlicher Überschuss',surplusHint:'Nach Tilgung, Steuern und Unternehmerlohn, in einem Monat ohne Preisschocks.',
-  gHedge:'Kosten der Absicherung',fixPremium:'Aufschlag für festen Kreditzins',energyPremium:'Aufschlag für Energie-Festpreis',fwdCost:'Kosten eines Dollar-Termingeschäfts',reset:'Beispiel zurücksetzen',
-  regTitle:'Wo die deutsche Wirtschaft gerade steht',hmmTitle:'Zweite Meinung eines statistischen Modells',cashTitle:'Ihre Liquidität in den nächsten 12 Monaten',cashNote:'Kontostand Monat für Monat ohne Veränderungen, in einem typischen und in einem schlechten Jahr (1 von 20). Das schattierte Band ist Ihr Kreditrahmen.',
-  calTitle:'Wann welche Kosten greifen',calNote:'Preisänderungen wirken erst, wenn ein Vertrag ausläuft oder ein Anpassungstermin kommt. Bekannte Erhöhungen stehen schon fest.',
-  wfTitle:'Wenn sich ein früherer Schock wiederholt',wfNote:'Ihr Jahresgewinn Schritt für Schritt, wenn sich Umsatz, Preise und Zinsen in den nächsten 12 Monaten so entwickeln wie damals. Die Veränderungen bauen sich über das Jahr auf.',
-  hedgeTitle:'Lohnt sich eine Absicherung?',hedgeNote:'Jede Maßnahme verringert den Verlust im schlechten Jahr, kostet aber selbst etwas. Der Nettowert ist die Ersparnis abzüglich dieser Kosten. Haken setzen, um die Maßnahme auf die ganze Seite anzuwenden.',
-  distTitle:'Bandbreite der Ergebnisse im nächsten Jahr',btTitle:'Hält das Modell, was es verspricht?',tlTitle:'Zwanzig Jahre Konjunkturphasen',tlNote:'Inflation und Industrieproduktion in Deutschland, jeweils zum Vorjahr, wie sie damals bekannt waren. Oberes Band: Kompass-Phase, unteres Band: statistisches Modell. Für Details mit der Maus darüberfahren.',
-  upTitle:'Aus der Buchhaltung importieren',upNote:'Laden Sie eine Summen- und Saldenliste als CSV aus DATEV oder von Ihrer Steuerkanzlei hoch. Die Datei bleibt in Ihrem Browser. Die Konten werden nach SKR03 oder SKR04 zugeordnet.',
-  dropHere:'CSV-Datei hier ablegen oder',chooseFile:'Datei auswählen',sampleCsv:'Beispieldatei verwenden',tplCsv:'Vorlage herunterladen',chart:'Kontenrahmen',cancel:'Abbrechen',apply:'Werte übernehmen',
-  months:n=>n===1?'1 Monat':n+' Monate',inMonth:n=>'Monat '+n,now:'jetzt',
-  Recovery:'Erholung',Overheating:'Überhitzung',Stagflation:'Stagflation',Contraction:'Abschwung',
-  dRecovery:'Wachstum zieht an, Inflation lässt nach. Meist die ruhigste Phase für die Kosten.',dOverheating:'Wachstum und Inflation steigen. Zinsen ziehen meist an.',dStagflation:'Preise steigen, während die Produktion schwächelt. Kosten steigen, wenn die Nachfrage nachlässt.',dContraction:'Wachstum und Inflation fallen. Zinsen werden meist gesenkt.',
-  'Expansion':'Aufschwung','Sluggish growth':'Schwaches Wachstum','Inflation shock':'Inflationsschock','Recession':'Rezession',
-  since:(m)=>`Seit ${m}. Die Linie zeigt die letzten 24 Monate.`,dataThrough:m=>'Daten bis '+m,
-  fEuribor:'Euribor 3M',fInfl:'Inflation zum Vorjahr',fEnergy:'Energiepreise zum Vorjahr',fFood:'Lebensmittelpreise zum Vorjahr',fIp:'Industrieproduktion zum Vorjahr',fBrent:'Brent-Öl zum Vorjahr',
-  hmmNote:(s,p,stay,mu)=>`Ein Hidden-Markov-Modell auf Wachstums- und Inflationsniveau sieht Deutschland mit ${p} % Wahrscheinlichkeit in der Phase <b>${s}</b> (im Schnitt ${mu.growth} % Wachstum, ${mu.inflation} % Inflation). Mit ${stay} % hält diese Phase auch im nächsten Monat an.`,
-  ledeLoss:(l,e)=>`In einem schlechten Jahr könnte die Konjunktur <span class="num">${l}</span> von Ihren <span class="base">${e}</span> Gewinn kosten.`,
-  ledeAll:(l,e)=>`In einem schlechten Jahr könnten Sie <span class="num">${l}</span> verlieren, mehr als Ihren gesamten Gewinn von <span class="base">${e}</span>.`,
-  ledeOk:(e,r)=>`Selbst in einem schlechten Jahr in der Phase ${r} bleibt Ihr Gewinn von <span class="base">${e}</span> erhalten.`,
-  keep:'Gewinn im schlechten Jahr',atRisk:'Gefährdet',typical:'Typisches Jahr',basedOn:(n,r)=>`1-von-20-Ergebnis aus ${n} früheren Monaten${r ? ' der Phase ' + r : ''}`,monthsW:'Monaten',
-  alertOn:(n,p,t)=>`<b>Über Ihrer Warnschwelle.</b> ${n}: Ein schlechtes Jahr kostet ${p} % des Gewinns, mehr als Ihre Grenze von ${t} %.`,
-  clientsNote:(c)=>c?'Sortiert nach Verlust im schlechten Jahr im Verhältnis zum Gewinn. Zum Öffnen anklicken.':'Speichern Sie den aktuellen Betrieb, um mehrere zu vergleichen. Praktisch für Kanzleien mit vielen Mandanten.',
-  clientsCloud:'In Ihrem Konto gespeichert.',clientsLocal:'Nur in diesem Browser gespeichert.',namePh:'Name des Betriebs',savedT:n=>`${n} gespeichert`,deletedT:n=>`${n} gelöscht`,
-  noShock:'Ohne Preisschocks',typYear:'Typisches Jahr',badYear:'Schlechtes Jahr (1 von 20)',creditLine:'Kreditrahmen',
-  lowest:'Tiefster Kontostand im schlechten Jahr',runsOut:'Liquidität plus Kreditrahmen erschöpft',never:'Nicht innerhalb von 12 Monaten',inM:m=>'im '+m,lockedIn:'Für nächstes Jahr bereits fest',lockedNote:'Mindestlohn und Indexmiete',
-  calRows:{loan:'Kreditzinsen',energy:'Energie (variabler Teil)',energyFix:'Energie (fester Teil)',inputs:'Material',rent:'Indexmiete',mw:'Mindestlohn-Erhöhung',wages:'Übrige Lohnerhöhungen',usd:'Dollar-Einkäufe',fuel:'Kraftstoff',sales:'Umsatz'},
-  live:'offen',fixedL:'fest',known:'bekannte Erhöhung',
-  steps:{today:'Gewinn heute',sales:'Umsatz',loan:'Kredit',energy:'Energie',inputs:'Material',rent:'Miete',wages:'Löhne',usd:'US-Dollar',fuel:'Kraftstoff',after:'Gewinn danach'},
-  scen:{'2022 energy shock':'Energieschock 2022','Last 12 months':'Letzte 12 Monate','2008 financial crisis':'Finanzkrise 2008','2011 euro crisis':'Eurokrise 2011','2020 pandemic lockdown':'Lockdown 2020'},
-  mv:{rate:'Euribor',energy:'Energie',elec:'Strom',gas:'Gas',food:'Lebensmittel',fx:'EUR/USD',oil:'Öl',cpi:'Inflation',retail:'Einzelhandel',foodserv:'Gastronomieumsatz',ip:'Industrieproduktion',ppi_food:'Erzeugerpreise Nahrung',ppi_metal:'Metallpreise',ppi_paper:'Papierpreise',ppi_plastic:'Kunststoffpreise',ppi_wood:'Holzpreise'},
-  hedges:{loan:['Kreditzins festschreiben','Zinsswap oder Umschuldung auf festen Zins.'],energy:['Energiepreise komplett fixieren','Den variablen Teil jetzt in einen Festpreisvertrag überführen.'],pass:['80 % der Preiserhöhungen weitergeben','Preise an die Einkaufskosten koppeln.'],usd:['Dollarkurs absichern','Ein Devisentermingeschäft fixiert die Euro-Kosten von US-Rechnungen.']},
-  hAction:'Maßnahme',hSave:'Ersparnis im schlechten Jahr',hCost:'Jährliche Kosten',hNet:'Nettowert',hVerdict:'',worth:'Lohnt sich',marginal:'Grenzwertig',notWorth:'Lohnt sich nicht',noEffect:'Keine Wirkung',costCustomers:'Einige Kunden',
-  hcToday:'Verlust im schlechten Jahr heute',hcWith:'Mit den gewählten Maßnahmen',hcTick:'Oben eine Maßnahme wählen',hcProt:'Netto geschützter Gewinn',
-  modes:{regime:r=>`Phasen: ${r}`,hmm:'Statistisches Modell',all:'Alle Monate seit 2000'},
-  dsNote:(m)=>m==='hmm'?'Jeder frühere Monat wird danach gewichtet, wie ähnlich er laut statistischem Modell der heutigen Lage ist. Die Balken zeigen, was die folgenden 12 Monate für Ihren Gewinn bedeutet hätten.':'Jeder Balken zählt frühere Monate, deren folgende 12 Monate Ihren Gewinn um diesen Betrag verändert hätten.',
-  good:'Gutes Jahr (1 von 20)',ofProfit:'des Gewinns',
-  btCalib:n=>`Für Ihren Betrieb entspricht das schlechte Jahr eher einem 1-von-${n}-Jahr als 1 von 20.`,
-  btNote:(n)=>`Für jeden Monat seit 2008 hat das Modell nur mit damals verfügbaren Daten einen 1-von-20-Verlust für Ihren Betrieb geschätzt; dann wurden die tatsächlichen 12 Monate danach durchgespielt. Ein solides Modell wird in etwa 5 % der Monate übertroffen. Die Zeitfenster überlappen, die ${n} Prüfungen sind also nicht unabhängig.`,
-  btPred:'Geschätztes schlechtes Jahr (1 von 20)',btReal:'Tatsächliches Ergebnis',btBreach:'Schlechter als geschätzt',btRate:'Monate schlechter als geschätzt',btExpect:'Erwartet bei solidem Modell',btTest:'Statistischer Test (Kupiec)',btPass:p=>`Bestanden, p = ${p}`,btFail:p=>`Nicht bestanden, p = ${p}`,
-  tlInfl:'Inflation',tlIp:'Industrieproduktion',tlTop:'Kompass-Phase',tlBottom:'Statistisches Modell',noData:'k. A.',
-  foot1:'Daten: EZB Data Portal (Euribor, EUR/USD, HVPI Deutschland), Eurostat (Industrieproduktion, Einzelhandel, Erzeugerpreise), FRED (Brent-Öl). Datenstand bis ',
-  foot2:'Methode: Die Kompass-Phase ergibt sich aus der Richtung der 6-Monats-Veränderung von Inflation und Industrieproduktion (3-Monats-Durchschnitt). Das statistische Modell ist ein Gaußsches Hidden-Markov-Modell mit 4 Zuständen auf deren Niveaus, mit gefilterten Wahrscheinlichkeiten. Die Bandbreite wendet die tatsächlichen 12-Monats-Veränderungen nach jedem früheren Monat seit 2000 auf Ihre Zahlen an, linear über das Jahr aufgebaut und hochskaliert, wenn die Märkte heute schwankungsanfälliger sind als damals (gefilterte historische Simulation).',
-  foot3:'Prototyp zur Diskussion. Keine Finanzberatung.',forget:'Von dieser Seite im Browser gespeicherte Zahlen löschen',
-  pdfShort:'Bericht',editNumbers:'Ihre Zahlen bearbeiten',showResults:'Ergebnisse anzeigen',yourNumbers:'Ihre Zahlen',verdictTh:'Bewertung',
-  barSum:(l,s)=>`Schlechtes Jahr <b>${l}</b>${s ? ' · ' + s + ' des Gewinns' : ''}`,
-  ledeNeg:(l,e)=>`Sie erwarten einen Verlust von <span class="base">${e}</span>. In einem schlechten Jahr könnte die Konjunktur weitere <span class="num">${l}</span> kosten.`,
-  ledeZero:(l)=>`Sie rechnen mit einer schwarzen Null. In einem schlechten Jahr könnte die Konjunktur <span class="num">${l}</span> kosten.`,
-  btEpisode:(k,x,ep,novel,hint)=>`${k === x ? 'Alle ' + x : k + ' der ' + x} Fehlschätzungen fielen in Zeiträume, die in ${ep} hineinliefen${novel ? ', einen Schock, größer als alles, was das Modell bis dahin kannte' : ''}. ${hint}`,
-  btMost:(list)=>`Die meisten Fehlschätzungen fielen in ${list}.`,yearL:y=>`das Jahr ${y}`,and:' und ',
-  btCautious:'Die Prognose für ein schlechtes Jahr wurde seltener unterschritten als erwartet. Für diesen Betrieb ist sie also eher vorsichtig.',
-  episodes:{gfc:'die Finanzkrise 2008–09',euro:'die Eurokrise 2011–12',usd:'die Dollar-Aufwertung 2014–15',covid:'den Corona-Einbruch 2020',energy:'den Energie- und Inflationsschock 2021–23'},
-  epHint:{gfc:'Prüfen Sie auch das Szenario Finanzkrise 2008.',euro:'Prüfen Sie auch das Szenario Eurokrise 2011.',usd:'Prüfen Sie, was eine Absicherung des Dollarkurses wert wäre.',covid:'Prüfen Sie auch das Szenario Lockdown 2020.',energy:'Prüfen Sie auch das Szenario Energieschock 2022.'},
-  salesWindow:(a,b)=>`Umsatz gemessen ${a} → ${b}, nach dem Ende der Corona-Regeln`,
-  lockNote:'Vor staatlicher Hilfe. 2020–21 deckten Kurzarbeitergeld und Überbrückungshilfen einen großen Teil solcher Verluste.',
-  covidNote:'Umsatzbewegungen während der Corona-Regeln (März 2020 bis März 2022) sind ausgenommen, weil sie aus Schließungen kamen und nicht aus der Konjunktur. Das Szenario Lockdown 2020 zeigt sie getrennt.',
-  legalNotice:'Impressum',privacy:'Datenschutz',
-  demandOpts:{none:'Nichts (Umsatz ignorieren)',retail:'Einzelhandelsumsatz',foodserv:'Gastronomieumsatz',ip:'Industrieproduktion'},
-  inputOpts:{food:'Lebensmittelpreise',ppi_food:'Erzeugerpreise Nahrung',ppi_metal:'Metallpreise',ppi_paper:'Papierpreise',ppi_plastic:'Kunststoffpreise',ppi_wood:'Holzpreise',cpi:'Allgemeine Inflation'},
-  needsData:'Branchendaten kommen mit der nächsten Datenaktualisierung. Bis dahin wird die allgemeine Inflation verwendet.',
-  hedgeHint:(f)=>f,
-  presetNotes:{restaurant:'Beispiel: ein Restaurant mit 60 Plätzen in München.',bakery:'Beispiel: eine Bäckerei mit zwei Filialen in Bayern.',foodtruck:'Beispiel: ein Foodtruck auf Märkten und Events.',importer:'Beispiel: ein Onlineshop mit Waren von US-Lieferanten.',metal:'Beispiel: ein Metallbaubetrieb mit 18 Beschäftigten für Maschinenbauer.',print:'Beispiel: eine Druckerei mit 12 Beschäftigten.'},
-  presetNames:{restaurant:'Restaurant',bakery:'Bäckerei',foodtruck:'Foodtruck',importer:'Onlineshop (Import)',metal:'Metallbau',print:'Druckerei'},
-  change:' Passen Sie die Zahlen an Ihren Betrieb an.',
-  upFound:(skr,n)=>`${n} Konten nach ${skr} gelesen. Bitte die Werte prüfen, bevor Sie sie übernehmen.`,upNone:'Keine Kontonummern gefunden. Die Datei braucht eine Spalte mit 4-stelligen Kontonummern und eine Saldospalte.',
-  upCols:['Feld','Aus Konten','Betrag'],imported:'Aus der Buchhaltung importiert',
-  pdfTitle:'Makro-Risikobericht',pdfSaved:'Bericht gespeichert',pdfNo:'Downloads sind in dieser Ansicht nicht verfügbar.',pdfFail:'Der Bericht konnte nicht erstellt werden.',
-  report:{prepared:'Erstellt',business:'Betrieb',regime:'Konjunkturphase',summary:'Zusammenfassung',exposures:'Risikopositionen',scenarios:'Stressszenarien',hedges:'Absicherungsmöglichkeiten',cash:'Liquiditätsausblick',method:'Methode und Daten'},
-  eyebrow:'Makro-Risikocheck für den Mittelstand',eyebrowData:'Live-Daten von EZB, Eurostat und FRED',
-  plansBtn:'Tarife',planNames:{free:'Free',pro:'Pro',business:'Business'},plansTitle:'Tarif wählen',plansNote:'Prototyp: Wechseln Sie frei zwischen den Tarifen, um zu sehen, was jeder enthält. Ohne Zahlung und ohne Konto.',
-  planFor:{free:'Für Inhaber, die schnell prüfen wollen',pro:'Für Inhaber, die einen Plan wollen',business:'Für Steuerkanzleien und Banken'},
-  planPrice:{free:'0 €',pro:'19 €',business:'149 €'},perMonth:'/ Monat',planUnit:{business:'pro Kanzlei, bis 50 Mandanten'},
-  planFeat:{free:['Risiko im schlechten Jahr für einen Betrieb','Ihre größten Risiken, nach Gewicht','Ob Ihre Liquidität das Jahr über reicht','Wo die Konjunktur gerade steht','Der Energieschock 2022 als Szenario'],
-    pro:['Alles aus Free','Liquidität Monat für Monat und wann welcher Vertrag greift','Alle fünf Stressszenarien','Welche Absicherung sich nach Kosten lohnt','Import aus DATEV (SKR03 oder SKR04)','PDF-Bericht für Bank oder Steuerkanzlei','Trefferquote des Modells seit 2008'],
-    business:['Alles aus Pro','Alle Mandanten, nach Risiko sortiert','Warnung, wenn ein Mandant Ihre Grenze überschreitet','KI-Assistent: erklärt Ergebnisse, rechnet Was-wäre-wenn, vergleicht Mandanten und entwirft Mandantennotizen','Mandantennamen verlassen nie Ihren Browser']},
-  planUse:{free:'Free nutzen',pro:'Pro testen',business:'Business testen'},planCurrent:'Aktueller Tarif',planSwitched:n=>`Gewechselt zu ${n}`,
-  tRisk:'Größte Risiken',tRiskSub:'Anteil am Verlust im schlechten Jahr',tNone:'Kein echtes Risiko im schlechten Jahr',
-  tCash:'Reicht die Liquidität?',tCashYes:'Ja, das ganze Jahr',tCashCredit:'Ja, mit dem Kreditrahmen',tCashNo:m=>`Wird knapp ab ${m}`,tCashLow:x=>`Tiefster Kontostand im schlechten Jahr: ${x}`,tCashNoSub:'Im schlechten Jahr reichen Liquidität und Kreditrahmen nicht.',
-  tEcon:'Konjunktur jetzt',tAct:'Beste Absicherung',tActNone:'Derzeit lohnt sich nichts',tActNoneSub:'Keine Maßnahme spart mehr, als sie kostet.',tActSub:(s,n)=>`Spart ${s} im schlechten Jahr, ${n} nach Kosten`,tActCust:s=>`Spart ${s} im schlechten Jahr; die Kosten tragen die Kunden`,tApplied:'aktiv',
-  tLock:'Was sollten Sie tun?',tLockSub:'Pro zeigt, welche Absicherung sich nach Kosten lohnt.',seePlans:'Tarife ansehen',
-  drvNames:{sales:'Umsatz',loan:'Kreditzins',energy:'Energie',inputs:'Material',rent:'Miete',wages:'Löhne',usd:'US-Dollar',fuel:'Kraftstoff'},
-  moreDetail:'Weitere Angaben',optional:'optional',sSales:'Umsatz',sLoan:'Kredit',sEnergy:'Energie',sPurch:'Einkauf',
-  relTitle:'Wie verlässlich ist das?',relSub:'Bandbreite der Ergebnisse, Trefferquote seit 2008, eine statistische Zweitmeinung und 20 Jahre Verlauf.',show:'Anzeigen',hide:'Ausblenden',
-  upsTitle:'Das ganze Bild mit Pro',upsList:['Liquidität Monat für Monat und wann welcher Vertrag greift','Alle fünf Stressszenarien, von 2008 bis heute','Welche Absicherung sich nach Kosten lohnt','DATEV-Import und PDF-Bericht für Ihre Bank'],
-  bizTitle:'Sie beraten viele Betriebe?',bizNote:'Business sortiert alle Mandanten nach Risiko, warnt Sie, wenn einer Ihre Grenze überschreitet, und bringt einen KI-Assistenten mit, der Ergebnisse erklärt und Was-wäre-wenn-Fragen durchrechnet.',bizBtn:'Business ansehen',
-  moreScen:n=>`+${n} weitere mit Pro`,
-  askBtn:'Assistent fragen',chatTitle:'Risiko-Assistent',chatNew:'Neuer Chat',chatPh:'Frage zu diesem Betrieb',chatSend:'Senden',chatStop:'Stopp',
-  chatHello:'Fragen Sie zu diesem Betrieb',chatIntro:'Ich erkläre die Ergebnisse auf dieser Seite und rechne Was-wäre-wenn-Fragen mit dem Modell dahinter. Zahlen rate ich nie.',
-  chatPrivClaude:'Fragen und die Zahlen dieser Seite gehen an Claude, über Ihr Claude-Konto. Mandantennamen bleiben in Ihrem Browser.',
-  chatPrivServer:'Fragen und die Zahlen dieser Seite gehen an den Assistenz-Server, der ein offenes Modell bei Cloudflare nutzt. Mandantennamen bleiben in Ihrem Browser, gespeichert wird nichts.',
-  chatPrivNone:'Der Assistent ist in dieser Kopie der Seite nicht verbunden.',chatFoot:'Antworten beruhen auf den Zahlen dieser Seite. Keine Finanzberatung.',chatThinking:'Denkt nach',chatDone:'Antwort fertig',
-  sugg:['Was ist das größte Risiko für diesen Betrieb?','Was passiert, wenn die Energiepreise um 30 % steigen?','Lohnt es sich, den Kreditzins festzuschreiben?','Welche Mandanten sollte ich zuerst anrufen?','Schreiben Sie eine kurze Notiz an den Mandanten zu diesen Ergebnissen.'],
-  actWhatIf:s=>`Neu berechnet mit ${s}`,actShock:s=>`Schock angewendet: ${s}`,actCompare:n=>`${n} gespeicherte ${n === 1 ? 'Mandant' : 'Mandanten'} verglichen`,actNoClients:'Keine gespeicherten Mandanten zum Vergleichen',actPurch:'Einkaufspreise',actSales:'Umsatz',
-  apply:'Diese Änderungen auf die Seite übernehmen',undo:'Rückgängig',applied:'Änderungen übernommen',undone:'Änderungen zurückgenommen',yes:'ja',no:'nein',
-  errLimit:'Zu viele Fragen in kurzer Zeit. Warten Sie eine Minute und versuchen Sie es dann erneut.',errQuota:'Das kostenlose Tageskontingent des Assistenten ist aufgebraucht. Es wird über Nacht zurückgesetzt.',
-  errOffline:'Der Assistent war nicht erreichbar. Prüfen Sie die Verbindung und versuchen Sie es erneut.',errNoClaude:'Claude ist für diese Seite nicht verfügbar, daher kann der Assistent hier nicht antworten.',
-  errSession:'Melden Sie sich erneut bei Claude an und versuchen Sie es noch einmal.',errNone:'Der Assistent ist in dieser Kopie der Seite nicht verbunden.',errEmpty:'Es kam keine Antwort. Versuchen Sie eine andere Formulierung.',
-  errOrigin:'Diese Seite darf den Assistenz-Server nicht nutzen.',errBad:'Die Frage konnte nicht gesendet werden. Versuchen Sie es kürzer.',stopped:'Abgebrochen.',retry:'Erneut versuchen',
-  codeAsk:'Der Assistent braucht einen Zugangscode. Fragen Sie die Person, die Sie eingeladen hat.',codePh:'Zugangscode',codeSave:'Speichern und erneut senden',deleteX:n=>`${n} löschen`,unchecked:l=>`Nicht aus dem Modell dieser Seite: ${l}. Bitte vor der Verwendung prüfen.`
- }
-};
+/* ---------------- text and formats ----------------
+   One pack of text per language (i18n/*.js, put in at build time). Money, percentages, numbers and months follow each
+   language's own conventions through Intl; nothing the model computes depends on the language. */
+const T = __I18N__;
+const LANGS = Object.keys(T).sort((a, b) => T[a]._.name < T[b]._.name ? -1 : 1);   // menu order: by native name
 let LANG = 'en';
 const t = (k, ...a) => { const v = T[LANG][k] ?? T.en[k]; return typeof v === 'function' ? v(...a) : v; };
-const loc = () => LANG === 'de' ? 'de-DE' : 'en-GB';
-const fmt = n => Math.round(Math.abs(n)).toLocaleString(loc());
-const eurX = n => LANG === 'de' ? fmt(n) + '\u00a0€' : '€' + fmt(n);              // exact: the user's own figures and imported accounts
+const meta = () => T[LANG]._;
+const loc = () => meta().locale;
+const rtl = () => meta().dir === 'rtl';
+function withLang(l, fn) { const was = LANG; LANG = l; try { return fn(); } finally { LANG = was; } }   // e.g. an English PDF from a Russian page
+const NF = new Map();
+const nf = o => { const k = loc() + JSON.stringify(o); let f = NF.get(k); if (!f) NF.set(k, f = new Intl.NumberFormat(loc(), o)); return f; };
+const minus = s => s.replace(/-/g, '−');
+const plural = (n, forms) => forms[new Intl.PluralRules(loc()).select(n)] ?? forms.other;   // used by the language packs
+const num = (n, d = 0) => minus(nf({minimumFractionDigits:d, maximumFractionDigits:d}).format(n));
+const CUR = {style:'currency', currency:'EUR', currencyDisplay:'narrowSymbol', minimumFractionDigits:0, maximumFractionDigits:0};
+const money = (n, sign = 'auto') => minus(nf({...CUR, signDisplay:sign}).format(Math.round(n) || 0));
+const eurX = n => money(Math.abs(n));                                              // exact: the user's own figures and imported accounts
+const eurN = n => money(n);                                                        // exact, with a minus sign when negative
 const rnd = n => Math.round(n / 100) * 100;
-const eur = n => eurX(rnd(n));                                                    // estimates: to the nearest €100, no false precision
-const seur = n => { const r = rnd(n); return r === 0 ? eurX(0) : (r < 0 ? '−' : '+') + eurX(r); };
-const pct = (v, d = 1) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toLocaleString(loc(), {minimumFractionDigits:d, maximumFractionDigits:d}) + '%';
+const eur = n => eurX(rnd(n));                                                     // estimates: to the nearest €100, no false precision
+const neur = n => money(rnd(n));                                                   // estimate, with a minus sign when negative
+const seur = n => money(rnd(n), 'exceptZero');                                     // estimate, always with + or −
+const PCT = (d, max, sign) => nf({style:'percent', minimumFractionDigits:d, maximumFractionDigits:max, signDisplay:sign});
+const pct = (v, d = 1) => minus(PCT(d, d, 'exceptZero').format(v / 100));          // a change: +2.1%
+const pc = (v, d = 0, max = d) => minus(PCT(d, max, 'auto').format(v / 100));      // a level or a share: 40%
+const arrow = () => rtl() ? '←' : '→';
+const pp = (v, d = 0, max = 2) => minus(nf({signDisplay:'exceptZero', minimumFractionDigits:d, maximumFractionDigits:max}).format(v)) + ' ' + t('pp');   // percentage points
+// rough width of a chart label, so margins and spacing fit labels in any language (CJK characters are about 1em wide)
+const textW = (s, size = 11) => [...String(s)].reduce((w, c) => w + size * (/[\u2e80-\u9fff\uac00-\ud7af\uff00-\uffef]/.test(c) ? 1 : /[\u200b-\u200f\u061c\u2066-\u2069]/.test(c) ? 0 : .6), 0);
 const CSSV = {};   // colours never change at runtime; reading computed styles after each redraw forces a style recalculation
 const css = n => CSSV[n] ??= getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 // charts are drawn at the width of their container, so text stays at its real size on phones
@@ -826,6 +647,10 @@ const ym = p => { const [y, m] = p.split('-'); return new Date(+y, +m - 1, 1); }
 const month = p => ym(p).toLocaleString(loc(), {month:'short', year:'numeric'});
 const addM = (p, n) => { const d = ym(p); d.setMonth(d.getMonth() + n); return d; };
 const mLabel = d => d.toLocaleString(loc(), {month:'short'});
+const monthLong = d => d.toLocaleString(loc(), {month:'long', year:'numeric'});
+// axis room for the widest tick label, and how many month labels fit along an axis
+const axisL = (min, labels) => Math.max(min, Math.ceil(12 + Math.max(0, ...labels.map(l => textW(l)))));
+const labelStep = (labels, slot, least = 1) => [1, 2, 3, 4, 6, 12].find(e => e >= least && e * slot >= Math.max(...labels.map(l => textW(l))) + 6) || 12;
 const quant = (a, q) => { if (!a.length) return 0; const s = [...a].sort((x, y) => x - y), i = (s.length - 1) * q, lo = Math.floor(i), hi = Math.ceil(i); return s[lo] + (s[hi] - s[lo]) * (i - lo); };
 const wquant = (vals, w, q) => { const idx = vals.map((v, i) => i).sort((a, b) => vals[a] - vals[b]); const tot = w.reduce((a, b) => a + b, 0); let c = 0; for (const i of idx) { c += w[i]; if (c >= q * tot) return vals[i]; } return vals[idx[idx.length - 1]]; };
 function toast(msg) { const el = $('toast'); el.textContent = msg; el.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => el.hidden = true, 2600); }
@@ -843,7 +668,7 @@ const PRESETS = {
 };
 Object.keys(PRESETS).forEach(k => PRESETS[k] = {...BASE, ...PRESETS[k]});
 const MONEY = ['rev','ebit','loan','energy','food','rent','payroll','usd','fuel','cash','credit','surplus'];
-const RANGES = {margin:v=>v+'%', beta:v=>(+v).toFixed(1)+'×', spread:v=>(+v).toFixed(1)+'%', loanReset:v=>t('months',+v), elecShare:v=>v+'%', fixed:v=>v+'%', fixedEnd:v=>t('months',+v), pass:v=>v+'%', rentMonth:v=>t('inMonth',+v), mwShare:v=>v+'%', payMonth:v=>t('inMonth',+v), fixPremium:v=>(+v).toFixed(2)+'%', energyPremium:v=>v+'%', fwdCost:v=>(+v).toFixed(1)+'%', threshold:v=>v+'%'};
+const RANGES = {margin:v=>pc(+v), beta:v=>num(+v, 1)+'×', spread:v=>pc(+v, 1), loanReset:v=>t('months',+v), elecShare:v=>pc(+v), fixed:v=>pc(+v), fixedEnd:v=>t('months',+v), pass:v=>pc(+v), rentMonth:v=>t('inMonth',+v), mwShare:v=>pc(+v), payMonth:v=>t('inMonth',+v), fixPremium:v=>pc(+v, 2), energyPremium:v=>pc(+v), fwdCost:v=>pc(+v, 1), threshold:v=>pc(+v)};
 const SELECTS = ['demandIdx','inputIdx'], CHECKS = ['floor','indexed'];
 
 /* hedge cost defaults from market data where available */
@@ -855,7 +680,7 @@ let state = {preset:'restaurant', scen:Object.keys(D.scenarios)[0], mode:'regime
 try { const s = JSON.parse(localStorage.getItem('mrm3')); if (s) state = Object.assign(state, s); } catch (e) {}
 if (!PRESETS[state.preset]) state.preset = 'restaurant';
 if (!D.scenarios[state.scen]) state.scen = Object.keys(D.scenarios)[0];
-const PLANS = ['free', 'pro', 'business'];
+const PLANS = ['free', 'pro', 'business'], PRICES = {free:0, pro:19, business:149};   // euros a month
 // ?plan=business (website) or #business (Claude preview) opens a plan directly, e.g. for a demo link
 try { const q = new URLSearchParams(location.search).get('plan') || location.hash.slice(1); if (PLANS.includes(q)) state.plan = q; } catch (e) {}
 if (!PLANS.includes(state.plan)) state.plan = 'free';
@@ -981,7 +806,7 @@ function fillSelects() {
   $('inputIdx').innerHTML = Object.entries(t('inputOpts')).map(([k, l]) => `<option value="${k}">${l}${has(k) || k === 'cpi' ? '' : ' *'}</option>`).join('');
 }
 function fillForm() {
-  MONEY.forEach(k => $(k).value = Math.round(V[k] || 0).toLocaleString(loc()));
+  MONEY.forEach(k => $(k).value = num(Math.round(V[k] || 0)));
   Object.keys(RANGES).forEach(k => { if (k !== 'threshold') $(k).value = V[k]; });
   SELECTS.forEach(k => { $(k).value = V[k]; if ($(k).value !== V[k] && k === 'demandIdx') { $(k).value = 'none'; } });
   CHECKS.forEach(k => $(k).checked = !!V[k]);
@@ -993,13 +818,16 @@ function fillForm() {
 function outputs() {
   Object.entries(RANGES).forEach(([k, f]) => { const o = $(k + 'O'); if (o) o.textContent = f(k === 'threshold' ? state.threshold : V[k]); });
   const hint = [];
-  if (D.current.yc1 != null) hint.push(LANG === 'de' ? `Marktdaten: 1-Jahres-Zins ${D.current.yc1.toFixed(2)} %, Euribor ${D.current.euribor.toFixed(2)} %.` : `Market data: 1-year rate ${D.current.yc1.toFixed(2)}%, Euribor ${D.current.euribor.toFixed(2)}%.`);
+  if (D.current.yc1 != null) hint.push(t('mktHint', pc(D.current.yc1, 2), pc(D.current.euribor, 2)));
   if (!has(V.inputIdx) && V.inputIdx !== 'cpi' && V.inputIdx !== 'food') hint.push(t('needsData'));
   $('hedgeHint').textContent = hint.join(' ');
 }
-// Reads 900.000, 900,000, 900 000, 1.200.000,50 or 12,5 the way a German or English writer means them, in either language
+// Reads 900.000, 900,000, 900 000, 9,00,000, 1.200.000,50 or 12,5 the way the writer means them, in any language;
+// Arabic-Indic and Devanagari digits count as digits, and direction marks are ignored
 function parseNum(raw) {
-  let s = String(raw ?? '').trim().replace(/[€\s\u00a0\u202f']/g, '');
+  let s = String(raw ?? '').trim().replace(/[\u0660-\u0669]/g, d => d.charCodeAt(0) - 0x660).replace(/[\u06f0-\u06f9]/g, d => d.charCodeAt(0) - 0x6f0)
+    .replace(/[\u0966-\u096f]/g, d => d.charCodeAt(0) - 0x966).replace(/\u066b/g, '.').replace(/\u066c/g, ',')
+    .replace(/[€\s\u00a0\u202f'\u200e\u200f\u061c\u202a-\u202e\u2066-\u2069]/g, '');
   if (!s) return 0;
   const neg = /^[-−]/.test(s); s = s.replace(/^[-−]/, '');
   let mult = 1;
@@ -1031,13 +859,17 @@ $('form').addEventListener('submit', e => e.preventDefault());
 $('reset').onclick = () => { V = {...PRESETS[state.preset]}; state.client = null; state.imported = false; fillForm(); renderPresets(); update(); };
 
 /* ---------------- hero ---------------- */
-function hero(v) {
+function headline(v) {
   const o = outcomes(hedged(v), state.mode, hedgeCost(v)), p5 = o.q(.05), p50 = o.q(.5);
   const loss = Math.max(0, -p5), pos = v.ebit > 0, share = pos ? loss / v.ebit * 100 : null;
   let lede;
   if (!pos) lede = v.ebit < 0 ? t('ledeNeg', eur(loss), eurX(v.ebit)) : t('ledeZero', eur(loss));
   else if (loss <= 0) lede = t('ledeOk', eurX(v.ebit), t(D.current.regime));
   else lede = share >= 100 ? t('ledeAll', eur(loss), eurX(v.ebit)) : t('ledeLoss', eur(loss), eurX(v.ebit));
+  return {o, p5, p50, loss, pos, share, lede};
+}
+function hero(v) {
+  const {o, p5, p50, loss, pos, share, lede} = headline(v);
   $('lede').innerHTML = lede;
   $('profitbar').hidden = !pos;
   if (pos) {
@@ -1046,18 +878,18 @@ function hero(v) {
     $('pbTyp').style.left = `calc(${Math.min(100, Math.max(0, 100 + Math.min(0, p50) / v.ebit * 100))}% - 1px)`;
   }
   const reg = state.mode === 'regime' ? t(D.current.regime) : '';
-  $('pbLegend').innerHTML = (pos ? `<span><i style="background:var(--gain)"></i>${t('keep')} <b>${eur(Math.max(0, v.ebit - loss))}</b></span><span><i style="background:var(--loss)"></i>${t('atRisk')} <b>${Math.round(share)}%</b></span>` : '') +
-    `<span><i style="background:var(--ink);width:3px"></i>${t('typical')} <b>${seur(p50)}</b></span><span>${t('basedOn', o.s.length, reg)}</span>`;
+  $('pbLegend').innerHTML = (pos ? `<span><i style="background:var(--gain)"></i>${t('keep')} <b>${eur(Math.max(0, v.ebit - loss))}</b></span><span><i style="background:var(--loss)"></i>${t('atRisk')} <b>${pc(share)}</b></span>` : '') +
+    `<span><i style="background:var(--ink);width:3px"></i>${t('typical')} <b>${seur(p50)}</b></span><span>${t('basedOn', num(o.s.length), reg)}</span>`;
   const name = state.client ? state.name : t('presetNames')[state.preset];
   const alarm = pos && share > state.threshold;
-  const al = $('alert'); al.classList.toggle('on', alarm); al.innerHTML = alarm ? t('alertOn', name, Math.round(share), state.threshold) : '';
-  const sum = t('barSum', (loss > 0 ? '−' : '') + eur(loss), pos ? Math.round(share) + '%' : '');
+  const al = $('alert'); al.classList.toggle('on', alarm); al.innerHTML = alarm ? t('alertOn', esc(name), pc(share), pc(state.threshold)) : '';
+  const sum = t('barSum', neur(-loss), pos ? pc(share) : '');
   $('barSum').innerHTML = sum; $('sheetSum').innerHTML = sum;
   return {p5, p50, share};
 }
 
 /* ---------------- summary tiles ---------------- */
-const firstSentence = x => (String(x).match(/^.*?[.!?](\s|$)/) || [x])[0].trim();
+const firstSentence = x => (String(x).match(/^.*?(?:[.!?।؟](?=\s|$)|[。！？])/) || [x])[0].trim();
 function bestHedge() {
   const rows = (LAST.hedges || []).filter(r => r.save > 1);
   const paid = rows.filter(r => r.net !== null && r.net > 0).sort((a, b) => b.net - a.net);
@@ -1070,10 +902,10 @@ function renderTiles(h) {
   const tile = (id, title, body, attrs = '') => `<section class="tile" aria-labelledby="${id}" ${attrs}><h2 id="${id}">${title}</h2>${body}</section>`;
   const top = (LAST.drivers || []).slice(0, 3);
   const risk = h.p5 >= 0 || !top.length ? `<div class="tv cool">${t('tNone')}</div>`
-    : `<div class="drv">${top.map(d => `<span>${N[d.k]}</span><i style="width:${Math.max(8, d.share / top[0].share * 100)}%"></i><b>${Math.round(d.share * 100)}%</b>`).join('')}</div><div class="ts">${t('tRiskSub')}</div>`;
-  const when = c.outIdx > 0 ? addM(D.current.asOf, c.outIdx).toLocaleString(loc(), {month:'long', year:'numeric'}) : '';
+    : `<div class="drv">${top.map(d => `<span>${N[d.k]}</span><i style="width:${Math.max(8, d.share / top[0].share * 100)}%"></i><b>${pc(d.share * 100)}</b>`).join('')}</div><div class="ts">${t('tRiskSub')}</div>`;
+  const when = c.outIdx > 0 ? monthLong(addM(D.current.asOf, c.outIdx)) : '';
   const cash = c.outIdx > 0 ? `<div class="tv hot">${t('tCashNo', when)}</div><div class="ts">${t('tCashNoSub')}</div>`
-    : `<div class="tv ${c.lowest < 0 ? 'warm' : 'cool'}">${c.lowest < 0 ? t('tCashCredit') : t('tCashYes')}</div><div class="ts">${t('tCashLow', (c.lowest < 0 ? '−' : '') + eur(c.lowest))}</div>`;
+    : `<div class="tv ${c.lowest < 0 ? 'warm' : 'cool'}">${c.lowest < 0 ? t('tCashCredit') : t('tCashYes')}</div><div class="ts">${t('tCashLow', neur(c.lowest))}</div>`;
   const econ = `<div class="tv" style="color:var(${ink(REG[reg])})">${t(reg)}</div><div class="ts">${firstSentence(t('d' + reg))}</div>`;
   const b = bestHedge(), on = b && state.hedges[b.r.h.k] ? ` (${t('tApplied')})` : '';
   const act = !b ? `<div class="tv">${t('tActNone')}</div><div class="ts">${t('tActNoneSub')}</div>`
@@ -1103,8 +935,8 @@ function compass() {
     s += `<text x="${tx}" y="${ty}" text-anchor="${x < S / 2 ? 'start' : 'end'}" style="fill:${css(ink(REG[name]))};font-weight:700;font-size:12px">${t(name)}</text>`;
   });
   s += `<line x1="${S / 2}" x2="${S / 2}" y1="${P}" y2="${S - P}" stroke="${css('--line')}"/><line x1="${P}" x2="${S - P}" y1="${S / 2}" y2="${S / 2}" stroke="${css('--line')}"/>`;
-  s += `<text x="${S - P}" y="${S - 8}" text-anchor="end">${LANG === 'de' ? 'Wachstum beschleunigt →' : 'growth speeding up →'}</text>`;
-  s += `<text x="12" y="${S - P}" transform="rotate(-90 12 ${S - P})">${LANG === 'de' ? 'Inflation beschleunigt →' : 'inflation speeding up →'}</text>`;
+  s += `<text x="${S - P}" y="${S - 8}" text-anchor="end">${t('growthUp')}</text>`;
+  s += `<text x="12" y="${S - P}" transform="rotate(-90 12 ${S - P})">${t('inflUp')}</text>`;
   let d = ''; gx.forEach((g, i) => { if (g === null || iy[i] === null) return; d += (d ? 'L' : 'M') + X(g).toFixed(1) + ' ' + Y(iy[i]).toFixed(1); });
   s += `<path d="${d}" fill="none" stroke="${css('--ink')}" stroke-opacity=".35" stroke-width="1.5" stroke-linejoin="round"/>`;
   gx.forEach((g, i) => { if (g === null || iy[i] === null) return; const last = i === N - 1;
@@ -1119,15 +951,19 @@ function regimeCard() {
   $('regname').textContent = t(c.regime); $('regname').style.color = `var(${ink(REG[c.regime])})`;
   $('regdesc').textContent = t('d' + c.regime);
   $('since').textContent = t('since', month(c.since));
-  const f = [[c.euribor.toFixed(2).replace('.', LANG === 'de' ? ',' : '.') + '%', t('fEuribor'), ''], [pct(c.hicp), t('fInfl'), c.hicp > 2 ? 'hot' : ''], [pct(c.energy), t('fEnergy'), c.energy > 0 ? 'hot' : 'cool'],
+  const f = [[pc(c.euribor, 2), t('fEuribor'), ''], [pct(c.hicp), t('fInfl'), c.hicp > 2 ? 'hot' : ''], [pct(c.energy), t('fEnergy'), c.energy > 0 ? 'hot' : 'cool'],
     [pct(c.food), t('fFood'), c.food > 2 ? 'hot' : ''], [pct(c.ip), t('fIp'), c.ip < 0 ? 'hot' : 'cool'], [pct(c.brentYoy, 0), t('fBrent'), c.brentYoy > 0 ? 'hot' : 'cool']];
   $('facts').innerHTML = f.map(([v, l, cl]) => `<div class="fact"><b class="${cl}">${v}</b><span>${l}</span></div>`).join('');
   $('asof').textContent = t('dataThrough', month(c.asOf)); $('asofM').textContent = t('dataThrough', month(c.asOf));
   const st = c.hmmState, p = c.hmm;
-  $('hmmNote').innerHTML = t('hmmNote', t(st), Math.round(p[st] * 100), Math.round(c.hmmTrans[st][st] * 100), c.hmmMeans[st]);
+  $('hmmNote').innerHTML = hmmNote();
   const order = ['Expansion', 'Sluggish growth', 'Inflation shock', 'Recession'];
   $('hmmStack').innerHTML = order.map(k => `<i style="width:${(p[k] || 0) * 100}%;background:var(${HMMC[k]})" title="${t(k)}"></i>`).join('');
-  $('hmmLegend').innerHTML = order.map(k => `<span><i style="background:var(${HMMC[k]})"></i>${t(k)} <b>${Math.round((p[k] || 0) * 100)}%</b></span>`).join('');
+  $('hmmLegend').innerHTML = order.map(k => `<span><i style="background:var(${HMMC[k]})"></i>${t(k)} <b>${pc((p[k] || 0) * 100)}</b></span>`).join('');
+}
+function hmmNote() {
+  const c = D.current, st = c.hmmState, mu = c.hmmMeans[st];
+  return t('hmmNote', t(st), pc(c.hmm[st] * 100), pc(c.hmmTrans[st][st] * 100), pc(mu.growth, 0, 2), pc(mu.inflation, 0, 2));
 }
 
 /* ---------------- cash runway + calendar ---------------- */
@@ -1142,25 +978,28 @@ function cashPaths(v, H = state.hedges, mode = state.mode) {
 }
 function cashCard(v) {
   const cp = cashPaths(v), paths = cp.paths;
-  const W = chartW('cashChart', 720), H = W < 520 ? 230 : 260, L = 56, R = 14, T = 14, B = 30;
+  const W = chartW('cashChart', 720), H = W < 520 ? 230 : 260, R = 14, T = 14, B = 30;
   $('cashChart').setAttribute('viewBox', `0 0 ${W} ${H}`);
   const all = [...paths.flat, ...paths.typ, ...paths.bad, -v.credit, 0];
   let lo = Math.min(...all), hi = Math.max(...all); const pad = (hi - lo) * .08 || 1000; lo -= pad; hi += pad;
+  const step = niceStep((hi - lo) / 5), ticks = [];
+  for (let y = Math.ceil(lo / step) * step; y <= hi; y += step) ticks.push(y);
+  const L = axisL(56, ticks.map(short));
   const X = i => L + i / 12 * (W - L - R), Y = y => T + (hi - y) / (hi - lo) * (H - T - B);
   let s = '';
   s += `<rect x="${L}" y="${Y(0)}" width="${W - L - R}" height="${Math.max(0, Y(-v.credit) - Y(0))}" fill="${css('--warn')}" fill-opacity=".10"/>`;
   if (Y(-v.credit) < H - B) s += `<rect x="${L}" y="${Y(-v.credit)}" width="${W - L - R}" height="${H - B - Y(-v.credit)}" fill="${css('--loss')}" fill-opacity=".10"/>`;
-  const step = niceStep((hi - lo) / 5);
-  for (let y = Math.ceil(lo / step) * step; y <= hi; y += step) s += `<line x1="${L}" x2="${W - R}" y1="${Y(y)}" y2="${Y(y)}" stroke="${css('--line')}" stroke-width="${Math.abs(y) < step / 2 ? 1.4 : .6}"/><text x="${L - 8}" y="${Y(y) + 4}" text-anchor="end">${short(y)}</text>`;
-  for (let i = 0; i <= 12; i += (W < 420 ? 3 : W < 640 ? 2 : 1)) s += `<text x="${X(i)}" y="${H - 10}" text-anchor="middle">${i === 0 ? t('now') : mLabel(addM(D.current.asOf, i))}</text>`;
+  ticks.forEach(y => { s += `<line x1="${L}" x2="${W - R}" y1="${Y(y)}" y2="${Y(y)}" stroke="${css('--line')}" stroke-width="${Math.abs(y) < step / 2 ? 1.4 : .6}"/><text x="${L - 8}" y="${Y(y) + 4}" text-anchor="end">${short(y)}</text>`; });
+  const xl = [...Array(13).keys()].map(i => i === 0 ? t('now') : mLabel(addM(D.current.asOf, i)));
+  for (let i = 0, e = labelStep(xl, (W - L - R) / 12, W < 420 ? 3 : W < 640 ? 2 : 1); i <= 12; i += e) s += `<text x="${X(i)}" y="${H - 10}" text-anchor="middle">${xl[i]}</text>`;
   const line = (a, col, w, dash) => `<path d="${a.map((y, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(y).toFixed(1)).join('')}" fill="none" stroke="${col}" stroke-width="${w}" ${dash ? 'stroke-dasharray="5 4"' : ''} stroke-linejoin="round"/>`;
   s += line(paths.flat, css('--muted'), 1.5, true) + line(paths.typ, css('--accent'), 2) + line(paths.bad, css('--loss'), 2.6);
   s += `<circle cx="${X(12)}" cy="${Y(paths.bad[12])}" r="4" fill="${css('--loss')}"/>`;
   $('cashChart').innerHTML = s;
   $('cashLegend').innerHTML = `<span><i style="background:var(--muted)"></i>${t('noShock')}</span><span><i style="background:var(--accent)"></i>${t('typYear')}</span><span><i style="background:var(--loss)"></i>${t('badYear')}</span><span><i style="background:var(--warn);opacity:.4"></i>${t('creditLine')}</span>`;
   const {lowest, outIdx, known} = cp;
-  $('cashCallout').innerHTML = `<div><span>${t('lowest')}</span><b class="${lowest < 0 ? 'hot' : ''}">${lowest < 0 ? '−' : ''}${eur(lowest)}</b></div>` +
-    `<div><span>${t('runsOut')}</span><b class="${outIdx > 0 ? 'hot' : 'cool'}">${outIdx > 0 ? t('inM', addM(D.current.asOf, outIdx).toLocaleString(loc(), {month:'long', year:'numeric'})) : t('never')}</b></div>` +
+  $('cashCallout').innerHTML = `<div><span>${t('lowest')}</span><b class="${lowest < 0 ? 'hot' : ''}">${neur(lowest)}</b></div>` +
+    `<div><span>${t('runsOut')}</span><b class="${outIdx > 0 ? 'hot' : 'cool'}">${outIdx > 0 ? t('inM', monthLong(addM(D.current.asOf, outIdx))) : t('never')}</b></div>` +
     `<div><span>${t('lockedIn')}</span><b class="warm">${eur(known)}</b> <span style="display:inline">${t('lockedNote')}</span></div>`;
   return cp;
 }
@@ -1178,11 +1017,13 @@ function calendar(v) {
   if (vh.usd > 0) rows.push([R.usd, [live(1, 'live')]]);
   if (vh.fuel > 0) rows.push([R.fuel, [live(1, 'live')]]);
   const W = chartW('calendar', 720), narrow = W < 560;
-  const L = narrow ? 0 : 200, Rr = 6, T = 26, rh = narrow ? 38 : 22, H = T + rows.length * rh + 26;
+  const L = narrow ? 0 : Math.min(280, Math.max(200, Math.ceil(16 + Math.max(0, ...rows.map(([name]) => textW(name, 12)))))), Rr = 6, T = 26, rh = narrow ? 38 : 22, H = T + rows.length * rh + 26;
   $('calendar').setAttribute('viewBox', `0 0 ${W} ${H}`);
   const X = m => L + (m - 1) / 12 * (W - L - Rr), cwid = (W - L - Rr) / 12, by = narrow ? 18 : 3, bh = narrow ? 14 : rh - 8;
   let s = '';
-  for (let i = 1; i <= 12; i++) s += `<text x="${X(i) + cwid / 2}" y="16" text-anchor="middle" style="font-size:${narrow ? 10 : 11}px">${mLabel(addM(D.current.asOf, i))}</text>`;
+  const fs = narrow ? 10 : 11, ml = [...Array(12).keys()].map(i => mLabel(addM(D.current.asOf, i + 1)));
+  const every = [1, 2, 3].find(e => e * cwid >= Math.max(...ml.map(l => textW(l, fs))) + 4) || 4;   // long month names: every other one
+  ml.forEach((l, i) => { if (i % every === 0) s += `<text x="${X(i + 1) + cwid / 2}" y="16" text-anchor="middle" style="font-size:${fs}px">${l}</text>`; });
   rows.forEach(([name, segs], r) => {
     const y = T + r * rh;
     s += narrow ? `<text x="0" y="${y + 13}" style="fill:${css('--ink')};font-size:12px">${name}</text>`
@@ -1192,13 +1033,21 @@ function calendar(v) {
       const col = g.kind === 'fixed' ? css('--gain') : g.kind === 'known' ? css('--warn') : css('--loss');
       s += `<rect x="${X(g.from) + 1}" y="${y + by}" width="${(to - g.from + 1) * cwid - 2}" height="${bh}" rx="4" fill="${col}" fill-opacity="${g.kind === 'fixed' ? .35 : .8}"/>`; });
   });
-  s += `<g transform="translate(${L},${H - 8})"><rect width="10" height="10" y="-9" rx="2" fill="${css('--gain')}" fill-opacity=".35"/><text x="14">${t('fixedL')}</text><rect x="70" width="10" height="10" y="-9" rx="2" fill="${css('--loss')}" fill-opacity=".8"/><text x="84">${t('live')}</text><rect x="150" width="10" height="10" y="-9" rx="2" fill="${css('--warn')}" fill-opacity=".8"/><text x="164">${t('known')}</text></g>`;
+  let lx = 0; const key = [['--gain', .35, t('fixedL')], ['--loss', .8, t('live')], ['--warn', .8, t('known')]].map(([c, o, l]) => {
+    const g = `<rect x="${lx}" width="10" height="10" y="-9" rx="2" fill="${css(c)}" fill-opacity="${o}"/><text x="${lx + 14}">${l}</text>`; lx += 32 + textW(l); return g; }).join('');
+  s += `<g transform="translate(${L},${H - 8})">${key}</g>`;
   $('calendar').innerHTML = s;
 }
 
 /* ---------------- waterfall ---------------- */
 function niceStep(x) { const p = Math.pow(10, Math.floor(Math.log10(Math.abs(x) || 1))), f = x / p; return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * p; }
-function short(n) { const a = Math.abs(n), sg = n < 0 ? '−' : '', c = LANG === 'de'; const u = a >= 1e6 ? (a / 1e6).toFixed(a % 1e6 ? 1 : 0) + (c ? ' Mio.' : 'm') : a >= 1e3 ? Math.round(a / 1e3) + 'k' : Math.round(a) + ''; return c ? sg + u + '\u00a0€' : sg + '€' + u; }
+// chart axis labels: €44k and 1,2 Mio. € in English and German, the language's own compact form elsewhere (44 тыс. €, €4.4万)
+function short(n) {
+  const a = Math.abs(n), r = Math.round(n) || 0;
+  if (LANG !== 'en' && LANG !== 'de') return minus(nf({...CUR, notation:'compact', maximumFractionDigits:1}).format(r));
+  const u = a >= 1e6 ? num(a / 1e6, a % 1e6 ? 1 : 0) + (LANG === 'de' ? '\u00a0Mio.' : 'm') : a >= 1e3 ? Math.round(a / 1e3) + 'k' : Math.round(a) + '';
+  return (r < 0 ? '−' : '') + (LANG === 'de' ? u + '\u00a0€' : '€' + u);
+}
 function renderTabs() {
   const keys = Object.keys(D.scenarios), shown = can('pro') ? keys : keys.slice(0, 1);
   if (!shown.includes(state.scen)) state.scen = shown[0];
@@ -1222,7 +1071,7 @@ function waterfall(v, el = $('wf'), forceW) {
   const tops = steps.flatMap(s => s[2] === 'base' ? [0, s[1]] : [s[3], s[3] + s[1]]);
   let lo = Math.min(0, ...tops), hi = Math.max(0, ...tops);
   if (hi - lo < 1) { hi += 1000; lo -= 1000; }                          // nothing to show: keep the axis drawable
-  const label = (val, kind) => kind === 'base' ? (val < 0 ? '−' : '') + eur(val) : (Math.abs(val) < 1 ? eur(0) : seur(val));
+  const label = (val, kind) => kind === 'base' ? neur(val) : (Math.abs(val) < 1 ? eur(0) : seur(val));
   const colOf = (val, kind) => kind === 'base' ? (val >= 0 ? '--accent' : '--loss') : (val < 0 ? '--loss' : '--gain');
   let s = '';
   if (narrow) {                                                         // phones: one row per step, amount above a horizontal bar
@@ -1236,11 +1085,16 @@ function waterfall(v, el = $('wf'), forceW) {
       s += `<rect x="${X(Math.min(a, b))}" y="${y + 21}" width="${Math.max(2, Math.abs(X(b) - X(a)))}" height="14" rx="3" fill="${css(col)}"/>`;
     });
   } else {
-    const H = 310, L = 58, R = 10, T = 26, B = 40;
+    const H = 310, R = 10, T = 26, B = 40;
     el.setAttribute('viewBox', `0 0 ${W} ${H}`);
     const pad = (hi - lo) * .1; hi += pad; lo = lo < 0 ? lo - pad : 0;
-    const Y = y => T + (hi - y) / (hi - lo) * (H - T - B), bw = (W - L - R) / steps.length, tick = niceStep((hi - lo) / 5);
-    for (let y = Math.ceil(lo / tick) * tick; y <= hi; y += tick) s += `<line x1="${L}" x2="${W - R}" y1="${Y(y)}" y2="${Y(y)}" stroke="${css('--line')}" stroke-width="${Math.abs(y) < tick / 2 ? 1.4 : .7}"/><text x="${L - 8}" y="${Y(y) + 4}" text-anchor="end">${short(y)}</text>`;
+    const tick = niceStep((hi - lo) / 5), ticks = [];
+    for (let y = Math.ceil(lo / tick) * tick; y <= hi; y += tick) ticks.push(y);
+    const L = axisL(58, ticks.map(short)), Y = y => T + (hi - y) / (hi - lo) * (H - T - B), bw = (W - L - R) / steps.length;
+    // a step name wider than its column goes on two lines, split at the space nearest the middle
+    const lines = name => { if (textW(name, 11.5) <= bw * .98) return [name]; const sp = [...name.matchAll(/ /g)].map(m => m.index); if (!sp.length) return [name];
+      const k = sp.reduce((a, b) => Math.abs(b - name.length / 2) < Math.abs(a - name.length / 2) ? b : a); return [name.slice(0, k), name.slice(k + 1)]; };
+    for (const y of ticks) s += `<line x1="${L}" x2="${W - R}" y1="${Y(y)}" y2="${Y(y)}" stroke="${css('--line')}" stroke-width="${Math.abs(y) < tick / 2 ? 1.4 : .7}"/><text x="${L - 8}" y="${Y(y) + 4}" text-anchor="end">${short(y)}</text>`;
     steps.forEach(([name, val, kind, start], i) => {
       const x = L + i * bw + bw * .16, w = bw * .68, col = colOf(val, kind);
       const y0 = kind === 'base' ? 0 : start, y1 = kind === 'base' ? val : start + val;
@@ -1248,14 +1102,15 @@ function waterfall(v, el = $('wf'), forceW) {
       s += `<rect x="${x}" y="${top}" width="${w}" height="${h}" rx="3" fill="${css(col)}"/>`;
       if (i < steps.length - 1) s += `<line x1="${x + w}" x2="${x + bw}" y1="${Y(y1)}" y2="${Y(y1)}" stroke="${css('--muted')}" stroke-dasharray="2 3"/>`;
       s += `<text x="${x + w / 2}" y="${top - 7}" text-anchor="middle" style="fill:${css(kind === 'base' ? '--ink' : ink(col))};font-weight:700;font-size:11px">${label(val, kind)}</text>`;
-      s += `<text x="${x + w / 2}" y="${H - 16}" text-anchor="middle" style="fill:${css('--ink')};font-size:11.5px">${name}</text>`;
+      const nl = lines(name);
+      s += `<text x="${x + w / 2}" y="${H - 16}" text-anchor="middle" style="fill:${css('--ink')};font-size:11.5px">${nl.length < 2 ? name : nl.map((l, j) => `<tspan x="${x + w / 2}" y="${H - 23 + j * 13}">${l}</tspan>`).join('')}</text>`;
     });
   }
   el.innerHTML = s;
   if (el === $('wf')) {
     const MV = t('mv'), show = ['rate', 'energy', 'food', effInput(v), 'cpi', 'fx', 'oil', effDemand(v)].filter((f, i, a) => f && a.indexOf(f) === i && f in sc.moves && sc.moves[f] !== null);
     $('scenNote').hidden = state.scen !== '2020 pandemic lockdown'; $('scenNote').textContent = t('lockNote');
-    $('moves').innerHTML = `<span>${month(sc.from)} → ${month(sc.to)}</span>` + (sc.salesFrom && effDemand(v) ? `<span>${t('salesWindow', month(sc.salesFrom), month(sc.salesTo))}</span>` : '') + show.map(f => `<span>${MV[f] || f} <b>${f === 'rate' ? (sc.moves[f] >= 0 ? '+' : '−') + Math.abs(sc.moves[f]).toFixed(2) + ' pp' : pct(sc.moves[f] * 100)}</b></span>`).join('');
+    $('moves').innerHTML = `<span>${month(sc.from)} ${arrow()} ${month(sc.to)}</span>` + (sc.salesFrom && effDemand(v) ? `<span>${t('salesWindow', month(sc.salesFrom), month(sc.salesTo))}</span>` : '') + show.map(f => `<span>${MV[f] || f} <b>${f === 'rate' ? pp(sc.moves[f], 2, 2) : pct(sc.moves[f] * 100)}</b></span>`).join('');
   }
   return {after:run, pr};
 }
@@ -1276,7 +1131,7 @@ function hedgeCard(v) {
     return {h, save, cost, net, verdict: t(vk), cls, vk};
   });
   $('hedgeTable').innerHTML = `<thead><tr><th>${t('hAction')}</th><th class="n">${t('hSave')}</th><th class="n">${t('hCost')}</th><th class="n">${t('hNet')}</th><th><span class="sr">${t('verdictTh')}</span></th></tr></thead><tbody>` +
-    rows.map(r => `<tr class="hedge-row"><td><label><input type="checkbox" data-h="${r.h.k}" ${state.hedges[r.h.k] ? 'checked' : ''}><b>${H[r.h.k][0]}</b></label><small>${H[r.h.k][1]}</small></td><td class="n" data-label="${t('hSave')}">${Math.abs(r.save) > 1 ? seur(r.save) : '–'}</td><td class="n" data-label="${t('hCost')}">${r.cost === null ? t('costCustomers') : (r.cost < 0 ? '−' : '') + eur(r.cost)}</td><td class="n" data-label="${t('hNet')}"><b class="${r.net > 0 ? 'cool' : r.net < 0 ? 'hot' : ''}">${r.net === null ? '–' : seur(r.net)}</b></td><td data-label="${t('verdictTh')}"><span class="verdict ${r.cls}">${r.verdict}</span></td></tr>`).join('') + '</tbody>';
+    rows.map(r => `<tr class="hedge-row"><td><label><input type="checkbox" data-h="${r.h.k}" ${state.hedges[r.h.k] ? 'checked' : ''}><b>${H[r.h.k][0]}</b></label><small>${H[r.h.k][1]}</small></td><td class="n" data-label="${t('hSave')}">${Math.abs(r.save) > 1 ? seur(r.save) : '–'}</td><td class="n" data-label="${t('hCost')}">${r.cost === null ? t('costCustomers') : neur(r.cost)}</td><td class="n" data-label="${t('hNet')}"><b class="${r.net > 0 ? 'cool' : r.net < 0 ? 'hot' : ''}">${r.net === null ? '–' : seur(r.net)}</b></td><td data-label="${t('verdictTh')}"><span class="verdict ${r.cls}">${r.verdict}</span></td></tr>`).join('') + '</tbody>';
   const any = Object.values(state.hedges).some(Boolean);
   const after = outcomes(hedged(v), state.mode, hedgeCost(v)).q(.05);
   $('hedgeCallout').innerHTML = `<div><span>${t('hcToday')}</span><b class="hot">${seur(Math.min(0, base))}</b></div><div><span>${any ? t('hcWith') : t('hcTick')}</span><b class="${any ? 'cool' : ''}">${any ? seur(Math.min(0, after)) : '–'}</b></div><div><span>${t('hcProt')}</span><b class="cool">${any ? eur(Math.max(0, after - base)) : '–'}</b></div>`;
@@ -1342,17 +1197,19 @@ function backtestCard(v) {
   const bt = backtest(v), n = bt.length, x = bt.filter(b => b.breach).length, k = kupiec(n, x);
   const pctMode = v.ebit > 0, f = val => pctMode ? val / v.ebit * 100 : val;   // as % of profit, so businesses compare
   $('btNote').textContent = t('btNote', n) + (effDemand(hedged(v)) ? ' ' + t('covidNote') : '');
-  const W = chartW('bt', 760), H = 240, L = pctMode ? 46 : 58, R = 10, T = 12, B = 28;
+  const W = chartW('bt', 760), H = 240, R = 10, T = 12, B = 28;
   $('bt').setAttribute('viewBox', `0 0 ${W} ${H}`);
   const all = bt.flatMap(b => [f(b.pred), f(b.real)]);
   let lo = Math.min(...all, 0), hi = Math.max(...all, 0);
   if (pctMode) { lo = Math.max(lo, -200); hi = Math.min(hi, 150); }        // a few extreme months must not flatten the rest
   if (hi - lo < 1e-6) { hi += 1; lo -= 1; }
   const pad = (hi - lo) * .06; lo -= pad; hi += pad;
+  const yl = y => pctMode ? pc(y) : short(y), st = niceStep((hi - lo) / 5), ticks = [];
+  for (let y = Math.ceil(lo / st) * st; y <= hi; y += st) ticks.push(y);
+  const L = axisL(pctMode ? 46 : 58, ticks.map(yl));
   const X = i => L + i / Math.max(1, n - 1) * (W - L - R), Y = y => T + (hi - Math.min(hi, Math.max(lo, y))) / (hi - lo) * (H - T - B);
-  const yl = y => pctMode ? Math.round(y) + '%' : short(y);
-  let s = ''; const st = niceStep((hi - lo) / 5);
-  for (let y = Math.ceil(lo / st) * st; y <= hi; y += st) s += `<line x1="${L}" x2="${W - R}" y1="${Y(y)}" y2="${Y(y)}" stroke="${css('--line')}" stroke-width="${Math.abs(y) < st / 2 ? 1.3 : .6}"/><text x="${L - 8}" y="${Y(y) + 4}" text-anchor="end">${yl(y)}</text>`;
+  let s = '';
+  for (const y of ticks) s += `<line x1="${L}" x2="${W - R}" y1="${Y(y)}" y2="${Y(y)}" stroke="${css('--line')}" stroke-width="${Math.abs(y) < st / 2 ? 1.3 : .6}"/><text x="${L - 8}" y="${Y(y) + 4}" text-anchor="end">${yl(y)}</text>`;
   const every = W < 520 ? 6 : 3;
   bt.forEach((b, i) => { if (b.p.endsWith('-01') && (+b.p.slice(0, 4) - 2008) % every === 0) s += `<text x="${X(i)}" y="${H - 8}" text-anchor="middle">${b.p.slice(0, 4)}</text>`; });
   s += `<path d="${bt.map((b, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(f(b.real)).toFixed(1)).join('')}" fill="none" stroke="${css('--accent')}" stroke-width="1.6"/>`;
@@ -1366,31 +1223,38 @@ function backtestCard(v) {
   bt.forEach(b => { if (!b.breach) return; const a = mIdx(b.p), z = a + 12; let best = null, bo = 0;
     EPISODES.forEach(([key, s0, s1]) => { const o = Math.min(z, mIdx(s1)) - Math.max(a, mIdx(s0)); if (o > bo) { bo = o; best = key; } });
     const g = best || 'y' + b.p.slice(0, 4); groups[g] = (groups[g] || 0) + 1; });
-  const ranked = Object.entries(groups).sort((a, b) => b[1] - a[1]), EP = t('episodes');
-  const label = g => g[0] === 'y' ? t('yearL', g.slice(1)) : EP[g];
-  const parts = ranked.slice(0, 3).map(([g, c]) => `${label(g)} (${c})`);
-  const listed = parts.length > 1 ? parts.slice(0, -1).join(', ') + t('and') + parts[parts.length - 1] : (parts[0] || '');
+  const res = {n, x, rate, pval:k.pval, pass, ranked:Object.entries(groups).sort((a, b) => b[1] - a[1])}, {why} = btWords(res);
+  $('btCallout').innerHTML = `<div><span>${t('btRate')}</span><b class="${rate > 8 ? 'hot' : 'cool'}">${pc(rate, 1)}</b> <span style="display:inline">(${x} / ${n})</span></div><div><span>${t('btExpect')}</span><b>${pc(5)}</b></div><div><span>${t('btTest')}</span><b class="${pass ? 'cool' : 'hot'}">${btVerdict(res)}</b></div>` +
+    (why ? `<div style="flex-basis:100%">${why}</div>` : '');
+  return res;
+}
+const btVerdict = b => b.pass ? t('btPass', num(b.pval, 2)) : t('btFail', num(b.pval, 3));
+// where the misses came from, in words (the page's language, or English for the assistant and the PDF)
+function btWords(b) {
+  const EP = t('episodes'), label = g => g[0] === 'y' ? t('yearL', g.slice(1)) : EP[g];
+  const parts = b.ranked.slice(0, 3).map(([g, c]) => `${label(g)} (${c})`);
+  const top = parts.length > 1 ? parts.slice(0, -1).join(', ') + t('and') + parts[parts.length - 1] : (parts[0] || '');
   let why = '';
-  if (rate < 5 && !pass) why = t('btCautious');                              // beaten too rarely: the figure is conservative
-  else if (x && ranked[0][0][0] !== 'y' && ranked[0][1] >= x * .6) {
-    const [g, c] = ranked[0]; why = t('btEpisode', c, x, EP[g], EPISODES.find(e => e[0] === g)[3], t('epHint')[g]);
-  } else if (x) why = t('btMost', listed);
-  const top = listed;
-  $('btCallout').innerHTML = `<div><span>${t('btRate')}</span><b class="${rate > 8 ? 'hot' : 'cool'}">${rate.toFixed(1)}%</b> <span style="display:inline">(${x} / ${n})</span></div><div><span>${t('btExpect')}</span><b>5%</b></div><div><span>${t('btTest')}</span><b class="${pass ? 'cool' : 'hot'}">${pass ? t('btPass', k.pval.toFixed(2)) : t('btFail', k.pval.toFixed(3))}</b></div>` +
-    (why ? `<div style="flex-basis:100%">${why}${rate > 7.5 ? ' ' + t('btCalib', Math.round(100 / rate)) : ''}</div>` : '');
-  return {n, x, rate, pval:k.pval, top, why};
+  if (b.rate < 5 && !b.pass) why = t('btCautious');                          // beaten too rarely: the figure is conservative
+  else if (b.x && b.ranked[0][0][0] !== 'y' && b.ranked[0][1] >= b.x * .6) {
+    const [g, c] = b.ranked[0]; why = t('btEpisode', c, b.x, EP[g], EPISODES.find(e => e[0] === g)[3], t('epHint')[g]);
+  } else if (b.x) why = t('btMost', top);
+  if (why && b.rate > 7.5) why += ' ' + t('btCalib', Math.round(100 / b.rate));
+  return {top, why};
 }
 
 /* ---------------- timeline ---------------- */
 function timeline() {
-  const h = D.hist, n = h.period.length, W = chartW('tl', 760), H = 270, L = 38, R = 12, T = 12, B = 30;
+  const h = D.hist, n = h.period.length, W = chartW('tl', 760), H = 270, R = 12, T = 12, B = 30;
   $('tl').setAttribute('viewBox', `0 0 ${W} ${H}`);
   const vals = [...h.hicp, ...h.ip].filter(x => x !== null);
   const lo = Math.max(-25, Math.floor(Math.min(...vals) / 5) * 5), hi = Math.min(40, Math.ceil(Math.max(...vals) / 5) * 5);
+  const ticks = []; for (let v = lo; v <= hi; v += 5) ticks.push(v);
+  const L = axisL(38, ticks.map(v => pc(v))) - 2;
   const X = i => L + i / (n - 1) * (W - L - R), Y = v => T + (hi - Math.min(hi, Math.max(lo, v))) / (hi - lo) * (H - T - B - 26);
   let s = ''; const bw = (W - L - R) / (n - 1) + 1;
   for (let i = 0; i < n; i++) { if (h.reg[i]) s += `<rect x="${X(i) - .5}" y="${H - B - 22}" width="${bw}" height="9" fill="${css(REG[h.reg[i]])}"/>`; if (h.hmm[i]) s += `<rect x="${X(i) - .5}" y="${H - B - 10}" width="${bw}" height="9" fill="${css(HMMC[h.hmm[i]])}"/>`; }
-  for (let v = lo; v <= hi; v += 5) s += `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="${css('--line')}" stroke-width="${v === 0 ? 1.3 : .6}"/><text x="${L - 6}" y="${Y(v) + 4}" text-anchor="end">${v}%</text>`;
+  for (const v of ticks) s += `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="${css('--line')}" stroke-width="${v === 0 ? 1.3 : .6}"/><text x="${L - 6}" y="${Y(v) + 4}" text-anchor="end">${pc(v)}</text>`;
   h.period.forEach((p, i) => { if (p.endsWith('-01') && (+p.slice(0, 4)) % (W < 520 ? 6 : 3) === 2) s += `<text x="${X(i)}" y="${H - 8}" text-anchor="middle">${p.slice(0, 4)}</text>`; });
   const line = (a, col, w) => { let d = ''; a.forEach((v, i) => { if (v === null) return; d += (d ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1); }); return `<path d="${d}" fill="none" stroke="${col}" stroke-width="${w}" stroke-linejoin="round"/>`; };
   s += line(h.ip, css('--muted'), 1.2) + line(h.hicp, css('--accent'), 2.2);
@@ -1401,7 +1265,7 @@ function timeline() {
   const hide = () => { tip.hidden = true; cross.setAttribute('opacity', 0); };
   const move = e => { const pt = e.touches ? e.touches[0] : e, rc = svg.getBoundingClientRect(); const x = (pt.clientX - rc.left) / rc.width * W, i = Math.round((x - L) / (W - L - R) * (n - 1));
     if (i < 0 || i >= n) return hide(); cross.setAttribute('x1', X(i)); cross.setAttribute('x2', X(i)); cross.setAttribute('opacity', .4); tip.hidden = false;
-    const nd = t('noData'); tip.innerHTML = `<b>${month(h.period[i])}</b><br>${t('tlTop')}: ${h.reg[i] ? t(h.reg[i]) : nd}<br>${t('tlBottom')}: ${h.hmm[i] ? t(h.hmm[i]) : nd}<br>${t('tlInfl')} ${h.hicp[i] === null ? nd : pct(h.hicp[i])}<br>${t('tlIp')} ${h.ip[i] === null ? nd : pct(h.ip[i])}<br>Euribor ${h.euribor[i] === null ? nd : h.euribor[i].toFixed(2) + '%'}`;
+    const nd = t('noData'); tip.innerHTML = `<b>${month(h.period[i])}</b><br>${t('tlTop')}: ${h.reg[i] ? t(h.reg[i]) : nd}<br>${t('tlBottom')}: ${h.hmm[i] ? t(h.hmm[i]) : nd}<br>${t('tlInfl')} ${h.hicp[i] === null ? nd : pct(h.hicp[i])}<br>${t('tlIp')} ${h.ip[i] === null ? nd : pct(h.ip[i])}<br>Euribor ${h.euribor[i] === null ? nd : pc(h.euribor[i], 2)}`;
     tip.style.left = Math.min(pt.clientX + 14, innerWidth - tip.offsetWidth - 8) + 'px'; tip.style.top = (pt.clientY + 14) + 'px'; };
   svg.onmousemove = move; svg.onmouseleave = hide; svg.ontouchstart = move; svg.ontouchmove = move; svg.ontouchend = hide;
 }
@@ -1443,7 +1307,7 @@ function renderClients() {
   const rows = clients.map(c => { const v = {...PRESETS.restaurant, ...c.values}; const p5 = outcomes(v, 'regime').q(.05); return {c, share: v.ebit > 0 ? Math.max(0, -p5) / v.ebit * 100 : null}; }).sort((a, b) => (b.share ?? 1e9) - (a.share ?? 1e9));
   $('clist').innerHTML = rows.map(({c, share}) => { const col = share === null || share > state.threshold ? '--loss' : share > state.threshold / 2 ? '--warn' : '--gain';
     const name = esc(c.name);
-    return `<div class="crow ${state.client === c.id ? 'active' : ''}" data-id="${esc(c.id)}"><button type="button" class="open" aria-current="${state.client === c.id}"><span class="flag" style="background:var(${col})"></span>${name}</button><span class="risk" style="color:var(${ink(col)})">${share === null ? '–' : Math.round(share) + '%'}</span><button type="button" class="x" data-del="${esc(c.id)}" aria-label="${esc(t('deleteX', c.name))}">×</button></div>`; }).join('');
+    return `<div class="crow ${state.client === c.id ? 'active' : ''}" data-id="${esc(c.id)}"><button type="button" class="open" aria-current="${state.client === c.id}"><span class="flag" style="background:var(${col})"></span>${name}</button><span class="risk" style="color:var(${ink(col)})">${share === null ? '–' : pc(share)}</span><button type="button" class="x" data-del="${esc(c.id)}" aria-label="${esc(t('deleteX', c.name))}">×</button></div>`; }).join('');
 }
 $('clist').addEventListener('click', e => {
   const del = e.target.closest('[data-del]'); if (del) { e.stopPropagation(); deleteClient(del.dataset.del); return; }
@@ -1505,7 +1369,7 @@ function showParse(res) {
   if (!res || !res.recs.length) { $('upResult').innerHTML = `<p class="note">${t('upNone')}</p>`; $('upApply').disabled = true; pending = null; return; }
   const C = t('upCols'), lab = {rev:t('rev'), ebit:t('ebit'), food:t('food'), payroll:t('payroll'), rent:t('rent'), energy:t('energy'), fuel:t('fuel'), loan:t('loan'), cash:t('cash')};
   const rng = k => k === 'ebit' ? (res.skr === '03' ? '8000–8999 − 3000–4999' : '4000–4999 − 5000–6999') : (res.M[k] || []).map(([a, b]) => String(a).padStart(4, '0') + '–' + String(b).padStart(4, '0')).join(', ');
-  $('upResult').innerHTML = `<p class="note">${t('upFound', 'SKR' + res.skr, res.recs.length)}</p><div class="scroll"><table><thead><tr><th>${C[0]}</th><th>${C[1]}</th><th class="n">${C[2]}</th></tr></thead><tbody>${Object.keys(lab).map(k => `<tr><td>${lab[k]}</td><td class="small">${rng(k)}</td><td class="n">${eurX(res.out[k])}</td></tr>`).join('')}</tbody></table></div>`;
+  $('upResult').innerHTML = `<p class="note">${t('upFound', 'SKR' + res.skr, res.recs.length)}</p><div class="scroll"><table><thead><tr><th>${C[0]}</th><th>${C[1]}</th><th class="n">${C[2]}</th></tr></thead><tbody>${Object.keys(lab).map(k => `<tr><td>${lab[k]}</td><td class="small">${rng(k)}</td><td class="n">${eurN(res.out[k])}</td></tr>`).join('')}</tbody></table></div>`;
   $('upApply').disabled = false; pending = res.out;
 }
 let lastText = '';
@@ -1536,43 +1400,66 @@ function loadJsPDF() {
     s.src = window.MRM_JSPDF_SRC || 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
     s.onload = () => ok(window.jspdf); s.onerror = () => { jspdfLoading = null; no(new Error('jspdf')); }; document.head.appendChild(s); });
 }
+// The PDF's built-in fonts write Windows-1252 (Western European) only, so other languages get an English report.
+// Letters outside it lose their accent where that leaves a Latin letter (ł becomes l), anything else becomes ?.
+const PDF_OK = /^[ -~\u00a0-\u00ff€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ]$/;
+const pdfChar = c => { if (PDF_OK.test(c)) return c; const b = c.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); return {'ł':'l', 'Ł':'L', 'đ':'d', 'Đ':'D', 'ı':'i'}[c] || (PDF_OK.test(b) ? b : '?'); };
+const pdfText = x => [...String(x).replace(/[−‒]/g, '-').replace(/→/g, '->').replace(/←/g, '<-').replace(/[\u2007\u2009\u202f]/g, ' ').replace(/[\u200b-\u200f\u061c\u2066-\u2069]/g, '')].map(pdfChar).join('');
+// everything the report says, as a list of steps, in the current language (makePdf picks the language)
+function reportContent(v) {
+  const R = t('report'), name = state.client ? state.name : (state.imported ? t('imported') : t('presetNames')[state.preset]), ops = [];
+  const plain = h => h.replace(/<[^>]+>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+  const head = x => ops.push(['h', x]), para = (x, size, color) => ops.push(['p', x, size, color]), row = (a, b) => ops.push(['row', a, b]), gap = () => ops.push(['gap']);
+  ops.push(['title', t('pdfTitle')]);
+  para(`${R.business}: ${name}   ·   ${R.prepared}: ${new Date().toLocaleDateString(loc())}   ·   ${t('dataThrough', month(D.current.asOf))}`, 9, [90, 100, 110]); gap();
+  head(R.summary); para(plain(headline(v).lede), 12);
+  if (LAST.drivers && LAST.drivers.length && LAST.hero.p5 < 0) row(t('tRisk'), LAST.drivers.slice(0, 3).map(d => `${t('drvNames')[d.k]} ${pc(d.share * 100)}`).join('  ·  '));
+  const cc = LAST.cash; row(t('lowest'), neur(cc.lowest)); row(t('runsOut'), cc.outIdx > 0 ? monthLong(addM(D.current.asOf, cc.outIdx)) : t('never'));
+  gap(); head(R.regime); para(`${t(D.current.regime)}: ${t('d' + D.current.regime)}`); para(plain(hmmNote()), 9, [80, 90, 100]);
+  gap(); head(R.exposures);
+  [['rev', v.rev], ['ebit', v.ebit], ['loan', v.loan], ['energy', v.energy], ['food', v.food], ['rent', v.rent], ['payroll', v.payroll], ['usd', v.usd], ['fuel', v.fuel], ['cash', v.cash], ['credit', v.credit]].forEach(([k, x]) => { if (x) row(t(k), eurN(x)); });
+  gap(); head(R.scenarios);
+  Object.keys(D.scenarios).forEach(k => { const sc = D.scenarios[k], m = Object.fromEntries(D.factors.map(f => [f, sc.moves[f] ?? 0])); const pr = project(hedged(v), m); row(`${t('scen')[k] || k} (${month(sc.from)} - ${month(sc.to)})`, seur(-pr.total - hedgeCost(v))); });
+  const clone = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); waterfall(v, clone, 760);   // desktop layout on any screen
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg'); clone.setAttribute('width', 1520); clone.setAttribute('height', 620);
+  clone.insertAdjacentHTML('afterbegin', `<rect width="100%" height="100%" fill="#ffffff"/>`);
+  const svg = new XMLSerializer().serializeToString(clone).replace(/font-family:[^;"]*/g, '').replace(/(<svg[^>]*>)/, '$1<style>text{font-family:Arial,Helvetica,sans-serif;font-size:11px;fill:#5d6a87}</style>');
+  ops.push(['chart', t('scen')[state.scen] || state.scen]);
+  head(R.hedges);
+  LAST.hedges.forEach(r => row(t('hedges')[r.h.k][0], r.save > 1 ? `${t('hSave')} ${eur(r.save)}  ·  ${t('hNet')} ${r.net === null ? '-' : seur(r.net)}  ·  ${t(r.vk)}` : t('noEffect')));
+  const b = LAST.bt, why = btWords(b).why;
+  gap(); head(t('btTitle')); para(`${t('btRate')}: ${pc(b.rate, 1)} (${b.x}/${b.n}). ${t('btExpect')}: ${pc(5)}. ${t('btTest')}: ${btVerdict(b)}.`); if (b.x && why) para(why, 9, [80, 90, 100]);
+  gap(); head(R.method); para(`${t('foot1', month(D.current.asOf))} ${t('foot2')} ${t('foot3')}`, 8.5, [90, 100, 110]);
+  return {ops, svg, name};
+}
 async function makePdf() {
   const dl = await window.claude?.use?.('downloads');
   try {
-    const {jsPDF} = await loadJsPDF(); const doc = new jsPDF({unit:'mm', format:'a4', compress:true}); const R = t('report');
+    const {jsPDF} = await loadJsPDF();
     if (btDirty) runBacktest();
-    const v = {...V}, name = state.client ? state.name : (state.imported ? t('imported') : t('presetNames')[state.preset]);
-    let y = 18; const L = 16, W = 178;
-    const txt = (s, size = 10, bold = false, color = [20, 30, 40]) => { doc.setFont('helvetica', bold ? 'bold' : 'normal'); doc.setFontSize(size); doc.setTextColor(...color); const lines = doc.splitTextToSize(String(s).replace(/−/g, '-').replace(/→/g, '->'), W); if (y + lines.length * size * .45 > 285) { doc.addPage(); y = 18; } doc.text(lines, L, y); y += lines.length * size * .45 + 2; };
-    const plain = h => h.replace(/<[^>]+>/g, '');
-    const row = (a, b) => { doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(60, 70, 80); doc.text(String(a).replace(/−/g, '-'), L, y); doc.setTextColor(20, 30, 40); doc.setFont('helvetica', 'bold'); doc.text(String(b).replace(/−/g, '-').replace(/→/g, '->'), L + W, y, {align:'right'}); y += 6; if (y > 280) { doc.addPage(); y = 18; } };
-    txt(t('pdfTitle'), 20, true); txt(`${R.business}: ${name}   ·   ${R.prepared}: ${new Date().toLocaleDateString(loc())}   ·   ${t('dataThrough', month(D.current.asOf))}`, 9, false, [90, 100, 110]); y += 2;
-    txt(R.summary, 13, true); txt(plain($('lede').innerHTML), 12);
-    if (LAST.drivers && LAST.drivers.length && LAST.hero.p5 < 0) row(t('tRisk'), LAST.drivers.slice(0, 3).map(d => `${t('drvNames')[d.k]} ${Math.round(d.share * 100)}%`).join('  ·  '));
-    const cc = LAST.cash; row(t('lowest'), (cc.lowest < 0 ? '-' : '') + eur(cc.lowest)); row(t('runsOut'), cc.outIdx > 0 ? addM(D.current.asOf, cc.outIdx).toLocaleString(loc(), {month:'long', year:'numeric'}) : t('never'));
-    y += 2; txt(R.regime, 13, true); txt(`${t(D.current.regime)}: ${t('d' + D.current.regime)}`); txt(plain($('hmmNote').innerHTML), 9, false, [80, 90, 100]);
-    y += 2; txt(R.exposures, 13, true);
-    [['rev', v.rev], ['ebit', v.ebit], ['loan', v.loan], ['energy', v.energy], ['food', v.food], ['rent', v.rent], ['payroll', v.payroll], ['usd', v.usd], ['fuel', v.fuel], ['cash', v.cash], ['credit', v.credit]].forEach(([k, x]) => { if (x) row(t(k), eurX(x)); });
-    y += 2; txt(R.scenarios, 13, true);
-    Object.keys(D.scenarios).forEach(k => { const sc = D.scenarios[k], m = Object.fromEntries(D.factors.map(f => [f, sc.moves[f] ?? 0])); const pr = project(hedged(v), m); row(`${t('scen')[k] || k} (${month(sc.from)} - ${month(sc.to)})`, seur(-pr.total - hedgeCost(v))); });
-    try { // chart snapshot
-      const clone = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); waterfall(v, clone, 760);   // desktop layout on any screen
-      clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg'); clone.setAttribute('width', 1520); clone.setAttribute('height', 620);
-      clone.insertAdjacentHTML('afterbegin', `<rect width="100%" height="100%" fill="#ffffff"/>`);
-      const src = new XMLSerializer().serializeToString(clone).replace(/font-family:[^;"]*/g, '').replace(/(<svg[^>]*>)/, '$1<style>text{font-family:Arial,Helvetica,sans-serif;font-size:11px;fill:#5d6a87}</style>');
-      const img = new Image(); await new Promise((ok, no) => { img.onload = ok; img.onerror = no; img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(src); });
+    const lang = meta().pdf ? LANG : 'en', {ops, svg, name} = withLang(lang, () => reportContent({...V}));
+    let chart = null;
+    try {   // chart snapshot
+      const img = new Image(); await new Promise((ok, no) => { img.onload = ok; img.onerror = no; img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg); });
       const cv = document.createElement('canvas'); cv.width = 1520; cv.height = 620; const cx = cv.getContext('2d'); cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, 1520, 620); cx.drawImage(img, 0, 0);
-      if (y + 75 > 285) { doc.addPage(); y = 18; }
-      txt(t('scen')[state.scen] || state.scen, 10, true); doc.addImage(cv.toDataURL('image/jpeg', .85), 'JPEG', L, y, W, W * 620 / 1520, undefined, 'FAST'); y += W * 620 / 1520 + 4;
+      chart = cv.toDataURL('image/jpeg', .85);
     } catch (e) {}
-    txt(R.hedges, 13, true);
-    LAST.hedges.forEach(r => row(t('hedges')[r.h.k][0], r.save > 1 ? `${t('hSave')} ${eur(r.save)}  ·  ${t('hNet')} ${r.net === null ? '-' : seur(r.net)}  ·  ${r.verdict}` : t('noEffect')));
-    y += 2; txt(t('btTitle'), 13, true); const b = LAST.bt; txt(`${t('btRate')}: ${b.rate.toFixed(1)}% (${b.x}/${b.n}). ${t('btExpect')}: 5%. ${t('btTest')}: ${b.pval > .05 ? t('btPass', b.pval.toFixed(2)) : t('btFail', b.pval.toFixed(3))}.`); if (b.x && b.why) txt(b.why, 9, false, [80, 90, 100]);
-    y += 2; txt(R.method, 13, true); txt($('foot1').textContent + ' ' + $('foot2').textContent + ' ' + $('foot3').textContent, 8.5, false, [90, 100, 110]);
+    const doc = new jsPDF({unit:'mm', format:'a4', compress:true});
+    let y = 18; const L = 16, W = 178;
+    const txt = (s, size = 10, bold = false, color = [20, 30, 40]) => { doc.setFont('helvetica', bold ? 'bold' : 'normal'); doc.setFontSize(size); doc.setTextColor(...color); const lines = doc.splitTextToSize(pdfText(s), W); if (y + lines.length * size * .45 > 285) { doc.addPage(); y = 18; } doc.text(lines, L, y); y += lines.length * size * .45 + 2; };
+    const row = (a, b) => { doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(60, 70, 80); doc.text(pdfText(a), L, y); doc.setTextColor(20, 30, 40); doc.setFont('helvetica', 'bold'); doc.text(pdfText(b), L + W, y, {align:'right'}); y += 6; if (y > 280) { doc.addPage(); y = 18; } };
+    for (const [k, a, b, c] of ops) {
+      if (k === 'title') txt(a, 20, true);
+      else if (k === 'h') txt(a, 13, true);
+      else if (k === 'p') txt(a, b || 10, false, c);
+      else if (k === 'row') row(a, b);
+      else if (k === 'gap') y += 2;
+      else if (k === 'chart' && chart) { if (y + 75 > 285) { doc.addPage(); y = 18; } txt(a, 10, true); doc.addImage(chart, 'JPEG', L, y, W, W * 620 / 1520, undefined, 'FAST'); y += W * 620 / 1520 + 4; }
+    }
     const blob = doc.output('blob');
-    const fname = `macro-risk-report-${(name || 'business').toLowerCase().replace(/[^a-z0-9äöüß]+/gi, '-')}.pdf`;
+    const fname = `macro-risk-report-${(name || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '') || 'business'}.pdf`;
     if (dl) await dl.save({filename:fname, data:blob}); else doc.save(fname);   // plain web hosting: normal browser download
-    toast(t('pdfSaved'));
+    toast(lang === LANG ? t('pdfSaved') : t('pdfInEnglish'));
   } catch (e) { if (e && e.code === 'declined') return; toast(t('pdfFail')); }
 }
 $('pdfBtn').onclick = makePdf;
@@ -1609,7 +1496,7 @@ function coerce(k, kind, raw) {
   if (kind === 'range') { const el = $(k), st = +el.step || 1; return +clamp(Math.round(x / st) * st, +el.min, +el.max).toFixed(2); }
   return kind === 'eur' ? Math.max(0, Math.round(x)) : Math.round(x);
 }
-const fmtField = (k, kind, x) => kind === 'bool' ? t(x ? 'yes' : 'no') : kind === 'range' ? RANGES[k](x) : (x < 0 ? '−' : '') + eurX(x);
+const fmtField = (k, kind, x) => kind === 'bool' ? t(x ? 'yes' : 'no') : kind === 'range' ? RANGES[k](x) : eurN(x);
 function codeFor(c) {
   if (!chat.codes.has(c.id)) { const code = 'C' + (chat.codes.size + 1); chat.codes.set(c.id, code); chat.byCode.set(code, c.id); }
   return chat.codes.get(c.id);
@@ -1679,7 +1566,7 @@ const TOOLS = {
     set('energy_pct', -80, 400, x => { m.energy = m.elec = m.gas = x / 100; }, x => `${MV.energy} ${pct(x, 0)}`);
     set('purchase_prices_pct', -50, 200, x => { m[effInput(v)] = x / 100; }, x => `${t('actPurch')} ${pct(x, 0)}`);
     set('sales_index_pct', -60, 60, x => { const d = effDemand(v); if (d) m[d] = x / 100; }, x => `${t('actSales')} ${pct(x, 0)}`);
-    set('euribor_pp', -4, 8, x => { m.rate = x; }, x => `${MV.rate} ${x >= 0 ? '+' : '−'}${Math.abs(x).toLocaleString(loc(), {maximumFractionDigits:2})} pp`);
+    set('euribor_pp', -4, 8, x => { m.rate = x; }, x => `${MV.rate} ${pp(x)}`);
     set('eur_usd_pct', -50, 50, x => { m.fx = x / 100; }, x => `${MV.fx} ${pct(x, 0)}`);
     set('oil_pct', -80, 300, x => { m.oil = x / 100; }, x => `${MV.oil} ${pct(x, 0)}`);
     if (!labels.length) throw new Error('No shock given. Pass at least one parameter, for example energy_pct: 30.');
@@ -1735,7 +1622,7 @@ function assistantContext() {
     !b ? 'No protection action saves more than it costs right now.' : b.kind === 'net' ? `Best protection after its cost: ${T.en.hedges[b.r.h.k][0].toLowerCase()}, which saves ${E(b.r.save)} in a bad year and ${E(b.r.net)} net of its cost.` :
       `${T.en.hedges[b.r.h.k][0]} saves ${E(b.r.save)} in a bad year; customers carry the cost.`];
   const ctx = {
-    key_facts, page_language:LANG === 'de' ? 'German' : 'English', data_through:cur.asOf, business,
+    key_facts, page_language:meta().en, data_through:cur.asOf, business,
     risk:{this_year_profit:r100(v.ebit), bad_year_profit_change:r100(h.p5), profit_in_bad_year:r100(v.ebit + h.p5), typical_year_profit_change:r100(h.p50), profit_in_typical_year:r100(v.ebit + h.p50),
       good_year_profit_change:r100(o.q(.95)), share_of_profit_at_risk_pct:h.share === null ? null : Math.round(h.share),
       basis:state.mode === 'regime' ? `1-in-20 outcome from ${o.s.length} past ${cur.regime} months since 2000` : state.mode === 'hmm' ? 'past months weighted by the statistical model' : 'all months since 2000',
@@ -1750,7 +1637,7 @@ function assistantContext() {
     protection:(LAST.hedges || []).map(r => ({action:T.en.hedges[r.h.k][0], bad_year_saving:r100(r.save), yearly_cost:r.cost === null ? 'carried by customers' : r100(r.cost), net_value:r.net === null ? null : r100(r.net), verdict:T.en[r.vk]})),
     saved_clients:clients.length
   };
-  if (LAST.bt && LAST.bt.n) ctx.track_record = {months_worse_than_forecast_pct:+LAST.bt.rate.toFixed(1), expected_pct:5, kupiec_test:LAST.bt.pval > .05 ? 'passes' : 'fails', p_value:+LAST.bt.pval.toFixed(3), where_misses_came_from:LAST.bt.top};
+  if (LAST.bt && LAST.bt.n) ctx.track_record = {months_worse_than_forecast_pct:+LAST.bt.rate.toFixed(1), expected_pct:5, kupiec_test:LAST.bt.pval > .05 ? 'passes' : 'fails', p_value:+LAST.bt.pval.toFixed(3), where_misses_came_from:withLang('en', () => btWords(LAST.bt).top)};
   return ctx;
 }
 
@@ -1811,7 +1698,7 @@ function repairCalls(calls) {
 }
 async function viaServer(ctx, history, q, exec) {
   const route = await postChat({context:ctx, messages:[...history, {role:'user', content:ROUTER + '\n\nQuestion: ' + q.slice(0, 1500)}], final:true});
-  const messages = [...history, {role:'user', content:q}];
+  const messages = [...history, {role:'user', content:q + '\n\n(Answer in the language of this question.)'}];   // any language, also on an older server prompt
   for (const c of repairCalls(parseRoute(route.text))) {
     let result; try { result = await exec(c.name, c.args); } catch (e) { result = {error:String(e && e.message || e)}; }
     messages.push({role:'tool', name:c.name, args:c.args, result});
@@ -1820,9 +1707,17 @@ async function viaServer(ctx, history, q, exec) {
   if (!res.text) throw {code:'empty'};
   return res.text;
 }
-// open models often keep English number style in German answers: €1,400 becomes 1.400 €
-const looksGerman = x => (String(x).toLowerCase().match(/\b(der|die|das|und|nicht|wenn|was|wie|ist|ich|wir|sie|ein|eine|wird|würde|mit|auf|für|den|dem|des|um|mein|meine|unser|unsere)\b/g) || []).length >= 2;
-const deMoney = x => String(x).replace(/(−|-)?€\s?(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d+))?(?!\d|,\d)/g, (m, sg, n, d) => `${sg || ''}${n.replace(/,/g, '.')}${d ? ',' + d : ''}\u00a0€`);
+// Open models often keep English number style in other languages (€1,400 in a German answer). When an answer is in the
+// page's language, its euro amounts are rewritten the way that language writes them: 1.400 €, 1 400 €, €1.400, ‏1,400 €.
+const WORDS = {de:'der die das und nicht ist wird würde mit auf für den dem des ihr ihre ein eine sie wenn',
+  es:'el la los las de del que y en un una es por para con su sus más se si lo al', fr:'le la les des de et est que pour dans une un sur avec vos votre du en si',
+  it:'il lo la gli le di del della che e è per con un una sono più se in', pt:'o os as de do da dos das que e é em para com um uma seu sua mais se no na',
+  tr:'ve bir bu için ile da de çok daha olarak gibi en ama veya kadar', pl:'i w na że jest się nie do z to jak dla od przy o', en:'the and is of to in for that with your this would'};
+const SCRIPT = {ru:/[\u0400-\u04ff]/g, uk:/[\u0400-\u04ff]/g, ar:/[\u0600-\u06ff]/g, hi:/[\u0900-\u097f]/g, zh:/[\u3400-\u9fff]/g};
+const wordHits = (x, l) => (String(x).toLowerCase().match(new RegExp(`(?<!\\p{L})(?:${(WORDS[l] || '_').split(' ').join('|')})(?!\\p{L})`, 'gu')) || []).length;
+const inPageLanguage = x => LANG !== 'en' && (SCRIPT[LANG] ? (String(x).match(SCRIPT[LANG]) || []).length >= 8 : wordHits(x, LANG) >= 3 && wordHits(x, LANG) > wordHits(x, 'en'));
+const localMoney = x => String(x).replace(/(^|[^\p{L}\p{N}])([−-])?€\s?(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{1,2}))?(?![\d.,]*\d)(?!\s?(?:k|m|bn|mn|mio|million|billion)(?!\p{L}))/gu,
+  (m, pre, sg, n, d) => pre + minus(nf({...CUR, minimumFractionDigits:d ? d.length : 0, maximumFractionDigits:d ? d.length : 0}).format((sg ? -1 : 1) * +(n.replace(/,/g, '') + (d ? '.' + d : '')))));
 // Euro amounts in an answer that match nothing the page computed (allowing rounding), nor a number from the
 // conversation, nor a percentage from it applied to one of the business's figures. Shown as a caution.
 function uncheckedFigures(text, sources, said) {
@@ -1833,7 +1728,8 @@ function uncheckedFigures(text, sources, said) {
   const base = [...new Set([...known, ...saidNums].filter(x => x >= 100).map(Math.round))];
   const near = (v, k) => Math.abs(v - k) <= Math.max(100, k * .01);
   const ok = v => base.some(k => near(v, k)) || fig.some(k => pcts.some(p => near(v, k * p / 100) || near(v, k * (1 + p / 100)) || near(v, k * (1 - p / 100))));
-  const out = [], re = /€\s?(\d[\d.,]*\d|\d)(\s?(?:k|m|mio\.?|million)\b)?|\b(\d[\d.,]*\d|\d)(\s?(?:k|mio\.?|million))?\s?(?:€|eur\b|euros?\b)/gi;
+  // amounts in any language's style: €44,300 · 44.300 € · 44 300 € · € 44.300 · €4,43,000 · 44 300 евро
+  const out = [], re = /€\s?(\d{1,3}(?:[.,\u00a0\u202f ]\d{2,3})+(?:[.,]\d+)?|\d+(?:[.,]\d+)?)(\s?(?:k|m|mio\.?|million)(?!\p{L}))?|(?<![\p{L}\p{N}.,])(\d{1,3}(?:[.,\u00a0\u202f ]\d{2,3})+(?:[.,]\d+)?|\d+(?:[.,]\d+)?)(\s?(?:k|mio\.?|million))?\s?(?:€|eur(?:os?)?(?!\p{L})|евро|يورو|यूरो|欧元)/giu;
   for (const m of String(text).matchAll(re)) {
     const unit = (m[2] || m[4] || '').trim().toLowerCase();
     const x = parseNum(m[1] || m[3]) * (unit === 'k' ? 1e3 : unit ? 1e6 : 1);
@@ -1879,7 +1775,7 @@ async function ask(q) {
     a.text = chat.transport === 'claude' ? await viaClaude(ctx, history, u.sent, a, exec) : await viaServer(ctx, history, u.sent, exec);
     if (!a.text || !a.text.trim()) throw {code:'empty'};
     a.apply = chat.apply;
-    if (looksGerman(u.text)) a.text = deMoney(a.text);
+    if (inPageLanguage(a.text)) a.text = localMoney(a.text);
     a.unchecked = uncheckedFigures(a.text, [ctx, ...chat.turns.flatMap(m => m.results || [])], chat.turns.slice(0, -1).map(m => m.text || '').join('\n'));
   } catch (e) {
     a.error = e && typeof e.code === 'string' ? e.code : 'upstream_error';
@@ -1924,7 +1820,7 @@ function bubble(m, i) {
   if (m.error === 'cancelled') tail = `<p class="err quiet">${t('stopped')}</p>`;
   else if (m.error === 'access_code') tail = `<p class="err">${t('codeAsk')}</p><form class="codeform"><input type="password" autocomplete="off" aria-label="${t('codePh')}" placeholder="${t('codePh')}"><button class="btn primary" type="submit">${t('codeSave')}</button></form>`;
   else if (m.error) tail = `<p class="err">${errText(m.error)}</p>` + (RETRY.has(m.error) && i === chat.turns.length - 1 ? `<div class="btns"><button type="button" class="btn" data-retry="1">${t('retry')}</button></div>` : '');
-  else if (m.apply && !m.pending) tail = `<div class="btns"><button type="button" class="btn" data-apply="${i}">${m.applied ? t('undo') : t('apply')}</button></div>`;
+  else if (m.apply && !m.pending) tail = `<div class="btns"><button type="button" class="btn" data-apply="${i}">${m.applied ? t('undo') : t('applyPage')}</button></div>`;
   const chk = !m.error && !m.pending && m.unchecked && m.unchecked.length ? `<p class="chk">${esc(t('unchecked', m.unchecked.join(', ')))}</p>` : '';
   return `<div class="msg a">${acts}${body}${chk}${tail}</div>`;
 }
@@ -2004,7 +1900,7 @@ function setPlan(p) {
 function renderPlans() {
   const P = t('planNames'), U = t('planUnit');
   $('plans').innerHTML = PLANS.map(p => `<section class="pcard${p === state.plan ? ' cur' : ''}" aria-labelledby="pl-${p}"><h3 id="pl-${p}">${P[p]}</h3><p class="who">${t('planFor')[p]}</p>` +
-    `<div class="price">${t('planPrice')[p]}${p === 'free' ? '' : `<small>${t('perMonth')}</small>`}</div>${U[p] ? `<p class="punit">${U[p]}</p>` : ''}` +
+    `<div class="price">${eurX(PRICES[p])}${p === 'free' ? '' : `<small>${t('perMonth')}</small>`}</div>${U[p] ? `<p class="punit">${U[p]}</p>` : ''}` +
     `<ul class="ticks">${t('planFeat')[p].map(x => `<li>${x}</li>`).join('')}</ul>` +
     `<button type="button" class="btn${p === state.plan ? '' : ' primary'}" data-setplan="${p}"${p === state.plan ? ' disabled' : ''}>${p === state.plan ? t('planCurrent') : t('planUse')[p]}</button></section>`).join('');
 }
@@ -2032,11 +1928,21 @@ $('relBtn').onclick = () => {
 };
 
 /* ---------------- language ---------------- */
+// ?lang=fr opens a language directly; otherwise the saved choice, then the browser's languages, then English
+function pickLang() {
+  const ok = x => { const k = String(x || '').toLowerCase().split(/[-_]/)[0]; return T[k] ? k : null; };
+  let q = null; try { q = new URLSearchParams(location.search).get('lang'); } catch (e) {}
+  return ok(q) || ok(state.lang) || [...(navigator.languages || [navigator.language])].map(ok).find(Boolean) || 'en';
+}
 function applyLang() {
-  document.documentElement.lang = LANG;
+  const L = meta(), root = document.documentElement;
+  root.lang = L.html; root.dir = L.dir || 'ltr';
   document.querySelectorAll('[data-t]').forEach(el => { const v = t(el.dataset.t); if (typeof v === 'string') el.textContent = v; });
-  document.querySelectorAll('.seg [data-lang]').forEach(b => b.setAttribute('aria-pressed', b.dataset.lang === LANG));
-  $('foot1').textContent = t('foot1') + month(D.current.asOf) + '.'; $('foot2').textContent = t('foot2'); $('foot3').textContent = t('foot3');
+  document.querySelectorAll('[data-tl]').forEach(el => { const v = t(el.dataset.tl); if (typeof v === 'string') el.setAttribute('aria-label', v); });
+  $('langSel').value = LANG; $('langCode').textContent = LANG.toUpperCase();
+  $('langSel').setAttribute('aria-label', LANG === 'en' ? t('language') : `${t('language')} (Language)`);   // findable in any language
+  for (const k in CW) delete CW[k];
+  $('foot1').textContent = t('foot1', month(D.current.asOf)); $('foot2').textContent = t('foot2'); $('foot3').textContent = t('foot3');
   if (window.MRM_LEGAL) { $('legal').hidden = false; $('legal').innerHTML = `<a href="impressum.html">${t('legalNotice')}</a><a href="datenschutz.html">${t('privacy')}</a>`; }
   $('upsList').innerHTML = t('upsList').map(x => `<li>${x}</li>`).join('');
   $('relBtn').textContent = t($('relBody').hidden ? 'show' : 'hide');
@@ -2045,7 +1951,11 @@ function applyLang() {
   fillSelects(); renderPresets(); renderTabs(); fillForm(); regimeCard(); compass(); timeline(); renderClients(); update();
   if (chat.open) renderChat();
 }
-document.querySelectorAll('.seg [data-lang]').forEach(b => b.onclick = () => { LANG = b.dataset.lang; state.lang = LANG; save(); applyLang(); });
+$('langSel').innerHTML = LANGS.map(k => `<option value="${k}" lang="${T[k]._.html}">${T[k]._.name}</option>`).join('');
+$('langSel').onchange = e => {
+  LANG = e.target.value; state.lang = LANG; used = true; save(); applyLang();
+  try { const u = new URL(location.href); if (u.searchParams.has('lang')) { u.searchParams.set('lang', LANG); history.replaceState(null, '', u); } } catch (e) {}
+};
 
 /* ---------------- phone layout: the inputs live in a pull-up sheet ---------------- */
 const mqSheet = matchMedia('(max-width: 920px)');
@@ -2083,8 +1993,8 @@ function update() {
 }
 let frame = 0;
 function scheduleUpdate() { if (!frame) frame = requestAnimationFrame(() => { frame = 0; update(); }); }   // one redraw per frame while dragging
-LANG = state.lang === 'de' ? 'de' : 'en';
-LAST.bt = {n:0, x:0, rate:0, pval:1, top:'', why:''};
+LANG = pickLang();
+LAST.bt = {n:0, x:0, rate:0, pval:1, pass:true, ranked:[]};
 applyLang();
 initStore();
 initAssistant();

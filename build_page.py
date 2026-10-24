@@ -8,6 +8,10 @@ the legal notice and privacy page once docs/impressum.html and docs/datenschutz.
 The Business assistant's instructions and tool definitions live in assistant/ and are shared with the assistant
 server (worker/), so the page and the server always agree. When assistant/config.json names the server's URL, the
 website build talks to it; a --bare build (Claude artifact) uses Claude through the viewer's account instead.
+
+The page's text lives in i18n/, one file per language (en.js is the source). The build stops when a file repeats a
+key, which JavaScript would otherwise allow silently, and warns about keys a translation is missing (the page shows
+the English text for those).
 """
 import argparse
 import base64
@@ -19,6 +23,8 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--data", default="docs/data.json")
 ap.add_argument("--template", default="template.html")
 ap.add_argument("--font", default="assets/archivo-latin-wdth-normal.woff2")
+ap.add_argument("--font-ext", default="assets/archivo-pl-tr-wdth-normal.woff2", help="the Polish and Turkish letters")
+ap.add_argument("--i18n", default="i18n", help="folder with one text file per language")
 ap.add_argument("--out", default="docs/index.html")
 ap.add_argument("--assistant", default="assistant", help="folder with prompt.txt, tools.json and config.json")
 ap.add_argument("--bare", action="store_true", help="page only, without the <html>/<head> wrapper")
@@ -27,7 +33,7 @@ a = ap.parse_args()
 
 out = pathlib.Path(a.out)
 page = pathlib.Path(a.template).read_text(encoding="utf-8")
-for key in ("__DATA__", "__FONT_WOFF2__", "__ASSISTANT_PROMPT__", "__ASSISTANT_TOOLS__"):
+for key in ("__DATA__", "__FONT_WOFF2__", "__FONT_EXT_WOFF2__", "__I18N__", "__ASSISTANT_PROMPT__", "__ASSISTANT_TOOLS__"):
     if page.count(key) != 1:
         raise SystemExit(f"{a.template} must contain {key} exactly once")
 spec = pathlib.Path(a.assistant)
@@ -38,7 +44,96 @@ cfg = json.loads((spec / "config.json").read_text(encoding="utf-8")) if (spec / 
 page = page.replace("__ASSISTANT_PROMPT__", safe(json.dumps(prompt))).replace("__ASSISTANT_TOOLS__", safe(json.dumps(tools)))
 data = safe(pathlib.Path(a.data).read_text(encoding="utf-8"))
 font = base64.b64encode(pathlib.Path(a.font).read_bytes()).decode("ascii")
-page = page.replace("__FONT_WOFF2__", font).replace("__DATA__", data)
+font_ext = base64.b64encode(pathlib.Path(a.font_ext).read_bytes()).decode("ascii")
+
+
+def skip_string(src, i):
+    q, j = src[i], i + 1
+    while src[j] != q:
+        j += 2 if src[j] == "\\" else 1
+    return j + 1
+
+
+def skip_template(src, i):                                              # `...${ expr }...`, nested to any depth
+    j = i + 1
+    while src[j] != "`":
+        if src[j] == "\\":
+            j += 2
+        elif src.startswith("${", j):
+            j, depth = j + 2, 1
+            while depth:
+                c = src[j]
+                if c in "'\"":
+                    j = skip_string(src, j); continue
+                if c == "`":
+                    j = skip_template(src, j); continue
+                depth += {"{": 1, "}": -1}.get(c, 0)
+                j += 1
+        else:
+            j += 1
+    return j + 1
+
+
+def object_keys(src):
+    """Keys of every object literal in a language file: the top-level ones in order, and the first repeated key."""
+    frames, top, i, n, expect = [], [], 0, len(src), False
+    while i < n:
+        c = src[i]
+        if src.startswith("//", i):
+            i = src.find("\n", i) % (n + 1) or n; continue
+        if src.startswith("/*", i):
+            i = src.index("*/", i) + 2; continue
+        if c in "'\"":
+            j = skip_string(src, i)
+            if expect and frames and frames[-1] is not None:
+                key = src[i + 1:j - 1]
+                if key in frames[-1]:
+                    return top, key
+                frames[-1].add(key); top += [key] if len(frames) == 1 else []
+            expect, i = False, j; continue
+        if c == "`":
+            expect, i = False, skip_template(src, i); continue
+        if c in "{[(":
+            frames.append(set() if c == "{" else None); expect = c == "{"
+        elif c in "}])":
+            frames.pop(); expect = False
+        elif c == ",":
+            expect = bool(frames) and frames[-1] is not None
+        elif expect and (c.isalpha() or c in "_$"):
+            j = i
+            while j < n and (src[j].isalnum() or src[j] in "_$"):
+                j += 1
+            key = src[i:j]
+            if key in frames[-1]:
+                return top, key
+            frames[-1].add(key); top += [key] if len(frames) == 1 else []
+            expect, i = False, j; continue
+        elif not c.isspace():
+            expect = False
+        i += 1
+    return top, None
+
+
+packs, keys = {}, {}
+for f in sorted(pathlib.Path(a.i18n).glob("*.js")):
+    src = re.sub(r"^\s*/\*.*?\*/", "", f.read_text(encoding="utf-8"), flags=re.S).strip().rstrip(";")
+    if not (src.startswith("{") and src.endswith("}")):
+        raise SystemExit(f"{f}: must be one object literal {{...}}")
+    top, dup = object_keys(src)
+    if dup:
+        raise SystemExit(f"{f}: the key {dup!r} appears twice")
+    if top[:1] != ["_"]:
+        raise SystemExit(f"{f}: must start with _: {{name, en, locale, html}}")
+    packs[f.stem], keys[f.stem] = src, top
+if "en" not in packs:
+    raise SystemExit(f"{a.i18n}/en.js is missing")
+for code, top in keys.items():
+    missing = [k for k in keys["en"] if k not in top]
+    if missing:
+        print(f"warning: {code}.js has no text for {', '.join(missing[:8])}{' ...' if len(missing) > 8 else ''} (English is shown)")
+order = ["en"] + sorted(k for k in packs if k != "en")
+i18n = safe("{" + ",\n".join(f"{code}:{packs[code]}" for code in order) + "}")
+page = page.replace("__FONT_WOFF2__", font).replace("__FONT_EXT_WOFF2__", font_ext).replace("__I18N__", i18n).replace("__DATA__", data)
 
 if a.bare:
     html = page
@@ -79,4 +174,4 @@ else:
             + "</head><body>" + body + "</body></html>")
 
 out.write_text(html, encoding="utf-8")
-print(f"wrote {out} ({len(html) // 1024} KB){' flags: ' + ', '.join(flags) if not a.bare and flags else ''}")
+print(f"wrote {out} ({len(html) // 1024} KB, {len(packs)} languages){' flags: ' + ', '.join(flags) if not a.bare and flags else ''}")

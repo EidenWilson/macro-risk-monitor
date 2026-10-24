@@ -16,7 +16,7 @@ Built by Eiden Wilson Neralaily (data and modelling) and Channappa (finance and 
 
 - **End-to-end data pipeline.** 21 series from the ECB, Eurostat and FRED, each shifted by its publication lag, stored in SQLite and refreshed twice a month by GitHub Actions, which also opens an issue when the economic regime changes.
 - **Risk model.** Filtered historical simulation over 280+ past 12-month windows, conditional on the current regime, with a 4-state hidden Markov model as a second opinion and an out-of-sample backtest since 2008 (Kupiec test).
-- **Product.** Answer first, Free, Pro and Business plans, DATEV import (SKR03 and SKR04), a PDF report, English and German, a phone layout, no cookies, and no third-party requests outside the Business assistant.
+- **Product.** Answer first, Free, Pro and Business plans, DATEV import (SKR03 and SKR04), a PDF report, 13 languages (Arabic right to left), a phone layout, no cookies, and no third-party requests outside the Business assistant.
 - **AI assistant (Business).** An open model (Gemma 4) on Cloudflare Workers AI, on the free plan. It never computes numbers itself: it calls tools that run the page's own risk model. Client names never leave the browser, and a routing step plus a check of every euro amount keep it from inventing figures.
 - **Tested.** Server tests and browser checks (plans, phone layout, the assistant's tools and conversation loop) run on every push.
 
@@ -43,7 +43,7 @@ Built by Eiden Wilson Neralaily (data and modelling) and Channappa (finance and 
 | Report | One-page PDF for a bank or tax advisor meeting | Pro |
 | Advisor mode | Save many businesses and rank them by risk, with an alert threshold | Business |
 | Risk assistant | Chat that explains the results, runs what-ifs on the model, compares clients and drafts client notes | Business |
-| English and German | Full UI in both languages; reads 900.000 and 900,000 either way | All |
+| 13 languages | English, German, Spanish, French, Italian, Portuguese, Turkish, Polish, Ukrainian, Russian, Arabic (right to left), Hindi and Chinese. Opens in the browser's language; money, percentages and months follow each language (44.300 €, 44 300 €, €4,43,000, 2026年9月); reads 900.000, 900,000 or Arabic-Indic digits either way | All |
 | Phone layout | Results first; the inputs open as a sheet from the bottom | All |
 
 Prices on the plans dialog (Free, Pro €19 a month, Business €149 a month per office for up to 50 clients) are placeholders. This is a prototype, so anyone can switch plans to try them; `?plan=business` (or `#business` in the Claude preview) opens a plan directly.
@@ -112,7 +112,7 @@ pip install -r requirements.txt
 echo "FRED_API_KEY=your_key" > .env          # free key from fred.stlouisfed.org
 python pipeline.py --db macro.db --start 2000-01
 python build_data.py --db macro.db --out docs/data.json
-python build_page.py                           # writes docs/index.html (font from assets/, jsPDF from docs/vendor/)
+python build_page.py                           # writes docs/index.html (text from i18n/, fonts from assets/, jsPDF from docs/vendor/)
 python assets/og_image.py                      # optional: the link-preview picture docs/og.png
 ```
 
@@ -137,11 +137,15 @@ curl https://mrm-assistant.<your-subdomain>.workers.dev/health
 
 Then put that URL in `assistant/config.json` (`{"url": "https://mrm-assistant..."}`), run `python build_page.py` and push. Optional: `npx wrangler secret put ACCESS_CODE` so only people you give the code to can use it. The default model, the other models a page may ask for (`MODELS`), the allowed origins and how the model calls tools (`TOOL_MODE`) are set in `worker/wrangler.toml`. To switch the website to another model from `MODELS`, set `"model"` in `assistant/config.json` and rebuild; no redeploy is needed. If a question fails, `npx wrangler tail` in `worker/` shows the model's error while you ask again.
 
+## Languages
+
+All text lives in `i18n/`, one file per language; `en.js` is the source and explains the format. To add a language, copy `en.js`, translate the values, set its `_` line (name in the menu, locale for numbers and dates, `dir: 'rtl'` for right-to-left scripts, `pdf: true` only for Western European languages) and rebuild. `build_page.py` stops on a key written twice and warns about missing ones (the page shows English for those); `tests/test_page.py` checks every language for matching keys, broken text, sideways scrolling and the right-to-left layout. Archivo covers Latin scripts (with a small embedded subset for Polish and Turkish letters); Cyrillic, Arabic, Hindi and Chinese use the visitor's system fonts. The PDF's built-in fonts write Western European languages only, so other languages get an English report and are told so. The assistant answers in the language the question is written in.
+
 ## Tests
 
 ```bash
 cd worker && npm test                                   # assistant server: CORS, limits, access code, all model output formats
-python build_page.py && python tests/test_page.py       # browser: plans, phone layout, tools, assistant loop with a fake server and a fake Claude
+python build_page.py && python tests/test_page.py       # browser: plans, phone layout, tools, assistant loop, all 13 languages
 ```
 
 The browser checks need Playwright (`pip install playwright && python -m playwright install chromium`). They check that the assistant's tools reproduce the page's own numbers and that no client name appears in anything sent to the server or to Claude.

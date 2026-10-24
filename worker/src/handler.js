@@ -3,7 +3,11 @@
 // The page runs the tools itself (they need the in-browser risk model and the client data, which never
 // leave the browser). This server adds the fixed instructions and tool definitions, calls Workers AI,
 // and returns either text or tool calls in one shape, whatever format the chosen model answers in.
-// It keeps nothing: no logs of questions, no storage.
+// It keeps nothing: no logs of questions, no storage. Only model errors are logged, for `wrangler tail`.
+//
+// Tool calling has two modes. "native" passes the tools to the model; "prompt" lists them in the instructions
+// and reads the one-line JSON the model replies with, which works with any chat model. TOOL_MODE "auto" (the
+// default) tries native first and, once a model has refused tools but answered without them, uses prompt.
 
 export const LIMITS = {
   bodyChars: 64 * 1024,   // whole request
@@ -19,6 +23,9 @@ export const DEFAULT_MODEL = '@cf/mistralai/mistral-small-3.1-24b-instruct';
 
 const model = env => (env.MODEL || DEFAULT_MODEL).trim();
 const origins = env => String(env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim().replace(/\/$/, '')).filter(Boolean);
+const toolMode = env => (env.TOOL_MODE === 'native' || env.TOOL_MODE === 'prompt') ? env.TOOL_MODE : 'auto';
+let nativeRefused = false;                                   // per isolate: this model answers without tools but not with them
+export const resetToolMemory = () => { nativeRefused = false; };
 
 function json(body, status, headers = {}) {
   return new Response(JSON.stringify(body), {status, headers: {'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...headers}});
@@ -34,6 +41,8 @@ function sameCode(a, b) {
 
 const size = x => { try { return JSON.stringify(x).length; } catch { return Infinity; } };
 const isObj = x => !!x && typeof x === 'object' && !Array.isArray(x);
+const errText = e => String((e && e.message) || e).slice(0, 300);
+const isQuota = e => /neuron|allocation|4006|daily free/i.test(errText(e));
 
 export function validate(body, spec) {
   if (!isObj(body)) return {error: 'body must be a JSON object'};
@@ -63,10 +72,18 @@ export function validate(body, spec) {
   return {messages, context, final: body.final === true};
 }
 
+// prompt mode: the tools are described in the instructions and called with one line of JSON
+export function toolInstructions(tools) {
+  const list = tools.map(t => JSON.stringify({tool: t.name, description: t.description,
+    arguments: Object.fromEntries(Object.entries((t.parameters && t.parameters.properties) || {}).map(([k, p]) => [k, `${p.type}: ${p.description}`]))}));
+  return '\n\nCALLING A TOOL\nTo call a tool, reply with only one line of JSON and no other text: {"tool": "<name>", "arguments": {<argument>: <value>}}\n' +
+    'Use only the tool names and argument names listed below. When you have the result, answer the user in plain text, not JSON.\n' + list.join('\n');
+}
+
 // Tool turns are written as plain text, so the conversation only ever uses system/user/assistant roles.
 // That works with every chat template on Workers AI, including those that require strict alternation.
-export function buildMessages(prompt, v) {
-  const out = [{role: 'system', content: prompt + '\n\nDATA (the page right now, JSON):\n' + JSON.stringify(v.context)}];
+export function buildMessages(prompt, v, {tools = null} = {}) {
+  const out = [{role: 'system', content: prompt + (tools ? toolInstructions(tools) : '') + '\n\nDATA (the page right now, JSON):\n' + JSON.stringify(v.context)}];
   const push = (role, content) => {
     const last = out[out.length - 1];
     if (last.role === role) last.content += '\n\n' + content;
@@ -76,7 +93,7 @@ export function buildMessages(prompt, v) {
     if (v.messages[i].role !== 'tool') { push(v.messages[i].role, v.messages[i].content); i++; continue; }
     const group = [];
     while (i < v.messages.length && v.messages[i].role === 'tool') group.push(v.messages[i++]);
-    push('assistant', group.map(g => `Calling ${g.name} ${JSON.stringify(g.args)}`).join('\n'));
+    push('assistant', group.map(g => tools ? JSON.stringify({tool: g.name, arguments: g.args}) : `Calling ${g.name} ${JSON.stringify(g.args)}`).join('\n'));
     push('user', group.map(g => `Result of ${g.name} (computed by the page, not typed by the user):\n${JSON.stringify(g.result)}`).join('\n\n')
       + (v.final ? '\n\nAnswer the question now with these results. Do not call more tools.' : ''));
   }
@@ -87,24 +104,26 @@ export function buildMessages(prompt, v) {
 function toCall(c) {
   if (!isObj(c)) return null;
   const f = isObj(c.function) ? c.function : c;
-  let args = f.arguments ?? f.parameters ?? {};
+  const name = typeof f.name === 'string' ? f.name : typeof f.tool === 'string' ? f.tool : null;
+  let args = f.arguments ?? f.parameters ?? f.args ?? {};
   if (typeof args === 'string') { try { args = JSON.parse(args || '{}'); } catch { args = {}; } }
   if (!isObj(args)) args = {};
-  return typeof f.name === 'string' ? {id: typeof c.id === 'string' ? c.id : null, name: f.name, args} : null;
+  return name ? {id: typeof c.id === 'string' ? c.id : null, name, args} : null;
 }
 
-// some models write the tool call into the text instead of tool_calls
+// a tool call written into the text: prompt mode asks for exactly that, and some models do it anyway
 function callFromText(text) {
   const s = text.trim().replace(/^<\|python_tag\|>/, '').replace(/^\[TOOL_CALLS\]/, '').replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
-  if (!/^[[{]/.test(s)) return null;
-  try { let j = JSON.parse(s); if (Array.isArray(j)) j = j[0]; return toCall(j); } catch { return null; }
+  const a = s.search(/[[{]/), b = Math.max(s.lastIndexOf('}'), s.lastIndexOf(']'));
+  if (a < 0 || b <= a) return null;
+  try { let j = JSON.parse(s.slice(a, b + 1)); if (Array.isArray(j)) j = j[0]; return toCall(j); } catch { return null; }
 }
 
 // Workers AI answers in three shapes depending on the model:
 //   {response, tool_calls: [{name, arguments}]}                        (Llama 3.x, Mistral)
 //   {response, tool_calls: [{id, type, function: {name, arguments}}]}   (Llama 4)
 //   {choices: [{message: {content, tool_calls: [...]}}]}                (Qwen 3, gpt-oss: OpenAI style)
-export function normalize(out, spec) {
+export function normalize(out, spec, {fromText = true} = {}) {
   const names = new Set(spec.tools.map(t => t.name));
   if (out == null) return {text: '', calls: []};
   if (typeof out === 'string') out = {response: out};
@@ -113,8 +132,14 @@ export function normalize(out, spec) {
   if (text != null && typeof text !== 'string') text = JSON.stringify(text);
   text = String(text || '').replace(/<think>[\s\S]*?<\/think>/g, '').replace(/^[\s\S]*?<\/think>/, '');
   calls = (Array.isArray(calls) ? calls : []).map(toCall).filter(c => c && names.has(c.name));
-  if (!calls.length) { const c = callFromText(text); if (c && names.has(c.name)) { calls = [c]; text = ''; } }
+  if (!calls.length && fromText) { const c = callFromText(text); if (c && names.has(c.name)) { calls = [c]; text = ''; } }
   return {text: text.trim(), calls: calls.slice(0, 3)};
+}
+
+function fail(e, cors) {
+  const detail = errText(e), quota = isQuota(e);
+  console.error('Workers AI error:', detail);
+  return json({error: quota ? 'quota' : 'upstream_error', detail}, quota ? 429 : 502, cors);
 }
 
 export async function handle(request, env, spec) {
@@ -123,7 +148,7 @@ export async function handle(request, env, spec) {
   const allowed = origin && origins(env).includes(origin);
   const cors = allowed ? {'Access-Control-Allow-Origin': origin, 'Vary': 'Origin'} : {'Vary': 'Origin'};
 
-  if (url.pathname === '/health') return json({ok: true, model: model(env)}, 200, cors);
+  if (url.pathname === '/health') return json({ok: true, model: model(env), tools: toolMode(env) === 'auto' && nativeRefused ? 'prompt' : toolMode(env)}, 200, cors);
   if (request.method === 'OPTIONS') {
     if (!allowed) return new Response(null, {status: 403});
     return new Response(null, {status: 204, headers: {...cors, 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'content-type, x-access-code', 'Access-Control-Max-Age': '86400'}});
@@ -144,15 +169,21 @@ export async function handle(request, env, spec) {
   const v = validate(body, spec);
   if (v.error) return json({error: 'bad_request', message: v.error}, 400, cors);
 
-  const params = {messages: buildMessages(spec.prompt, v), max_tokens: LIMITS.maxTokens, temperature: 0.2};
-  if (!v.final) params.tools = spec.tools;
-  let out;
+  const tm = toolMode(env);
+  const mode = v.final ? 'none' : (tm === 'prompt' || (tm === 'auto' && nativeRefused)) ? 'prompt' : 'native';
+  const run = m => env.AI.run(model(env), {
+    messages: buildMessages(spec.prompt, v, {tools: m === 'prompt' ? spec.tools : null}),
+    max_tokens: LIMITS.maxTokens, temperature: 0.2,
+    ...(m === 'native' ? {tools: spec.tools} : {}),
+  });
+  let out, used = mode;
   try {
-    out = await env.AI.run(model(env), params);
+    out = await run(mode);
   } catch (e) {
-    const quota = /neuron|allocation|4006|quota|capacity/i.test(String(e && e.message || e));
-    return json({error: quota ? 'quota' : 'upstream_error'}, quota ? 429 : 502, cors);
+    if (mode !== 'native' || tm !== 'auto' || isQuota(e)) return fail(e, cors);
+    console.error('Native tool calling failed, trying prompted tools:', errText(e));
+    try { out = await run('prompt'); used = 'prompt'; nativeRefused = true; } catch (e2) { return fail(e2, cors); }
   }
-  const r = normalize(out, spec);
-  return json({text: r.text, calls: v.final ? [] : r.calls}, 200, cors);
+  const r = normalize(out, spec, {fromText: !v.final});
+  return json({text: r.text, calls: v.final ? [] : r.calls, mode: used}, 200, cors);
 }

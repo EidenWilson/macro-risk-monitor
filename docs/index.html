@@ -1715,7 +1715,7 @@ async function postChat(body) {
   try { r = await fetch(String(window.MRM_ASSISTANT_URL).replace(/\/+$/, '') + '/chat', {method:'POST', headers, body:JSON.stringify(body), signal:chat.ctl.signal}); }
   catch (e) { throw {code:e && e.name === 'AbortError' ? 'cancelled' : 'offline'}; }
   let j = null; try { j = await r.json(); } catch (e) {}
-  if (!r.ok) throw {code:(j && j.error) || (r.status === 429 ? 'rate_limited' : 'upstream_error')};
+  if (!r.ok) { if (j && j.detail) console.warn('Assistant server:', j.detail); throw {code:(j && j.error) || (r.status === 429 ? 'rate_limited' : 'upstream_error')}; }
   return j || {};
 }
 // the page runs the tool loop: at most three tool rounds, then the server is asked to answer without tools

@@ -2,7 +2,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {handle, normalize, buildMessages, validate, LIMITS} from '../src/handler.js';
+import {handle, normalize, buildMessages, validate, LIMITS, resetToolMemory} from '../src/handler.js';
 
 const root = new URL('../../assistant/', import.meta.url);
 const SPEC = {prompt: readFileSync(new URL('prompt.txt', root), 'utf8').trim(), tools: JSON.parse(readFileSync(new URL('tools.json', root), 'utf8'))};
@@ -37,10 +37,11 @@ test('requests from other sites or without an origin are refused before the mode
 });
 
 test('a question goes to the model with the fixed instructions, the page data and the tools', async () => {
+  resetToolMemory();
   const {env: e, calls} = env({response: 'Energy is the biggest risk.'});
   const r = await handle(req(ask), e, SPEC);
   assert.equal(r.status, 200);
-  assert.deepEqual(await r.json(), {text: 'Energy is the biggest risk.', calls: []});
+  assert.deepEqual(await r.json(), {text: 'Energy is the biggest risk.', calls: [], mode: 'native'});
   const {m, p} = calls[0];
   assert.equal(m, '@cf/test/model');
   assert.equal(p.messages[0].role, 'system');
@@ -89,7 +90,7 @@ test('tool results are sent back as plain turns that alternate user and assistan
 test('the last round is asked without tools so the model has to answer', async () => {
   const {env: e, calls} = env({response: 'Done.', tool_calls: [{name: 'shock', arguments: {}}]});
   const r = await handle(req({...ask, messages: [...ask.messages, {role: 'tool', name: 'shock', args: {}, result: {}}], final: true}), e, SPEC);
-  assert.deepEqual(await r.json(), {text: 'Done.', calls: []});
+  assert.deepEqual(await r.json(), {text: 'Done.', calls: [], mode: 'none'});
   assert.equal(calls[0].p.tools, undefined);
 });
 
@@ -110,7 +111,9 @@ test('rate limit and the daily free allowance are reported as 429', async () => 
   const r2 = await handle(req(ask), quota.env, SPEC);
   assert.equal(r2.status, 429); assert.equal((await r2.json()).error, 'quota');
   const down = env(new Error('InferenceUpstreamError: timeout'));
-  assert.equal((await handle(req(ask), down.env, SPEC)).status, 502);
+  const r3 = await handle(req(ask), down.env, SPEC);
+  assert.equal(r3.status, 502);
+  assert.deepEqual(await r3.json(), {error: 'upstream_error', detail: 'InferenceUpstreamError: timeout'});
 });
 
 test('malformed or oversized requests never reach the model', async () => {
@@ -132,8 +135,8 @@ test('malformed or oversized requests never reach the model', async () => {
 
 test('health check and unknown paths', async () => {
   const {env: e} = env({response: 'ok'});
-  const h = await handle(req(null, {method: 'GET', path: '/health', origin: null}), e, SPEC);
-  assert.deepEqual(await h.json(), {ok: true, model: '@cf/test/model'});
+  const h = await (await handle(req(null, {method: 'GET', path: '/health', origin: null}), e, SPEC)).json();
+  assert.equal(h.ok, true); assert.equal(h.model, '@cf/test/model'); assert.ok(['auto', 'native', 'prompt'].includes(h.tools));
   assert.equal((await handle(req(null, {method: 'GET', path: '/'}), e, SPEC)).status, 404);
   assert.equal((await handle(req(null, {method: 'GET'}), e, SPEC)).status, 405);
 });
@@ -144,4 +147,52 @@ test('tool definitions fit the Workers AI schema (every parameter has a type and
     for (const [k, p] of Object.entries(t.parameters.properties)) assert.ok(p.type && p.description, `${t.name}.${k}`);
     assert.ok(JSON.stringify(t.parameters).length < 4096, `${t.name} schema under 4 KB`);
   }
+});
+
+test('a model that refuses native tools is asked again with the tools in its instructions, and remembered', async () => {
+  resetToolMemory();
+  const answer = p => { if (p.tools) throw new Error('AiError: 5006: tools not supported'); return {response: 'Let me run that.\n{"tool": "shock", "arguments": {"energy_pct": 30}}'}; };
+  const {env: e, calls} = env(answer);
+  const r1 = await (await handle(req({...ask, messages: [{role: 'user', content: 'What if energy rises 30%?'}]}), e, SPEC)).json();
+  assert.deepEqual(r1, {text: '', calls: [{id: null, name: 'shock', args: {energy_pct: 30}}], mode: 'prompt'});
+  assert.equal(calls.length, 2);
+  assert.ok(calls[0].p.tools && !calls[1].p.tools);
+  const sys = calls[1].p.messages[0].content;
+  assert.match(sys, /CALLING A TOOL/);
+  assert.match(sys, /"tool":"what_if"/); assert.match(sys, /"tool":"compare_clients"/);
+  assert.ok(sys.indexOf('CALLING A TOOL') < sys.indexOf('DATA (the page right now'));
+  const r2 = await (await handle(req(ask), e, SPEC)).json();          // straight to prompted tools now
+  assert.equal(r2.mode, 'prompt');
+  assert.equal(calls.length, 3);
+  assert.equal(calls[2].p.tools, undefined);
+  const h = await (await handle(req(null, {method: 'GET', path: '/health', origin: null}), e, SPEC)).json();
+  assert.equal(h.tools, 'prompt');
+  resetToolMemory();
+});
+
+test('in prompt mode earlier tool calls are shown as the same JSON, and the last round has no tool instructions', () => {
+  const v = validate({context: {}, messages: [{role: 'user', content: 'Energy +30%?'}, {role: 'tool', name: 'shock', args: {energy_pct: 30}, result: {total_effect: -7000}}]}, SPEC);
+  const m = buildMessages(SPEC.prompt, v, {tools: SPEC.tools});
+  assert.equal(m[2].content, '{"tool":"shock","arguments":{"energy_pct":30}}');
+  const fin = buildMessages(SPEC.prompt, {...v, final: true});
+  assert.doesNotMatch(fin[0].content, /CALLING A TOOL/);
+});
+
+test('TOOL_MODE prompt never sends tools; TOOL_MODE native never falls back', async () => {
+  resetToolMemory();
+  const p = env({response: 'ok'}, {TOOL_MODE: 'prompt'});
+  assert.equal((await (await handle(req(ask), p.env, SPEC)).json()).mode, 'prompt');
+  assert.equal(p.calls[0].p.tools, undefined);
+  const n = env(p2 => { if (p2.tools) throw new Error('AiError: 5006: bad tools'); return {response: 'ok'}; }, {TOOL_MODE: 'native'});
+  const r = await handle(req(ask), n.env, SPEC);
+  assert.equal(r.status, 502);
+  assert.equal(n.calls.length, 1);
+  resetToolMemory();
+});
+
+test('the final answer is never read as a tool call', async () => {
+  const {env: e} = env({response: '{"tool": "shock", "arguments": {}}'});
+  const r = await (await handle(req({...ask, messages: [...ask.messages, {role: 'tool', name: 'shock', args: {}, result: {}}], final: true}), e, SPEC)).json();
+  assert.deepEqual(r.calls, []);
+  assert.equal(r.text, '{"tool": "shock", "arguments": {}}');
 });

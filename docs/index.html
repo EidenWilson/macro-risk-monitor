@@ -1636,6 +1636,7 @@ function dampers(v, used) {
   const n = ['Moves build up evenly over the 12 months, so the year feels about half of the full move.'];
   if ('energy_pct' in used && v.energy > 0 && v.fixed > 0) n.push(`${v.fixed}% of the energy bill is on a fixed price ${v.fixedEnd >= 12 ? 'for the whole year' : `for ${v.fixedEnd} more months`}.`);
   if (('purchase_prices_pct' in used || ('inflation_pct' in used && effInput(v) === 'cpi')) && v.food > 0 && v.pass > 0) n.push(`${v.pass}% of purchase price rises are passed on to customers.`);
+  if ('energy_pct' in used && v.pass > 0) n.push('Passing on price rises to customers applies to purchases only; energy costs are not passed on.');
   if ('euribor_pp' in used && v.loan > 0 && v.loanReset > 0) n.push(`The loan rate stays fixed for ${v.loanReset} more months.`);
   if ('sales_index_pct' in used && effDemand(v)) n.push(`Sales follow ${T.en.demandOpts[effDemand(v)].toLowerCase()} with a sensitivity of ${v.beta}; each euro of lost sales costs the ${v.margin}% contribution margin.`);
   return n;

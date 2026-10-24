@@ -1626,6 +1626,12 @@ function summarize(v, H) {
     share_of_profit_at_risk_pct:v.ebit > 0 ? Math.round(Math.max(0, -p5) / v.ebit * 100) : null, yearly_protection_cost:r100(hedgeCost(v, H)),
     lowest_cash_in_bad_year:r100(c.lowest), cash_runs_short:runsShort(c.outIdx)};
 }
+const E = x => '€' + Math.round(Math.abs(r100(x))).toLocaleString('en-GB');
+const P = x => (r100(x) < 0 ? 'minus ' : '') + E(x);
+const LINE_WORDS = {sales:'lower sales', loan:'loan interest', energy:'energy', inputs:'materials', rent:'rent', wages:'wages', usd:'the US dollar', fuel:'fuel'};
+const PROTECT_WORDS = {loan:['the loan rate fixed', 'a floating loan rate'], energy:['all energy prices fixed', 'energy prices not fixed'], pass:['80% of price rises passed on', 'price rises not passed on'], usd:['the dollar rate locked', 'the dollar rate not locked']};
+const SHOCK_WORDS = {energy_pct:'energy prices', purchase_prices_pct:'purchase prices', inflation_pct:'inflation', sales_index_pct:'sales', eur_usd_pct:'EUR/USD', oil_pct:'oil prices'};
+const enMonth = p => ym(p).toLocaleString('en-GB', {month:'long', year:'numeric'});
 // facts from the inputs that explain why a market move hits the business less than its full size
 function dampers(v, used) {
   const n = ['Moves build up evenly over the 12 months, so the year feels about half of the full move.'];
@@ -1647,8 +1653,13 @@ const TOOLS = {
     if (!labels.length) throw new Error('Nothing to change. Use the parameter names from the tool description.');
     act(t('actWhatIf', labels.join(', ')));
     chat.apply = {values:vals, hedges:H};
-    const before = summarize({...V}, state.hedges), after = summarize(v, H);
-    return {changed, ...(ignored.length ? {ignored} : {}), before, after,
+    const before = summarize({...V}, state.hedges), after = summarize(v, H), d = after.profit_in_bad_year - before.profit_in_bad_year;
+    const words = Object.entries(changed).map(([k, x]) => k in PROTECT ? PROTECT_WORDS[PROTECT[k]][x ? 0 : 1] :
+      FIELDS[k][1] === 'eur' || FIELDS[k][1] === 'signed' ? `${k.replace(/_/g, ' ')} ${P(x)}` : `${k.replace(/_pct$/, '').replace(/_/g, ' ')} ${x}${/_pct$/.test(k) ? '%' : /months/.test(k) ? ' months' : ''}`);
+    const summary = `With ${words.join(', ')}: profit in a bad year is ${P(after.profit_in_bad_year)} instead of ${P(before.profit_in_bad_year)} (${E(d)} ${d >= 0 ? 'better' : 'worse'}); ` +
+      `in a typical year ${P(after.profit_in_typical_year)} instead of ${P(before.profit_in_typical_year)}; lowest cash in a bad year ${P(after.lowest_cash_in_bad_year)} instead of ${P(before.lowest_cash_in_bad_year)}.` +
+      (after.yearly_protection_cost !== before.yearly_protection_cost ? ` These figures already include the protection's yearly cost of ${E(after.yearly_protection_cost)}.` : '');
+    return {summary, changed, ...(ignored.length ? {ignored} : {}), before, after,
       effect:{on_profit_in_bad_year:after.profit_in_bad_year - before.profit_in_bad_year, on_profit_in_typical_year:after.profit_in_typical_year - before.profit_in_typical_year,
         on_lowest_cash_in_bad_year:after.lowest_cash_in_bad_year - before.lowest_cash_in_bad_year},
       how_to_read:HOW_TO_READ};
@@ -1670,9 +1681,13 @@ const TOOLS = {
     for (const k in sh.cats) { const d = -(sh.cats[k] - base.cats[k]); if (Math.abs(d) >= 50) by[LINE[k]] = r100(d); }
     if ('sales_index_pct' in used && !effDemand(v)) notes.push('This business is set to ignore sales moves, so the sales shock has no effect.');
     if ('purchase_prices_pct' in used && 'inflation_pct' in used && effInput(v) === 'cpi') notes.push('Purchases follow general inflation here, so purchase_prices_pct also replaced inflation_pct.');
-    const without = r100(v.ebit - base.total - hc), effect = r100(base.total - sh.total);
-    return {shock:used, this_year_profit:r100(v.ebit), next_year_profit_without_shock:without, next_year_profit_with_shock:without + effect, effect_of_shock:effect, effect_by_line:by,
-      why_the_effect_is_smaller_than_the_move:notes, lowest_cash_with_shock:r100(Math.min(...cash)), cash_runs_short:runsShort(cash.findIndex(x => x < -v.credit)),
+    const without = r100(v.ebit - base.total - hc), effect = r100(base.total - sh.total), low = r100(Math.min(...cash)), short = runsShort(cash.findIndex(x => x < -v.credit));
+    const moved = Object.entries(used).map(([k, x]) => k === 'euribor_pp' ? `Euribor ${x >= 0 ? '+' : '−'}${Math.abs(x)} percentage point${Math.abs(x) === 1 ? '' : 's'}` : `${SHOCK_WORDS[k]} ${x >= 0 ? '+' : '−'}${Math.abs(x)}%`).join(', ');
+    const summary = `With this shock (${moved}), next year's profit is ${P(without + effect)} instead of ${P(without)}: ${E(effect)} ${effect <= 0 ? 'less' : 'more'}. ` +
+      `This year's profit is ${P(v.ebit)}; next year is lower even without the shock because known cost rises are already included. ` +
+      `Lowest cash with the shock: ${P(low)}; ${short ? `cash and the credit line run out in ${enMonth(short)}` : 'cash lasts the 12 months'}.`;
+    return {summary, shock:used, this_year_profit:r100(v.ebit), next_year_profit_without_shock:without, next_year_profit_with_shock:without + effect, effect_of_shock:effect, effect_by_line:by,
+      why_the_effect_is_smaller_than_the_move:notes, lowest_cash_with_shock:low, cash_runs_short:short,
       how_to_read:"Next year's profit is below this year's even without the shock, because known cost rises (minimum wage, indexed rent, pay rises) are already included. The effect of the shock is the gap between the two next-year figures."};
   },
   compare_clients(a, act) {
@@ -1685,7 +1700,10 @@ const TOOLS = {
     }).sort((x, y) => (y.share_of_profit_at_risk_pct ?? 1e9) - (x.share_of_profit_at_risk_pct ?? 1e9));
     act(t('actCompare', rows.length));
     const cur = current();
-    return {alert_level_pct:state.threshold, count:rows.length, clients:rows.slice(0, lim), open_on_page:cur ? codeFor(cur) : null};
+    const summary = 'Most at risk first: ' + rows.slice(0, 3).map(r => `${r.code}, a bad year takes ${r.share_of_profit_at_risk_pct === null ? 'more than all' : r.share_of_profit_at_risk_pct + '%'} of its profit` +
+      (r.biggest_risk ? ` (mostly ${r.biggest_risk.replace(/_/g, ' ')})` : '') + (r.cash_runs_short ? `, cash runs short in ${enMonth(r.cash_runs_short)}` : '')).join('; ') +
+      `. ${rows.filter(r => r.above_alert_level).length} of ${rows.length} are above the ${state.threshold}% alert level.`;
+    return {summary, alert_level_pct:state.threshold, count:rows.length, clients:rows.slice(0, lim), open_on_page:cur ? codeFor(cur) : null};
   }
 };
 function runTool(name, input, act) {
@@ -1699,8 +1717,19 @@ function assistantContext() {
   for (const [n, [k]] of Object.entries(FIELDS)) business[n] = V[k];
   Object.assign(business, {sales_follow:T.en.demandOpts[effDemand(v) || 'none'], purchase_prices_follow:T.en.inputOpts[effInput(v)], negative_euribor_counts_as_zero:!!V.floor});
   const lines = cats => { const by = {}; for (const k in cats) if (Math.abs(cats[k]) >= 50) by[LINE[k]] = r100(-cats[k]); return by; };
+  const drv = (LAST.drivers || []).filter(d => d.share >= .005), b = bestHedge();
+  const key_facts = [
+    h.p5 >= 0 ? `This year's profit is ${P(v.ebit)}. Even in a bad year (1 in 20) it does not fall.` :
+      `This year's profit is ${P(v.ebit)}. In a bad year (1 in 20) it falls by ${E(h.p5)} to ${P(v.ebit + h.p5)}${h.share === null ? '' : `, so ${Math.round(h.share)}% of profit is at risk`}. In a typical year it ${h.p50 < 0 ? 'falls' : 'rises'} by ${E(h.p50)}.`,
+    ...(h.p5 < 0 && drv.length ? [`Where the bad-year loss comes from: ${drv.map(d => `${LINE_WORDS[d.k]} ${Math.round(d.share * 100)}%`).join(', ')}. These shares add up to 100% of the loss, not of profit.`] : []),
+    c.outIdx > 0 ? `In a bad year, cash and the credit line run out in ${enMonth(runsShort(c.outIdx))}.` :
+      `In a bad year the lowest cash balance is ${P(c.lowest)}${c.lowest < 0 ? ', using the credit line' : ''}; cash lasts the whole 12 months.`,
+    `Already locked in for next year: ${E(c.known)} (minimum wage rise and indexed rent).`,
+    `The German economy has been in ${cur.regime} since ${enMonth(cur.since)}: ${T.en['d' + cur.regime]}`,
+    !b ? 'No protection action saves more than it costs right now.' : b.kind === 'net' ? `Best protection after its cost: ${T.en.hedges[b.r.h.k][0].toLowerCase()}, which saves ${E(b.r.save)} in a bad year and ${E(b.r.net)} net of its cost.` :
+      `${T.en.hedges[b.r.h.k][0]} saves ${E(b.r.save)} in a bad year; customers carry the cost.`];
   const ctx = {
-    page_language:LANG === 'de' ? 'German' : 'English', data_through:cur.asOf, business,
+    key_facts, page_language:LANG === 'de' ? 'German' : 'English', data_through:cur.asOf, business,
     risk:{this_year_profit:r100(v.ebit), bad_year_profit_change:r100(h.p5), profit_in_bad_year:r100(v.ebit + h.p5), typical_year_profit_change:r100(h.p50), profit_in_typical_year:r100(v.ebit + h.p50),
       good_year_profit_change:r100(o.q(.95)), share_of_profit_at_risk_pct:h.share === null ? null : Math.round(h.share),
       basis:state.mode === 'regime' ? `1-in-20 outcome from ${o.s.length} past ${cur.regime} months since 2000` : state.mode === 'hmm' ? 'past months weighted by the statistical model' : 'all months since 2000',
@@ -1784,6 +1813,9 @@ async function viaServer(ctx, history, q, exec) {
   if (!res.text) throw {code:'empty'};
   return res.text;
 }
+// open models often keep English number style in German answers: €1,400 becomes 1.400 €
+const looksGerman = x => (String(x).toLowerCase().match(/\b(der|die|das|und|nicht|wenn|was|wie|ist|ich|wir|sie|ein|eine|wird|würde|mit|auf|für|den|dem|des|um|mein|meine|unser|unsere)\b/g) || []).length >= 2;
+const deMoney = x => String(x).replace(/(−|-)?€\s?(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d+))?(?![\d,])/g, (m, sg, n, d) => `${sg || ''}${n.replace(/,/g, '.')}${d ? ',' + d : ''} €`);
 // Euro amounts in an answer that match nothing the page computed (allowing rounding), nor a number from the
 // conversation, nor a percentage from it applied to one of the business's figures. Shown as a caution.
 function uncheckedFigures(text, sources, said) {
@@ -1840,6 +1872,7 @@ async function ask(q) {
     a.text = chat.transport === 'claude' ? await viaClaude(ctx, history, u.sent, a, exec) : await viaServer(ctx, history, u.sent, exec);
     if (!a.text || !a.text.trim()) throw {code:'empty'};
     a.apply = chat.apply;
+    if (looksGerman(u.text)) a.text = deMoney(a.text);
     a.unchecked = uncheckedFigures(a.text, [ctx, ...chat.turns.flatMap(m => m.results || [])], chat.turns.slice(0, -1).map(m => m.text || '').join('\n'));
   } catch (e) {
     a.error = e && typeof e.code === 'string' ? e.code : 'upstream_error';

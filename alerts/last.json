@@ -1,0 +1,90 @@
+{
+ "asOf": "2026-09",
+ "since": "2026-05",
+ "regime": "Stagflation",
+ "euribor": 2.635,
+ "hicp": 3.3,
+ "energy": 13.4,
+ "ip": 0.6,
+ "minWage": {
+  "from": 13.9,
+  "to": 14.6,
+  "effective": "2027-01"
+ },
+ "examples": {
+  "restaurant": {
+   "share": 62,
+   "loss": 44300
+  },
+  "bakery": {
+   "share": 77,
+   "loss": 35500
+  },
+  "foodtruck": {
+   "share": 26,
+   "loss": 9900
+  },
+  "importer": {
+   "share": 35,
+   "loss": 38300
+  },
+  "metal": {
+   "share": 49,
+   "loss": 102300
+  },
+  "print": {
+   "share": 55,
+   "loss": 51900
+  }
+ },
+ "de": {
+  "regimes": {
+   "Recovery": "Erholung",
+   "Overheating": "Überhitzung",
+   "Stagflation": "Stagflation",
+   "Contraction": "Abschwung"
+  },
+  "desc": {
+   "Recovery": "Wachstum zieht an, Inflation lässt nach. Meist die ruhigste Phase für die Kosten.",
+   "Overheating": "Wachstum und Inflation steigen. Zinsen ziehen meist an.",
+   "Stagflation": "Preise steigen, während die Produktion schwächelt. Kosten steigen, wenn die Nachfrage nachlässt.",
+   "Contraction": "Wachstum und Inflation fallen. Zinsen werden meist gesenkt."
+  },
+  "presets": {
+   "restaurant": "Restaurant",
+   "bakery": "Bäckerei",
+   "foodtruck": "Foodtruck",
+   "importer": "Onlineshop (Import)",
+   "metal": "Metallbau",
+   "print": "Druckerei"
+  },
+  "month": "September 2026",
+  "since": "Mai 2026",
+  "wageMonth": "Januar 2027"
+ },
+ "en": {
+  "regimes": {
+   "Recovery": "Recovery",
+   "Overheating": "Overheating",
+   "Stagflation": "Stagflation",
+   "Contraction": "Contraction"
+  },
+  "desc": {
+   "Recovery": "Growth picking up while inflation eases. Usually the calmest regime for costs.",
+   "Overheating": "Growth and inflation both rising. Interest rates tend to go up.",
+   "Stagflation": "Prices rising while output weakens. Costs climb just as demand softens.",
+   "Contraction": "Growth and inflation both falling. Interest rates tend to be cut."
+  },
+  "presets": {
+   "restaurant": "Restaurant",
+   "bakery": "Bakery",
+   "foodtruck": "Food truck",
+   "importer": "Online importer",
+   "metal": "Metal workshop",
+   "print": "Print shop"
+  },
+  "month": "September 2026",
+  "since": "May 2026",
+  "wageMonth": "January 2027"
+ }
+}

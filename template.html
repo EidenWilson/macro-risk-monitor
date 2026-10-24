@@ -64,6 +64,17 @@ button,input,select{font:inherit}
 .pb-legend b{color:var(--ink);font-weight:600}
 .alert{display:none;margin-top:16px;max-width:880px;padding:12px 16px;border-radius:14px;background:var(--warn-soft);color:var(--ink);font-size:14px;border:1px solid color-mix(in srgb,var(--warn) 40%,transparent)}
 .alert.on{display:block}
+/* advisors: what changed for their saved businesses since the last visit */
+.changes{margin-top:16px;max-width:880px;padding:14px 18px;border-radius:14px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow)}
+.changes[hidden]{display:none!important}
+.changes,#h-cl{scroll-margin-top:72px}   /* clear of the sticky header when the email link scrolls here */
+.changes h2{font-size:16px;margin:0 0 4px}
+.changes ul{margin:8px 0 12px;padding-inline-start:20px;font-size:14px}
+.changes li{margin:3px 0}
+.subscribe{margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+.subscribe[hidden]{display:none!important}
+.subscribe h3{font-size:14px;margin:0 0 4px}
+.subscribe .small{display:block;margin:0 0 8px}
 .alert b{color:var(--warn-ink)}
 .presets{display:flex;gap:8px;flex-wrap:wrap;margin-top:22px;align-items:center}
 .presets>span{font-size:13px;color:var(--muted);margin-inline-end:4px}
@@ -377,6 +388,7 @@ svg.chart{width:100%;height:auto}
   <div class="profitbar" id="profitbar" aria-hidden="true"><div class="pb-track"><div class="pb-keep" id="pbKeep"></div><div class="pb-lose" id="pbLose"></div><div class="pb-typ" id="pbTyp"></div></div></div>
   <div class="pb-legend" id="pbLegend"></div>
   <div class="alert" id="alert" role="status" data-need="business"></div>
+  <section class="changes" id="changes" data-need="business" aria-labelledby="h-chg" hidden></section>
   <div class="tiles" id="tiles"></div>
   <div class="presets" role="group"><span data-t="tryExample">Try an example:</span><span id="presets" style="display:contents"></span></div>
 </div></section>
@@ -394,6 +406,13 @@ svg.chart{width:100%;height:auto}
       <div class="clist" id="clist"></div>
       <div class="saverow"><input id="clientName" maxlength="60" aria-label="Business name" data-tl="namePh"><button type="button" class="btn" id="saveClient" data-t="save">Save</button></div>
       <div class="field" style="margin:12px 0 0"><label for="threshold" data-t="alertAt">Warn me when a bad year costs more than</label><div class="range"><input type="range" id="threshold" min="10" max="100" step="5"><output id="thresholdO"></output></div></div>
+      <form class="subscribe" id="subscribe" method="post" target="_blank" rel="noopener" hidden>
+        <h3 data-t="alertsTitle">Monthly email alert</h3>
+        <span class="small" data-t="alertsNote">An email when new data arrives: the economy's phase, the key rates and how risk moved for typical businesses, with a link to your ranking.</span>
+        <div class="saverow"><input type="email" name="email" id="subEmail" required autocomplete="email" data-tl="alertsPh" aria-label="Email address"><button type="submit" class="btn" data-t="alertsBtn">Subscribe</button></div>
+        <input type="hidden" name="embed" value="1"><input type="hidden" name="metadata__language" id="subLang" value="en">
+        <span class="small" data-t="alertsFoot" style="margin:8px 0 0">You confirm by email and can unsubscribe in every email. Your client list is never sent.</span>
+      </form>
     </section>
 
     <form class="card" id="form" autocomplete="off" aria-labelledby="h-in">
@@ -1278,7 +1297,9 @@ async function initStore() {
     const [db, user] = await Promise.all([window.claude?.use?.('db'), window.claude?.use?.('user')]);
     if (db && user) { const id = await user.id(); if (id) store = {db, col: db.doc('data/users/' + id + '/mrm').collection('clients')}; }   // collections need an odd number of path segments
   } catch (e) { store = null; }
-  await loadClients(); renderClients();
+  await loadClients(); renderClients(); checkChanges();
+  // the monthly email links to ?plan=business#clients: land on what changed, else on the ranking
+  if (location.hash === '#clients') { const el = [$('changes'), $('h-cl')].find(x => x && x.offsetParent); if (el) el.scrollIntoView({block:'start'}); }
 }
 async function loadClients() {
   if (store) { try { const snap = await store.col.get(); clients = snap.docs.map(d => ({id:d.id, ...d.data()})); return; } catch (e) { store = null; } }
@@ -1301,10 +1322,12 @@ async function deleteClient(id) {
   if (state.client === id) state.client = null;
   renderClients(); toast(t('deletedT', c.name));
 }
+// a saved business's bad-year loss as a share of its profit (null when it expects no profit)
+const clientShare = c => { const v = {...PRESETS.restaurant, ...c.values}, p5 = outcomes(v, 'regime').q(.05); return v.ebit > 0 ? Math.max(0, -p5) / v.ebit * 100 : null; };
 function renderClients() {
   $('clientName').placeholder = t('namePh');
   $('clientsNote').textContent = t('clientsNote', clients.length) + (clients.length ? ' ' + (store ? t('clientsCloud') : t('clientsLocal')) : '');
-  const rows = clients.map(c => { const v = {...PRESETS.restaurant, ...c.values}; const p5 = outcomes(v, 'regime').q(.05); return {c, share: v.ebit > 0 ? Math.max(0, -p5) / v.ebit * 100 : null}; }).sort((a, b) => (b.share ?? 1e9) - (a.share ?? 1e9));
+  const rows = clients.map(c => ({c, share:clientShare(c)})).sort((a, b) => (b.share ?? 1e9) - (a.share ?? 1e9));
   $('clist').innerHTML = rows.map(({c, share}) => { const col = share === null || share > state.threshold ? '--loss' : share > state.threshold / 2 ? '--warn' : '--gain';
     const name = esc(c.name);
     return `<div class="crow ${state.client === c.id ? 'active' : ''}" data-id="${esc(c.id)}"><button type="button" class="open" aria-current="${state.client === c.id}"><span class="flag" style="background:var(${col})"></span>${name}</button><span class="risk" style="color:var(${ink(col)})">${share === null ? '–' : pc(share)}</span><button type="button" class="x" data-del="${esc(c.id)}" aria-label="${esc(t('deleteX', c.name))}">×</button></div>`; }).join('');
@@ -1463,7 +1486,48 @@ async function makePdf() {
   } catch (e) { if (e && e.code === 'declined') return; toast(t('pdfFail')); }
 }
 $('pdfBtn').onclick = makePdf;
-$('forget').onclick = () => { try { localStorage.removeItem('mrm3'); localStorage.removeItem(LOCAL_KEY); localStorage.removeItem(AC_KEY); } catch (e) {} used = false; location.reload(); };
+$('forget').onclick = () => { try { ['mrm3', LOCAL_KEY, AC_KEY, SEEN_KEY].forEach(k => localStorage.removeItem(k)); } catch (e) {} used = false; location.reload(); };
+
+/* ---------------- since the last visit (Business) ----------------
+   The page remembers, in this browser only, the data month, the economy's phase and each saved business's risk the
+   last time it was opened. When new data has arrived, it says what moved: who crossed the alert level, who rose by
+   5 points or more, and a change of phase. The monthly email links here. */
+const SEEN_KEY = 'mrm3-seen';
+let changes = null;
+const seenNow = () => ({asOf:D.current.asOf, regime:D.current.regime, clients:Object.fromEntries(clients.map(c => [c.id, clientShare(c)]))});
+const keepSeen = () => { try { localStorage.setItem(SEEN_KEY, JSON.stringify(seenNow())); } catch (e) {} };
+function checkChanges() {
+  changes = null;
+  if (clients.length) {                                                  // only advisors who saved businesses have used the page
+    let seen = null; try { seen = JSON.parse(localStorage.getItem(SEEN_KEY)); } catch (e) {}
+    if (!seen || !seen.asOf || !seen.clients) keepSeen();
+    else if (seen.asOf !== D.current.asOf || seen.regime !== D.current.regime) changes = {seen, now:seenNow(), thr:state.threshold};
+  }
+  renderChanges();
+}
+function renderChanges() {
+  const box = $('changes');
+  if (!changes || !can('business')) { box.hidden = true; return; }
+  const {seen, now, thr} = changes, up = [], above = [], below = [], f = x => x === null || x === undefined ? '–' : pc(x);
+  for (const c of clients) {
+    const a = seen.clients[c.id], b = now.clients[c.id];
+    if (a === undefined || b === null) continue;                         // saved since, or no profit to compare with
+    const item = `<bdi>${esc(c.name)}</bdi> ${f(b)} (${esc(t('chgWas', f(a)))})`;   // bdi: a Latin name inside Arabic text keeps its order
+    if ((a === null || a <= thr) && b > thr) above.push(item);
+    else if (a !== null && a > thr && b <= thr) below.push(item);
+    else if (a !== null && b - a >= 5) up.push(item);
+  }
+  const li = [];
+  if (seen.regime !== now.regime) li.push(t('chgRegime', `<b>${t(seen.regime)}</b>`, `<b>${t(now.regime)}</b>`));
+  if (above.length) li.push(`<b>${t('chgAbove', pc(thr))}</b> ${above.join(', ')}`);
+  if (up.length) li.push(`<b>${t('chgRose')}</b> ${up.join(', ')}`);
+  if (below.length) li.push(`<b>${t('chgBelow', pc(thr))}</b> ${below.join(', ')}`);
+  if (!above.length && !up.length && !below.length) li.push(t('chgNone'));
+  box.innerHTML = `<h2 id="h-chg">${t('chgTitle')}</h2>` + (seen.asOf !== now.asOf ? `<p class="small" style="margin:0">${t('chgData', month(now.asOf), month(seen.asOf))}</p>` : '') +
+    `<ul>${li.map(x => `<li>${x}</li>`).join('')}</ul><button type="button" class="btn" id="chgOk">${t('chgOk')}</button>`;
+  box.hidden = false;
+  $('chgOk').onclick = () => { keepSeen(); changes = null; renderChanges(); };
+}
 
 /* ---------------- risk assistant (Business plan) ----------------
    The language model never computes a number. Each question goes out with a compact summary of this page (DATA);
@@ -1891,6 +1955,7 @@ function applyPlan() {
   document.documentElement.dataset.plan = state.plan;
   $('planTier').textContent = t('planNames')[state.plan];
   if (!can('business') && chat.open) setChat(false);
+  renderChanges();
 }
 function setPlan(p) {
   if (!PLANS.includes(p)) return;
@@ -1960,6 +2025,7 @@ function applyLang() {
   $('upsList').innerHTML = t('upsList').map(x => `<li>${x}</li>`).join('');
   $('relBtn').textContent = t($('relBody').hidden ? 'show' : 'hide');
   $('chatInput').placeholder = t('chatPh');
+  $('subEmail').placeholder = t('alertsPh'); $('subLang').value = LANG;
   applyPlan(); if (!$('planModal').hidden) renderPlans();
   fillSelects(); renderPresets(); renderTabs(); fillForm(); regimeCard(); compass(); timeline(); renderClients(); update();
   if (chat.open) renderChat();
@@ -2007,6 +2073,7 @@ function update() {
 let frame = 0;
 function scheduleUpdate() { if (!frame) frame = requestAnimationFrame(() => { frame = 0; update(); }); }   // one redraw per frame while dragging
 LANG = pickLang();
+if (window.MRM_ALERTS_FORM) { $('subscribe').action = window.MRM_ALERTS_FORM; $('subscribe').hidden = false; }   // set in alerts/config.json
 LAST.bt = {n:0, x:0, rate:0, pval:1, pass:true, ranked:[]};
 applyLang();
 initStore();

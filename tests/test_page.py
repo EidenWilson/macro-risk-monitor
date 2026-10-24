@@ -342,11 +342,40 @@ def test_pdf_language(browser, base):
         pg.close()
 
 
+def test_alerts(browser, base):
+    print("since the last visit, and the alert email sign-up")
+    seen = """(() => { try { localStorage.setItem('mrm3-seen', JSON.stringify({asOf: '2000-01', regime: 'Recovery', clients: {c1: 0, c2: 99, c3: 41}})); } catch (e) {} })();"""
+    pg = page_with(browser, f"{base}?plan=business&lang=de#clients", init=SEED + seen)
+    pg.wait_for_function("!document.getElementById('changes').hidden", timeout=5000)
+    v = pg.evaluate("""() => ({text: document.getElementById('changes').innerText, title: T.de.chgTitle, regime: T.de[D.current.regime],
+      top: Math.round(document.getElementById('changes').getBoundingClientRect().top), shares: Object.fromEntries(clients.map(c => [c.name, Math.round(clientShare(c))]))})""")
+    check(v["title"] in v["text"] and v["regime"] in v["text"], f"the panel says what changed, in the page's language ({v['text'][:80]!r})")
+    above = v["text"].split("\n")
+    check(any("Bäckerei Müller" in l and "Warnschwelle" in l for l in above), f"a business that crossed the alert level is named {v['shares']}")
+    check(any("Gasthaus zur Post" in l and "5 Punkte" in l for l in above), "a business whose risk rose by 5 points or more is named")
+    check(not any("Druckerei Weiß" in l for l in above), "a business still above the level but lower than before is not named")
+    check(50 <= v["top"] <= 120, f"the email link lands on the panel, below the sticky header ({v['top']}px from the top)")
+    pg.click("#chgOk")
+    check(pg.evaluate("document.getElementById('changes').hidden && JSON.parse(localStorage.getItem('mrm3-seen')).asOf === D.current.asOf"), "Got it hides it until new data arrives")
+    check(not pg.is_visible("#subscribe"), "no sign-up form until an email service is set")
+    check(not pg.errors, f"no console errors {pg.errors[:2]}")
+    pg.close()
+    form = "window.MRM_ALERTS_FORM = 'https://buttondown.com/api/emails/embed-subscribe/example';"
+    pg = page_with(browser, f"{base}?plan=business&lang=fr", init=SEED + form)
+    v = pg.evaluate("""() => { const f = document.getElementById('subscribe'); return {shown: !f.hidden && f.getClientRects().length > 0, action: f.action, method: f.method,
+      embed: f.querySelector('[name=embed]').value, lang: f.querySelector('[name=metadata__language]').value, email: f.querySelector('[name=email]').type, changes: document.getElementById('changes').hidden}; }""")
+    check(v["shown"] and v["action"].endswith("/embed-subscribe/example") and v["method"] == "post" and v["embed"] == "1" and v["email"] == "email",
+          f"the sign-up form posts straight to the email service {v}")
+    check(v["lang"] == "fr", "subscribers are tagged with the page's language")
+    check(v["changes"], "a first visit shows no changes and only remembers this one")
+    pg.close()
+
+
 if __name__ == "__main__":
     base = serve()
     with sync_playwright() as p:
         browser = p.chromium.launch()
-        for t in (test_plans, test_tools, test_server_transport, test_claude_transport, test_languages, test_formats, test_pdf_language):
+        for t in (test_plans, test_tools, test_server_transport, test_claude_transport, test_languages, test_formats, test_pdf_language, test_alerts):
             t(browser, base)
         browser.close()
     print(f"\n{len(failures)} failed" if failures else "\nall checks passed")

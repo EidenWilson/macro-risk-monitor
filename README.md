@@ -43,6 +43,8 @@ Built by Eiden Wilson Neralaily (data and modelling) and Channappa (finance and 
 | Report | One-page PDF for a bank or tax advisor meeting | Pro |
 | Advisor mode | Save many businesses and rank them by risk, with an alert threshold | Business |
 | Risk assistant | Chat that explains the results, runs what-ifs on the model, compares clients and drafts client notes | Business |
+| Since your last visit | When new data arrives: which saved businesses crossed the alert level or rose by 5 points or more, and a change of economic phase (remembered in the browser only) | Business |
+| Monthly alert email | A German and English digest when new data arrives: the phase, key rates, how risk moved for typical businesses, and a link that re-ranks the advisor's own clients | Business |
 | 13 languages | English, German, Spanish, French, Italian, Portuguese, Turkish, Polish, Ukrainian, Russian, Arabic (right to left), Hindi and Chinese. Opens in the browser's language; money, percentages and months follow each language (44.300 €, 44 300 €, €4,43,000, 2026年9月); reads 900.000, 900,000 or Arabic-Indic digits either way | All |
 | Phone layout | Results first; the inputs open as a sheet from the bottom | All |
 
@@ -103,7 +105,7 @@ FRED ────────────┘                        │
 
 The model learns from history, so it misses shocks bigger than anything it had seen; the page says which shock each business's misses came from and, when it fails, how to read the bad year instead (for the print shop, roughly 1 in 6 rather than 1 in 20). Volatility scaling cut the restaurant's miss rate from about 21%, and taking Covid closures out of the history from 8.5%.
 
-**Privacy and speed.** The page sets no cookies, loads nothing from third parties (the Archivo font is embedded and jsPDF is served from `docs/vendor/`), processes DATEV files and builds the PDF in the browser, and only writes to the browser's local storage once someone uses it (with a button to delete it). The one exception is the Business assistant: when someone asks it a question, the question and the page's computed figures (never client names or ledger lines) go to the assistant server and the model behind it. The privacy page needs a paragraph on this before the assistant goes live. The backtest runs only when its section is opened.
+**Privacy and speed.** The page sets no cookies, loads nothing from third parties (the Archivo font is embedded and jsPDF is served from `docs/vendor/`), processes DATEV files and builds the PDF in the browser, and only writes to the browser's local storage once someone uses it (with a button to delete it). The exceptions are on the Business plan: when someone asks the assistant a question, the question and the page's computed figures (never client names or ledger lines) go to the assistant server and the model behind it; and when someone subscribes to the alert email, their email address (and nothing else) goes to Buttondown. The privacy page needs a paragraph on this before the assistant goes live. The backtest runs only when its section is opened.
 
 ## Run it locally
 
@@ -136,6 +138,16 @@ curl https://mrm-assistant.<your-subdomain>.workers.dev/health
 ```
 
 Then put that URL in `assistant/config.json` (`{"url": "https://mrm-assistant..."}`), run `python build_page.py` and push. Optional: `npx wrangler secret put ACCESS_CODE` so only people you give the code to can use it. The default model, the other models a page may ask for (`MODELS`), the allowed origins and how the model calls tools (`TOOL_MODE`) are set in `worker/wrangler.toml`. To switch the website to another model from `MODELS`, set `"model"` in `assistant/config.json` and rebuild; no redeploy is needed. If a question fails, `npx wrangler tail` in `worker/` shows the model's error while you ask again.
+
+## Alert email (Business, free up to 100 subscribers)
+
+`alerts/digest.py` runs in the data refresh. It opens the built page in a headless browser, reads the economy's phase, the key rates and the six example businesses' bad-year risk from the page's own model, compares them with the last email (`alerts/last.json`) and, when new data has arrived, sends a short German and English digest through [Buttondown](https://buttondown.com). The email links to `?plan=business#clients`, where the page re-ranks the businesses the advisor saved in their own browser and shows what changed since their last visit; no client data is ever sent anywhere.
+
+1. Create a free Buttondown account and make sure new subscribers confirm by email (double opt-in, which German law expects).
+2. Put the username in `alerts/config.json` (`"buttondown": "your-username"`), run `python build_page.py` and push: the sign-up form appears on the Business plan.
+3. Copy the API key from Buttondown's API page and add it to the repository as the Actions secret `BUTTONDOWN_API_KEY`.
+
+`python alerts/digest.py --dry-run` prints the next email. Without the secret, the refresh only shows the digest in its run summary, ready to paste into Buttondown. Before inviting real subscribers, the legal notice and the privacy page need to be live, and the privacy page should name Buttondown.
 
 ## Languages
 

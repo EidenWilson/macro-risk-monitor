@@ -144,6 +144,9 @@ else:
     legal = [out.parent / f for f in ("impressum.html", "datenschutz.html")]
     if all(f.exists() and "[[" not in f.read_text(encoding="utf-8") for f in legal):   # never link unfinished drafts
         flags["MRM_LEGAL"] = True
+    alerts = json.loads(pathlib.Path("alerts/config.json").read_text(encoding="utf-8")) if pathlib.Path("alerts/config.json").exists() else {}
+    if re.fullmatch(r"[A-Za-z0-9_-]+", str(alerts.get("buttondown", ""))):  # the monthly alert email's sign-up (alerts/digest.py sends it)
+        flags["MRM_ALERTS_FORM"] = f"https://buttondown.com/api/emails/embed-subscribe/{alerts['buttondown']}"
     if str(cfg.get("url", "")).startswith("https://"):                  # the Business assistant's server (worker/)
         flags["MRM_ASSISTANT_URL"] = cfg["url"].rstrip("/")
         if cfg.get("model"):                                             # one of the server's MODELS (worker/wrangler.toml)

@@ -38,3 +38,5 @@ jobs:
         run: python build_page.py
       - name: Browser checks
         run: python tests/test_page.py
+      - name: Alert email (dry run)
+        run: python alerts/digest.py --dry-run

@@ -1942,6 +1942,9 @@ function pickLang() {
 function applyLang() {
   const L = meta(), root = document.documentElement;
   root.lang = L.html; root.dir = L.dir || 'ltr'; root.translate = LANG_FALLBACK;
+  let nt = document.querySelector('meta[name=google]');                   // Chrome reads this before offering to translate
+  if (!LANG_FALLBACK && !nt) { nt = document.createElement('meta'); nt.name = 'google'; nt.content = 'notranslate'; document.head.appendChild(nt); }
+  else if (LANG_FALLBACK && nt) nt.remove();
   document.querySelectorAll('[data-t]').forEach(el => { const v = t(el.dataset.t); if (typeof v === 'string') el.textContent = v; });
   document.querySelectorAll('[data-tl]').forEach(el => { const v = t(el.dataset.tl); if (typeof v === 'string') el.setAttribute('aria-label', v); });
   $('langSel').value = LANG; $('langCode').textContent = LANG.toUpperCase();

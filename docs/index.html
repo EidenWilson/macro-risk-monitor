@@ -255,6 +255,7 @@ body.chat-open .fab{display:none}
 .acts span::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--gain);margin-right:7px;vertical-align:1px}
 .msg .err{color:var(--loss-ink);font-size:13.5px;margin:8px 4px 0}
 .msg .err.quiet{color:var(--muted)}
+.msg .chk{margin:6px 4px 0;font-size:12.5px;color:var(--warn-ink)}
 .msg .btns{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0 4px}
 .thinking{color:var(--muted)}
 .dots i{display:inline-block;width:4px;height:4px;margin-left:3px;border-radius:50%;background:currentColor;vertical-align:middle;animation:blink 1.2s infinite both}
@@ -695,7 +696,7 @@ const T = {
   errOffline:'The assistant could not be reached. Check your connection and try again.',errNoClaude:'Claude is not available to this page, so the assistant cannot answer here.',
   errSession:'Sign in to Claude again, then try once more.',errNone:'The assistant is not connected on this copy of the page.',errEmpty:'No answer came back. Try asking another way.',
   errOrigin:'This page is not allowed to use the assistant server.',errBad:'The question could not be sent. Try a shorter one.',stopped:'Stopped.',retry:'Try again',
-  codeAsk:'The assistant needs an access code. Ask the person who invited you.',codePh:'Access code',codeSave:'Save and retry',deleteX:n=>`Delete ${n}`
+  codeAsk:'The assistant needs an access code. Ask the person who invited you.',codePh:'Access code',codeSave:'Save and retry',deleteX:n=>`Delete ${n}`,unchecked:l=>`Not from the model on this page: ${l}. Check before using.`
  },
  de:{brand:'Makro-Risikomonitor',uploadBtn:'Buchhaltung importieren',pdfBtn:'Bericht herunterladen',tryExample:'Beispiel ansehen:',clientsTitle:'Gespeicherte Betriebe',save:'Speichern',alertAt:'Warnen, wenn ein schlechtes Jahr mehr kostet als',
   yourBusiness:'Ihr Betrieb',gSales:'Umsatz und Gewinn',rev:'Jahresumsatz',ebit:'Jahresgewinn (EBIT)',margin:'Deckungsbeitrag',demandIdx:'Ihr Umsatz folgt',beta:'Empfindlichkeit Ihres Umsatzes',
@@ -799,7 +800,7 @@ const T = {
   errOffline:'Der Assistent war nicht erreichbar. Prüfen Sie die Verbindung und versuchen Sie es erneut.',errNoClaude:'Claude ist für diese Seite nicht verfügbar, daher kann der Assistent hier nicht antworten.',
   errSession:'Melden Sie sich erneut bei Claude an und versuchen Sie es noch einmal.',errNone:'Der Assistent ist in dieser Kopie der Seite nicht verbunden.',errEmpty:'Es kam keine Antwort. Versuchen Sie eine andere Formulierung.',
   errOrigin:'Diese Seite darf den Assistenz-Server nicht nutzen.',errBad:'Die Frage konnte nicht gesendet werden. Versuchen Sie es kürzer.',stopped:'Abgebrochen.',retry:'Erneut versuchen',
-  codeAsk:'Der Assistent braucht einen Zugangscode. Fragen Sie die Person, die Sie eingeladen hat.',codePh:'Zugangscode',codeSave:'Speichern und erneut senden',deleteX:n=>`${n} löschen`
+  codeAsk:'Der Assistent braucht einen Zugangscode. Fragen Sie die Person, die Sie eingeladen hat.',codePh:'Zugangscode',codeSave:'Speichern und erneut senden',deleteX:n=>`${n} löschen`,unchecked:l=>`Nicht aus dem Modell dieser Seite: ${l}. Bitte vor der Verwendung prüfen.`
  }
 };
 let LANG = 'en';
@@ -1617,10 +1618,21 @@ function pseudo(text) {
   return out;
 }
 const runsShort = outIdx => outIdx > 0 ? ymStr(addM(D.current.asOf, outIdx)) : null;
+const HOW_TO_READ = "Profit changes are against this year's profit and already include known cost rises such as the minimum wage. A bad year is the 1-in-20 outcome for the next 12 months.";
 function summarize(v, H) {
-  const o = outcomes(hedged(v, H), state.mode, hedgeCost(v, H)), p5 = o.q(.05), loss = Math.max(0, -p5), c = cashPaths(v, H);
-  return {profit_today:r100(v.ebit), bad_year:r100(p5), typical_year:r100(o.q(.5)), share_of_profit_pct:v.ebit > 0 ? Math.round(loss / v.ebit * 100) : null,
-    yearly_protection_cost:r100(hedgeCost(v, H)), lowest_cash_bad_year:r100(c.lowest), cash_runs_short:runsShort(c.outIdx)};
+  const o = outcomes(hedged(v, H), state.mode, hedgeCost(v, H)), p5 = o.q(.05), p50 = o.q(.5), c = cashPaths(v, H);
+  return {this_year_profit:r100(v.ebit), bad_year_profit_change:r100(p5), profit_in_bad_year:r100(v.ebit + p5), typical_year_profit_change:r100(p50), profit_in_typical_year:r100(v.ebit + p50),
+    share_of_profit_at_risk_pct:v.ebit > 0 ? Math.round(Math.max(0, -p5) / v.ebit * 100) : null, yearly_protection_cost:r100(hedgeCost(v, H)),
+    lowest_cash_in_bad_year:r100(c.lowest), cash_runs_short:runsShort(c.outIdx)};
+}
+// facts from the inputs that explain why a market move hits the business less than its full size
+function dampers(v, used) {
+  const n = ['Moves build up evenly over the 12 months, so the year feels about half of the full move.'];
+  if ('energy_pct' in used && v.energy > 0 && v.fixed > 0) n.push(`${v.fixed}% of the energy bill is on a fixed price ${v.fixedEnd >= 12 ? 'for the whole year' : `for ${v.fixedEnd} more months`}.`);
+  if (('purchase_prices_pct' in used || ('inflation_pct' in used && effInput(v) === 'cpi')) && v.food > 0 && v.pass > 0) n.push(`${v.pass}% of purchase price rises are passed on to customers.`);
+  if ('euribor_pp' in used && v.loan > 0 && v.loanReset > 0) n.push(`The loan rate stays fixed for ${v.loanReset} more months.`);
+  if ('sales_index_pct' in used && effDemand(v)) n.push(`Sales follow ${T.en.demandOpts[effDemand(v)].toLowerCase()} with a sensitivity of ${v.beta}; each euro of lost sales costs the ${v.margin}% contribution margin.`);
+  return n;
 }
 const TOOLS = {
   what_if(a, act) {
@@ -1634,7 +1646,11 @@ const TOOLS = {
     if (!labels.length) throw new Error('Nothing to change. Use the parameter names from the tool description.');
     act(t('actWhatIf', labels.join(', ')));
     chat.apply = {values:vals, hedges:H};
-    return {changed, ...(ignored.length ? {ignored} : {}), before:summarize({...V}, state.hedges), after:summarize(v, H)};
+    const before = summarize({...V}, state.hedges), after = summarize(v, H);
+    return {changed, ...(ignored.length ? {ignored} : {}), before, after,
+      effect:{on_profit_in_bad_year:after.profit_in_bad_year - before.profit_in_bad_year, on_profit_in_typical_year:after.profit_in_typical_year - before.profit_in_typical_year,
+        on_lowest_cash_in_bad_year:after.lowest_cash_in_bad_year - before.lowest_cash_in_bad_year},
+      how_to_read:HOW_TO_READ};
   },
   shock(a, act) {
     const v = {...V}, H = state.hedges, vh = hedged(v, H), hc = hedgeCost(v, H), m = {...ZERO}, used = {}, labels = [], MV = t('mv');
@@ -1649,21 +1665,23 @@ const TOOLS = {
     set('oil_pct', -80, 300, x => { m.oil = x / 100; }, x => `${MV.oil} ${pct(x, 0)}`);
     if (!labels.length) throw new Error('No shock given. Pass at least one parameter, for example energy_pct: 30.');
     act(t('actShock', labels.join(', ')));
-    const base = project(vh, ZERO), sh = project(vh, m), by = {}, cash = cashRun(v, H, m), notes = [];
+    const base = project(vh, ZERO), sh = project(vh, m), by = {}, cash = cashRun(v, H, m), notes = dampers(v, used);
     for (const k in sh.cats) { const d = -(sh.cats[k] - base.cats[k]); if (Math.abs(d) >= 50) by[LINE[k]] = r100(d); }
     if ('sales_index_pct' in used && !effDemand(v)) notes.push('This business is set to ignore sales moves, so the sales shock has no effect.');
     if ('purchase_prices_pct' in used && 'inflation_pct' in used && effInput(v) === 'cpi') notes.push('Purchases follow general inflation here, so purchase_prices_pct also replaced inflation_pct.');
-    return {shock:used, profit_today:r100(v.ebit), profit_without_shock:r100(v.ebit - base.total - hc), effect_of_shock_by_line:by, total_effect:r100(base.total - sh.total),
-      profit_after_shock:r100(v.ebit - sh.total - hc), lowest_cash:r100(Math.min(...cash)), cash_runs_short:runsShort(cash.findIndex(x => x < -v.credit)), ...(notes.length ? {notes} : {})};
+    const without = r100(v.ebit - base.total - hc), effect = r100(base.total - sh.total);
+    return {shock:used, this_year_profit:r100(v.ebit), next_year_profit_without_shock:without, next_year_profit_with_shock:without + effect, effect_of_shock:effect, effect_by_line:by,
+      why_the_effect_is_smaller_than_the_move:notes, lowest_cash_with_shock:r100(Math.min(...cash)), cash_runs_short:runsShort(cash.findIndex(x => x < -v.credit)),
+      how_to_read:"Next year's profit is below this year's even without the shock, because known cost rises (minimum wage, indexed rent, pay rises) are already included. The effect of the shock is the gap between the two next-year figures."};
   },
   compare_clients(a, act) {
     if (!clients.length) { act(t('actNoClients')); return {count:0, note:'No saved clients yet. Businesses saved on the page appear here.'}; }
     const lim = clamp(Math.round(Number(a.limit) || 10), 1, 50);
     const rows = clients.map(c => {
       const v = {...PRESETS.restaurant, ...c.values}, p5 = outcomes(v, 'regime').q(.05), share = v.ebit > 0 ? Math.max(0, -p5) / v.ebit * 100 : null, d = tailDrivers(v, 'regime', {});
-      return {code:codeFor(c), profit:r100(v.ebit), bad_year:r100(p5), share_of_profit_pct:share === null ? null : Math.round(share),
+      return {code:codeFor(c), this_year_profit:r100(v.ebit), bad_year_profit_change:r100(p5), share_of_profit_at_risk_pct:share === null ? null : Math.round(share),
         biggest_risk:p5 < 0 && d.length ? LINE[d[0].k] : null, cash_runs_short:runsShort(cashPaths(v, {}, 'regime').outIdx), above_alert_level:share === null || share > state.threshold};
-    }).sort((x, y) => (y.share_of_profit_pct ?? 1e9) - (x.share_of_profit_pct ?? 1e9));
+    }).sort((x, y) => (y.share_of_profit_at_risk_pct ?? 1e9) - (x.share_of_profit_at_risk_pct ?? 1e9));
     act(t('actCompare', rows.length));
     const cur = current();
     return {alert_level_pct:state.threshold, count:rows.length, clients:rows.slice(0, lim), open_on_page:cur ? codeFor(cur) : null};
@@ -1682,11 +1700,12 @@ function assistantContext() {
   const lines = cats => { const by = {}; for (const k in cats) if (Math.abs(cats[k]) >= 50) by[LINE[k]] = r100(-cats[k]); return by; };
   const ctx = {
     page_language:LANG === 'de' ? 'German' : 'English', data_through:cur.asOf, business,
-    risk:{bad_year:r100(h.p5), typical_year:r100(h.p50), good_year:r100(o.q(.95)), share_of_profit_pct:h.share === null ? null : Math.round(h.share),
+    risk:{this_year_profit:r100(v.ebit), bad_year_profit_change:r100(h.p5), profit_in_bad_year:r100(v.ebit + h.p5), typical_year_profit_change:r100(h.p50), profit_in_typical_year:r100(v.ebit + h.p50),
+      good_year_profit_change:r100(o.q(.95)), share_of_profit_at_risk_pct:h.share === null ? null : Math.round(h.share),
       basis:state.mode === 'regime' ? `1-in-20 outcome from ${o.s.length} past ${cur.regime} months since 2000` : state.mode === 'hmm' ? 'past months weighted by the statistical model' : 'all months since 2000',
-      where_a_bad_year_hits_pct:Object.fromEntries((LAST.drivers || []).map(d => [LINE[d.k], Math.round(d.share * 100)]))},
+      where_a_bad_year_hits_pct:Object.fromEntries((LAST.drivers || []).map(d => [LINE[d.k], Math.round(d.share * 100)])), how_to_read:HOW_TO_READ},
     protection_ticked:Object.keys(state.hedges).filter(k => state.hedges[k]),
-    cash:{lowest_bad_year:r100(c.lowest), cash_and_credit_run_out:runsShort(c.outIdx), already_locked_in_next_year:r100(c.known)},
+    cash:{lowest_cash_in_bad_year:r100(c.lowest), cash_and_credit_run_out:runsShort(c.outIdx), already_locked_in_next_year:r100(c.known)},
     economy:{regime:cur.regime, since:cur.since, meaning:T.en['d' + cur.regime], euribor_3m_pct:cur.euribor, inflation_pct:cur.hicp, energy_prices_yoy_pct:cur.energy,
       food_prices_yoy_pct:cur.food, industrial_output_yoy_pct:cur.ip, brent_yoy_pct:cur.brentYoy, statistical_model:`${cur.hmmState} (${Math.round((cur.hmm[cur.hmmState] || 0) * 100)}%)`},
     minimum_wage:{from_eur:D.minWage.from, to_eur:D.minWage.to, from_month:D.minWage.effective},
@@ -1700,8 +1719,8 @@ function assistantContext() {
 }
 
 /* transports */
-async function viaClaude(ctx, history, q, a, act) {
-  const tools = AS.tools.map(tl => ({name:tl.name, description:tl.description, inputSchema:tl.parameters, execute:input => runTool(tl.name, input, act)}));
+async function viaClaude(ctx, history, q, a, exec) {
+  const tools = AS.tools.map(tl => ({name:tl.name, description:tl.description, inputSchema:tl.parameters, execute:input => exec(tl.name, input)}));
   const input = [{role:'user', content:AS.prompt + '\n\nDATA (the page right now, JSON):\n' + JSON.stringify(ctx)}, ...history, {role:'user', content:q}];
   const r = await chat.sample(input, {tools, signal:chat.ctl.signal, modelTier:'quick', onText:({text}) => { a.text = text; renderLast(); }});
   return r.text;
@@ -1718,22 +1737,69 @@ async function postChat(body) {
   if (!r.ok) { if (j && j.detail) console.warn('Assistant server:', j.detail); throw {code:(j && j.error) || (r.status === 429 ? 'rate_limited' : 'upstream_error')}; }
   return j || {};
 }
-// the page runs the tool loop: at most three tool rounds, then the server is asked to answer without tools
-async function viaServer(ctx, history, q, act) {
-  const messages = [...history, {role:'user', content:q}];
-  for (let round = 0; round < 4; round++) {
-    const res = await postChat({context:ctx, messages, final:round === 3});
-    if (Array.isArray(res.calls) && res.calls.length && round < 3) {
-      for (const c of res.calls.slice(0, 3)) {
-        let result; try { result = await runTool(c.name, c.args, act); } catch (e) { result = {error:String(e && e.message || e)}; }
-        messages.push({role:'tool', name:c.name, args:c.args && typeof c.args === 'object' ? c.args : {}, result});
-      }
-      continue;
-    }
-    if (res.text) return res.text;
-    break;
+// Server transport (open models): first a routing step that only picks the tools and their arguments, then the
+// answer with the results. Kept apart, the model cannot skip the tool and estimate a what-if itself.
+const ROUTER = `ROUTING STEP. Do not answer yet. Decide which page tools must run first so that the answer can use exact figures.
+Reply with only one line of JSON: {"calls": [{"tool": "<name>", "arguments": {...}}]}, or {"calls": []} when DATA already contains everything the answer needs.
+Rules:
+- A question about a change, a hypothetical or a "what if" needs a tool. Never estimate such effects yourself.
+- shock: market moves over the next 12 months (energy prices, interest rates, purchase prices, inflation, sales, the dollar, oil). Arguments: energy_pct, euribor_pp, purchase_prices_pct, inflation_pct, sales_index_pct, eur_usd_pct, oil_pct.
+- what_if: the business's own figures and protection actions. Arguments: revenue, profit, loan, rate_fixed_months, energy_bill, energy_fixed_pct, energy_fixed_months, purchases, pass_on_pct, rent, payroll, minimum_wage_share_pct, usd_purchases, cash, credit_line, monthly_surplus (EUR per year); fix_loan_rate, fix_energy_prices, pass_on_80pct, lock_dollar_rate (true or false).
+- compare_clients: ranking or comparing the saved clients. Argument: limit (optional).
+- At most 3 calls. Use the user's numbers exactly: "rise 30%" is 30, "fall 5%" is -5, "1 percentage point" is 1.
+Examples:
+"What if energy prices rise 30%?" -> {"calls":[{"tool":"shock","arguments":{"energy_pct":30}}]}
+"What if sales fall 5% and energy rises 20%?" -> {"calls":[{"tool":"shock","arguments":{"sales_index_pct":-5,"energy_pct":20}}]}
+"What if we fix the loan and lock the dollar rate?" -> {"calls":[{"tool":"what_if","arguments":{"fix_loan_rate":true,"lock_dollar_rate":true}}]}
+"Which clients need a call first?" -> {"calls":[{"tool":"compare_clients","arguments":{}}]}
+"What is the biggest risk?" -> {"calls":[]}`;
+const SHOCK_KEYS = new Set(Object.keys(AS.tools.find(x => x.name === 'shock').parameters.properties));
+const WHATIF_KEYS = new Set([...Object.keys(AS.tools.find(x => x.name === 'what_if').parameters.properties), ...Object.keys(FIELDS)]);
+function parseRoute(text) {
+  const s = String(text || ''), a = s.indexOf('{'), b = s.lastIndexOf('}');
+  if (a < 0 || b <= a) return [];
+  let j; try { j = JSON.parse(s.slice(a, b + 1)); } catch (e) { return []; }
+  const list = Array.isArray(j.calls) ? j.calls : (j.tool || j.name) ? [j] : [];
+  const obj = x => x && typeof x === 'object' && !Array.isArray(x) ? x : null;
+  return list.filter(obj).map(c => ({name:String(c.tool || c.name || ''), args:obj(c.arguments) || obj(c.args) || {}}));
+}
+// each argument goes to the tool that owns it, whichever tool the router named
+function repairCalls(calls) {
+  const shock = {}, what = {}; let compare = null;
+  for (const c of calls) {
+    if (c.name === 'compare_clients') { compare = c.args; continue; }
+    for (const [k, x] of Object.entries(c.args)) { if (SHOCK_KEYS.has(k)) shock[k] = x; else if (WHATIF_KEYS.has(k)) what[k] = x; }
   }
-  throw {code:'empty'};
+  return [...(Object.keys(shock).length ? [{name:'shock', args:shock}] : []), ...(Object.keys(what).length ? [{name:'what_if', args:what}] : []), ...(compare ? [{name:'compare_clients', args:compare}] : [])];
+}
+async function viaServer(ctx, history, q, exec) {
+  const route = await postChat({context:ctx, messages:[...history, {role:'user', content:ROUTER + '\n\nQuestion: ' + q.slice(0, 1500)}], final:true});
+  const messages = [...history, {role:'user', content:q}];
+  for (const c of repairCalls(parseRoute(route.text))) {
+    let result; try { result = await exec(c.name, c.args); } catch (e) { result = {error:String(e && e.message || e)}; }
+    messages.push({role:'tool', name:c.name, args:c.args, result});
+  }
+  const res = await postChat({context:ctx, messages, final:true});
+  if (!res.text) throw {code:'empty'};
+  return res.text;
+}
+// Euro amounts in an answer that match nothing the page computed (allowing rounding), nor a number from the
+// conversation, nor a percentage from it applied to one of the business's figures. Shown as a caution.
+function uncheckedFigures(text, sources, said) {
+  const known = [], walk = x => { if (typeof x === 'number' && isFinite(x)) known.push(Math.abs(x)); else if (Array.isArray(x)) x.forEach(walk); else if (x && typeof x === 'object') Object.values(x).forEach(walk); };
+  sources.forEach(walk);
+  const saidNums = (String(said).match(/\d[\d.,]*/g) || []).map(parseNum).filter(x => x > 0);
+  const pcts = saidNums.filter(x => x <= 100), fig = Object.values(FIELDS).map(([k]) => Math.abs(+V[k] || 0)).filter(x => x >= 100);
+  const base = [...new Set([...known, ...saidNums].filter(x => x >= 100).map(Math.round))];
+  const near = (v, k) => Math.abs(v - k) <= Math.max(100, k * .01);
+  const ok = v => base.some(k => near(v, k)) || fig.some(k => pcts.some(p => near(v, k * p / 100) || near(v, k * (1 + p / 100)) || near(v, k * (1 - p / 100))));
+  const out = [], re = /€\s?(\d[\d.,]*\d|\d)(\s?(?:k|m|mio\.?|million)\b)?|\b(\d[\d.,]*\d|\d)(\s?(?:k|mio\.?|million))?\s?(?:€|eur\b|euros?\b)/gi;
+  for (const m of String(text).matchAll(re)) {
+    const unit = (m[2] || m[4] || '').trim().toLowerCase();
+    const x = parseNum(m[1] || m[3]) * (unit === 'k' ? 1e3 : unit ? 1e6 : 1);
+    if (Math.abs(x) >= 100 && !ok(Math.abs(x))) out.push(m[0].trim());
+  }
+  return [...new Set(out)].slice(0, 4);
 }
 async function initAssistant() {
   if (window.MRM_ASSISTANT_URL) chat.transport = 'server';
@@ -1767,11 +1833,13 @@ async function ask(q) {
   try {
     if (chat.transport === 'none') throw {code:'none'};
     if (btDirty) runBacktest();                                          // the track record is part of what the model knows
-    const act = x => { a.acts.push(x); renderLast(); };
+    const act = x => { a.acts.push(x); renderLast(); }, results = a.results = [];
+    const exec = (name, input) => { const r = runTool(name, input, act); results.push(r); return r; };
     const ctx = assistantContext(), history = historyTurns();
-    a.text = chat.transport === 'claude' ? await viaClaude(ctx, history, u.sent, a, act) : await viaServer(ctx, history, u.sent, act);
+    a.text = chat.transport === 'claude' ? await viaClaude(ctx, history, u.sent, a, exec) : await viaServer(ctx, history, u.sent, exec);
     if (!a.text || !a.text.trim()) throw {code:'empty'};
     a.apply = chat.apply;
+    a.unchecked = uncheckedFigures(a.text, [ctx, ...chat.turns.flatMap(m => m.results || [])], chat.turns.slice(0, -1).map(m => m.text || '').join('\n'));
   } catch (e) {
     a.error = e && typeof e.code === 'string' ? e.code : 'upstream_error';
     a.text = a.error === 'refused' ? '' : (e && typeof e.text === 'string' && e.text) || a.text;
@@ -1816,7 +1884,8 @@ function bubble(m, i) {
   else if (m.error === 'access_code') tail = `<p class="err">${t('codeAsk')}</p><form class="codeform"><input type="password" autocomplete="off" aria-label="${t('codePh')}" placeholder="${t('codePh')}"><button class="btn primary" type="submit">${t('codeSave')}</button></form>`;
   else if (m.error) tail = `<p class="err">${errText(m.error)}</p>` + (RETRY.has(m.error) && i === chat.turns.length - 1 ? `<div class="btns"><button type="button" class="btn" data-retry="1">${t('retry')}</button></div>` : '');
   else if (m.apply && !m.pending) tail = `<div class="btns"><button type="button" class="btn" data-apply="${i}">${m.applied ? t('undo') : t('apply')}</button></div>`;
-  return `<div class="msg a">${acts}${body}${tail}</div>`;
+  const chk = !m.error && !m.pending && m.unchecked && m.unchecked.length ? `<p class="chk">${esc(t('unchecked', m.unchecked.join(', ')))}</p>` : '';
+  return `<div class="msg a">${acts}${body}${chk}${tail}</div>`;
 }
 function chatHeader() {
   const c = current();

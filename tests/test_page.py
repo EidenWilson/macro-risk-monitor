@@ -98,12 +98,24 @@ def test_tools(browser, base):
       let err = ''; try { TOOLS.shock({}, act); } catch (e) { err = e.message; }
       const ctx = assistantContext();
       return {before: same.before, after: same.after, hero: Math.round(LAST.hero.p5 / 100) * 100,
-              loanAfter: loan.after.bad_year, loanExpected: Math.round((LAST.hero.p5 + row.save - row.cost) / 100) * 100,
-              energyEffect: sh.effect_of_shock_by_line.energy, total: sh.total_effect, noneTotal: none.total_effect, err,
-              ctxKeys: Object.keys(ctx), ctxSize: JSON.stringify(ctx).length, drivers: ctx.risk.where_a_bad_year_hits_pct};
+              loanAfter: loan.after.bad_year_profit_change, loanExpected: Math.round((LAST.hero.p5 + row.save - row.cost) / 100) * 100,
+              loanEffect: loan.effect.on_profit_in_bad_year, loanGap: loan.after.profit_in_bad_year - loan.before.profit_in_bad_year,
+              energyEffect: sh.effect_by_line.energy, total: sh.effect_of_shock, noneTotal: none.effect_of_shock,
+              shockGap: sh.next_year_profit_with_shock - sh.next_year_profit_without_shock, notes: sh.why_the_effect_is_smaller_than_the_move, err,
+              ctxKeys: Object.keys(ctx), ctxSize: JSON.stringify(ctx).length, drivers: ctx.risk.where_a_bad_year_hits_pct,
+              repaired: repairCalls(parseRoute('Sure. {"calls":[{"tool":"what_if","arguments":{"sales_index_pct":-5,"energy_pct":20,"fix_loan_rate":true}},{"tool":"compare_clients","arguments":{}}]}')),
+              garbage: parseRoute('no json here'),
+              unchecked: uncheckedFigures('A 30% rise adds €14,400 to the €48,000 bill, so profit next year is €' + sh.next_year_profit_with_shock.toLocaleString('en-GB') + '. You could lose €7,777,700, or 7.777.700 € in German, or €7.8m.', [ctx, sh], 'What if energy prices rise 30%?')};
     }""")
     check(r["before"] == r["after"], "what_if with no real change leaves every number as it was")
-    check(r["before"]["bad_year"] == r["hero"], f"what_if starts from the headline figure ({r['hero']})")
+    check(r["before"]["bad_year_profit_change"] == r["hero"], f"what_if starts from the headline figure ({r['hero']})")
+    check(r["loanEffect"] == r["loanGap"] and r["loanEffect"] > 0, f"what_if states its effect explicitly ({r['loanEffect']})")
+    check(r["shockGap"] == r["total"], "shock: the two next-year profits differ by exactly the stated effect")
+    check(any("fixed price" in n for n in r["notes"]), f"shock explains why the effect is smaller than the move: {r['notes']}")
+    check(r["repaired"] == [{"name": "shock", "args": {"sales_index_pct": -5, "energy_pct": 20}}, {"name": "what_if", "args": {"fix_loan_rate": True}}, {"name": "compare_clients", "args": {}}],
+          f"router mistakes are repaired: market moves go to shock, own figures to what_if ({r['repaired']})")
+    check(r["garbage"] == [], "a router reply without JSON means no tools")
+    check(r["unchecked"] == ["€7,777,700", "7.777.700 €", "€7.8m"], f"invented figures are flagged in both number styles, derived and known ones are not ({r['unchecked']})")
     check(abs(r["loanAfter"] - r["loanExpected"]) <= 100, f"what_if fix_loan_rate matches the protection table ({r['loanAfter']} vs {r['loanExpected']})")
     check(r["energyEffect"] < 0 and r["total"] < 0 and r["noneTotal"] == 0, f"shock: energy +30% costs money ({r['energyEffect']}), a zero shock costs nothing")
     check("No shock given" in r["err"], "shock without parameters explains what to pass")
@@ -114,7 +126,7 @@ def test_tools(browser, base):
 
 def test_server_transport(browser, base):
     print("assistant over the server (mocked)")
-    sent = []
+    sent, check_final = [], []
 
     cors = {"Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "content-type, x-access-code", "Access-Control-Allow-Methods": "POST, OPTIONS"}
 
@@ -128,21 +140,25 @@ def test_server_transport(browser, base):
         msgs = body["messages"]; last = msgs[-1]
         if route.request.headers.get("x-access-code") != "letmein" and "quota" not in json.dumps(msgs):
             return route.fulfill(status=401, content_type="application/json", body='{"error":"access_code"}')
-        if last["role"] == "user":
-            q = last["content"]
+        check_final.append(body.get("final") is True)
+        if last["role"] == "user" and last["content"].startswith("ROUTING STEP"):
+            q = last["content"].split("Question: ", 1)[1]
             if "quota" in q:
                 return route.fulfill(status=429, content_type="application/json", body='{"error":"quota"}')
-            call = {"name": "shock", "args": {"energy_pct": 30}} if "energy" in q else \
-                   {"name": "what_if", "args": {"fix_loan_rate": True}} if "loan" in q else \
-                   {"name": "compare_clients", "args": {}}
-            return route.fulfill(status=200, content_type="application/json", body=json.dumps({"text": "", "calls": [call]}))
-        res = last["result"]
-        if last["name"] == "compare_clients":
-            text = f"**{res['clients'][0]['code']}** is most at risk, then {res['clients'][1]['code']}."
-        elif last["name"] == "shock":
-            text = f"Profit would fall by about {-res['total_effect']} EUR.\n- Energy: {res['effect_of_shock_by_line'].get('energy')}"
+            calls = [{"tool": "what_if", "arguments": {"energy_pct": 30}}] if "energy" in q else \
+                    [{"tool": "what_if", "arguments": {"fix_loan_rate": True}}] if "loan" in q else \
+                    [] if "invent" in q else [{"tool": "compare_clients", "arguments": {}}]
+            return route.fulfill(status=200, content_type="application/json", body=json.dumps({"text": "Sure. " + json.dumps({"calls": calls}), "calls": []}))
+        if last["role"] == "user":
+            text = "In a bad year you would lose €7,777,700."
         else:
-            text = f"Fixing the loan changes the bad year to {res['after']['bad_year']}."
+            res = last["result"]
+            if last["name"] == "compare_clients":
+                text = f"**{res['clients'][0]['code']}** is most at risk, then {res['clients'][1]['code']}."
+            elif last["name"] == "shock":
+                text = f"Profit next year would be €{res['next_year_profit_with_shock']:,} instead of €{res['next_year_profit_without_shock']:,}.\n- Energy: €{-res['effect_by_line'].get('energy'):,} more"
+            else:
+                text = f"Fixing the loan changes the profit in a bad year to €{res['after']['profit_in_bad_year']:,}."
         route.fulfill(status=200, content_type="application/json", body=json.dumps({"text": text, "calls": []}))
 
     init = SEED + f"window.MRM_ASSISTANT_URL = {json.dumps(SERVER)};"
@@ -156,8 +172,9 @@ def test_server_transport(browser, base):
     pg.fill(".codeform input", "letmein"); pg.click(".codeform button")
     pg.wait_for_function("document.querySelectorAll('.msg.a .body p, .msg.a .body li').length > 0 && !chat.busy", timeout=5000)
     log = pg.inner_text("#chatLog")
-    check("Applied a shock" in log and "Energy +30%" in log, "the tool ran in the page and shows what it did")
-    check("Profit would fall" in log, "the answer is shown")
+    check("Applied a shock" in log and "Energy +30%" in log, "a misrouted tool call was repaired and the shock ran in the page")
+    check("Profit next year would be" in log, "the answer is shown")
+    check(not pg.is_visible(".msg .chk"), "an answer built from tool results gets no caution")
 
     pg.fill("#chatInput", "How is Bäckerei Müller doing compared with the others?"); pg.keyboard.press("Enter")
     pg.wait_for_function("!chat.busy", timeout=5000)
@@ -177,6 +194,11 @@ def test_server_transport(browser, base):
     pg.click("[data-apply]")
     check(pg.evaluate("!state.hedges.loan") and abs(pg.evaluate("LAST.hero.p5") - before) < 1e-6, "undo restores the page")
 
+    pg.fill("#chatInput", "Just invent something"); pg.keyboard.press("Enter")
+    pg.wait_for_function("!chat.busy", timeout=5000)
+    check("€7,777,700" in pg.inner_text(".msg.a:last-child .chk"), "an invented figure gets a visible caution")
+    check(all(check_final), "every request to the server asks for an answer, never for native tools")
+
     pg.fill("#chatInput", "quota please"); pg.keyboard.press("Enter")
     pg.wait_for_function("!chat.busy", timeout=5000)
     check("free allowance" in pg.inner_text("#chatLog"), "the daily limit is explained in plain words")
@@ -195,7 +217,7 @@ def test_claude_transport(browser, base):
         window.__calls.push({input, tier: opts.modelTier, cache: 'cache' in opts, tools: opts.tools.map(t => [t.name, !!t.inputSchema])});
         const res = await opts.tools.find(t => t.name === 'shock').execute({energy_pct: 25});
         opts.onText({text: 'Partial', delta: 'Partial'});
-        const text = 'Energy +25% costs about ' + (-res.total_effect) + ' EUR.';
+        const text = 'Energy +25% costs about ' + (-res.effect_of_shock) + ' EUR.';
         opts.onText({text, delta: text.slice(7)});
         return {text, truncated: false, modelTierApplied: 'quick'};
       };

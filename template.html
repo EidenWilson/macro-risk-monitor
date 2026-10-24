@@ -1716,8 +1716,13 @@ const WORDS = {de:'der die das und nicht ist wird würde mit auf für den dem de
 const SCRIPT = {ru:/[\u0400-\u04ff]/g, uk:/[\u0400-\u04ff]/g, ar:/[\u0600-\u06ff]/g, hi:/[\u0900-\u097f]/g, zh:/[\u3400-\u9fff]/g};
 const wordHits = (x, l) => (String(x).toLowerCase().match(new RegExp(`(?<!\\p{L})(?:${(WORDS[l] || '_').split(' ').join('|')})(?!\\p{L})`, 'gu')) || []).length;
 const inPageLanguage = x => LANG !== 'en' && (SCRIPT[LANG] ? (String(x).match(SCRIPT[LANG]) || []).length >= 8 : wordHits(x, LANG) >= 3 && wordHits(x, LANG) > wordHits(x, 'en'));
-const localMoney = x => String(x).replace(/(^|[^\p{L}\p{N}])([−-])?€\s?(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{1,2}))?(?![\d.,]*\d)(?!\s?(?:k|m|bn|mn|mio|million|billion)(?!\p{L}))/gu,
-  (m, pre, sg, n, d) => pre + minus(nf({...CUR, minimumFractionDigits:d ? d.length : 0, maximumFractionDigits:d ? d.length : 0}).format((sg ? -1 : 1) * +(n.replace(/,/g, '') + (d ? '.' + d : '')))));
+// any euro amount, € before or after: groups of three digits after a separator are thousands, one or two digits are cents
+const localMoney = x => String(x).replace(/(^|[^\p{L}\p{N}])([−-])?(€\s?)?(\d{1,3}(?:[.,\u00a0\u202f ]\d{3})+(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)(\s?€)?(?![\d.,]*\d)(?!\s?(?:k|m|bn|mn|mio|million|billion|tsd)(?!\p{L}))/gu,
+  (m, pre, sg, before, n, after) => {
+    if (!before === !after) return m;                                       // one euro sign, on one side
+    const c = n.match(/[.,](\d{1,2})$/), v = +(n.slice(0, c ? -c[0].length : undefined).replace(/\D/g, '') + (c ? '.' + c[1] : ''));
+    return pre + minus(nf({...CUR, minimumFractionDigits:c ? c[1].length : 0, maximumFractionDigits:c ? c[1].length : 0}).format(sg ? -v : v));
+  });
 // Euro amounts in an answer that match nothing the page computed (allowing rounding), nor a number from the
 // conversation, nor a percentage from it applied to one of the business's figures. Shown as a caution.
 function uncheckedFigures(text, sources, said) {

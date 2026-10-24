@@ -310,7 +310,8 @@ def test_formats(browser, base):
     r = pg.evaluate("""() => {
       const fmt = l => withLang(l, () => ({money: eur(-44312), signed: seur(14380), pct: pct(3.3), share: pc(62), axis: short(-20000),
         local: localMoney('Der Gewinn sinkt um €14,400 auf €58,600, nicht €1.2m.'), page: inPageLanguage('Der Gewinn sinkt, wenn die Energiepreise steigen und die Nachfrage nachlässt.'),
-        english: inPageLanguage('Profit falls when energy prices rise and the demand for the product softens.')}));
+        english: inPageLanguage('Profit falls when energy prices rise and the demand for the product softens.'),
+        styles: localMoney('Profit falls by 44.300 € to €27,700, or by 1 400 € and 12,50 €; not €1.2m.')}));
       return {de: fmt('de'), fr: fmt('fr'), en: fmt('en'), ar: fmt('ar'), hi: fmt('hi'),
         parse: [parseNum('\u0664\u0664\u066c\u0663\u0660\u0660'), parseNum('9,00,000'), parseNum('44\u202f300 €'), parseNum('\u200f\u200e-72,000'), parseNum('1.200.000,50'), parseNum('12,5')]};
     }""")
@@ -321,6 +322,9 @@ def test_formats(browser, base):
     check(r["hi"]["money"] == "€44,300" and r["ar"]["money"].endswith("€"), f"Hindi and Arabic money {r['hi']['money']!r} {r['ar']['money']!r}")
     check(de["local"] == "Der Gewinn sinkt um 14.400\u00a0€ auf 58.600\u00a0€, nicht €1.2m.", f"English-style amounts in a German answer are rewritten: {de['local']!r}")
     check(de["page"] and not de["english"], "an answer in the page's language is recognised, an English one is not")
+    check(r["ar"]["styles"] == "Profit falls by \u200f44,300\u00a0€ to \u200f27,700\u00a0€, or by \u200f1,400\u00a0€ and \u200f12.50\u00a0€; not €1.2m."
+          and fr["styles"] == "Profit falls by 44\u202f300\u00a0€ to 27\u202f700\u00a0€, or by 1\u202f400\u00a0€ and 12,50\u00a0€; not €1.2m.",
+          f"amounts in any style are rewritten the language's way {r['ar']['styles']!r} {fr['styles']!r}")
     check(r["parse"] == [44300, 900000, 44300, -72000, 1200000.5, 12.5], f"typed numbers in any style and digit script {r['parse']}")
     pg.close()
 

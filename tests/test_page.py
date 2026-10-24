@@ -80,9 +80,16 @@ def test_plans(browser, base):
     pg = page_with(browser, base)
     tabs = pg.evaluate("[...document.querySelectorAll('#scen button')].map(b => b.dataset.s || 'more')")
     check(tabs == ["2022 energy shock", "more"], f"free shows one scenario and a Pro link: {tabs}")
-    pg.click("#planBtn"); pg.click("[data-setplan=pro]")
+    pg.click("#planBtn")
+    price = "document.querySelector('[aria-labelledby=pl-business] .price').firstChild.textContent"
+    check(pg.evaluate(price) == "€89.99", f"business price keeps its cents: {pg.evaluate(price)}")
+    pg.click("[data-setplan=pro]")
     check(pg.evaluate("document.documentElement.dataset.plan") == "pro" and pg.evaluate("document.getElementById('planModal').hidden"), "switching plan in the dialog")
     check(pg.evaluate("document.querySelectorAll('#scen button[data-s]').length") == 5, "pro shows all five scenarios")
+    pg.close()
+    pg = page_with(browser, f"{base}?lang=de"); pg.click("#planBtn")
+    de = pg.evaluate(price).replace(chr(160), " ")
+    check(de == "89,99 €", f"business price in German format: {de}")
     pg.close()
 
 

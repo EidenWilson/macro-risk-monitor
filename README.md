@@ -48,7 +48,7 @@ Built by Eiden Wilson Neralaily (data and modelling) and Channappa (finance and 
 | 13 languages | English, German, Spanish, French, Italian, Portuguese, Turkish, Polish, Ukrainian, Russian, Arabic (right to left), Hindi and Chinese. Opens in the browser's language; money, percentages and months follow each language (44.300 €, 44 300 €, €4,43,000, 2026年9月); reads 900.000, 900,000 or Arabic-Indic digits either way | All |
 | Phone layout | Results first; the inputs open as a sheet from the bottom | All |
 
-Prices on the plans dialog (Free, Pro €19 a month, Business €149 a month per office for up to 50 clients) are placeholders. This is a prototype, so anyone can switch plans to try them; `?plan=business` (or `#business` in the Claude preview) opens a plan directly.
+Prices on the plans dialog (Free, Pro €19 a month, Business €89.99 a month per office for up to 50 clients) are placeholders. This is a prototype, so anyone can switch plans to try them; `?plan=business` (or `#business` in the Claude preview) opens a plan directly.
 
 ## How it works
 

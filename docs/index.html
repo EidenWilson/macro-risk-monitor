@@ -4857,7 +4857,8 @@ let state = {preset:'restaurant', scen:Object.keys(D.scenarios)[0], mode:'regime
 try { const s = JSON.parse(localStorage.getItem('mrm3')); if (s) state = Object.assign(state, s); } catch (e) {}
 if (!PRESETS[state.preset]) state.preset = 'restaurant';
 if (!D.scenarios[state.scen]) state.scen = Object.keys(D.scenarios)[0];
-const PLANS = ['free', 'pro', 'business'], PRICES = {free:0, pro:19, business:149};   // euros a month
+const PLANS = ['free', 'pro', 'business'], PRICES = {free:0, pro:19, business:89.99};   // euros a month
+const priceTag = n => nf({...CUR, minimumFractionDigits:Number.isInteger(n) ? 0 : 2, maximumFractionDigits:2}).format(n);   // plan prices keep their cents
 // ?plan=business (website) or #business (Claude preview) opens a plan directly, e.g. for a demo link
 try { const q = new URLSearchParams(location.search).get('plan') || location.hash.slice(1); if (PLANS.includes(q)) state.plan = q; } catch (e) {}
 if (!PLANS.includes(state.plan)) state.plan = 'free';
@@ -6128,7 +6129,7 @@ function setPlan(p) {
 function renderPlans() {
   const P = t('planNames'), U = t('planUnit');
   $('plans').innerHTML = PLANS.map(p => `<section class="pcard${p === state.plan ? ' cur' : ''}" aria-labelledby="pl-${p}"><h3 id="pl-${p}">${P[p]}</h3><p class="who">${t('planFor')[p]}</p>` +
-    `<div class="price">${eurX(PRICES[p])}${p === 'free' ? '' : `<small>${t('perMonth')}</small>`}</div>${U[p] ? `<p class="punit">${U[p]}</p>` : ''}` +
+    `<div class="price">${priceTag(PRICES[p])}${p === 'free' ? '' : `<small>${t('perMonth')}</small>`}</div>${U[p] ? `<p class="punit">${U[p]}</p>` : ''}` +
     `<ul class="ticks">${t('planFeat')[p].map(x => `<li>${x}</li>`).join('')}</ul>` +
     `<button type="button" class="btn${p === state.plan ? '' : ' primary'}" data-setplan="${p}"${p === state.plan ? ' disabled' : ''}>${p === state.plan ? t('planCurrent') : t('planUse')[p]}</button></section>`).join('');
 }

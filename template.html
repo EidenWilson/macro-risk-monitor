@@ -365,7 +365,7 @@ svg.chart{width:100%;height:auto}
     <button type="button" class="btn planbtn" id="planBtn" aria-haspopup="dialog"><span class="tier" id="planTier">Free</span><span class="long" data-t="plansBtn">Plans</span></button>
     <button type="button" class="btn" id="openUpload" data-t="uploadBtn" data-need="pro">Import accounts</button>
     <button type="button" class="btn primary" id="pdfBtn" data-need="pro"><span class="long" data-t="pdfBtn">Download report</span><span class="short"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14"/></svg><span class="sr" data-t="pdfShort">Report</span></span></button>
-    <label class="langpick"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span id="langCode" aria-hidden="true">EN</span><select id="langSel" aria-label="Language"></select></label>
+    <label class="langpick" translate="no"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span id="langCode" aria-hidden="true">EN</span><select id="langSel" aria-label="Language"></select></label>
   </div>
 </div></header>
 
@@ -1928,15 +1928,20 @@ $('relBtn').onclick = () => {
 };
 
 /* ---------------- language ---------------- */
-// ?lang=fr opens a language directly; otherwise the saved choice, then the browser's languages, then English
+// ?lang=fr opens a language directly; otherwise the saved choice, then the browser's languages, then English.
+// Only that last case leaves the page open to the browser's own translation: a language someone chose or reads is
+// not translated again (Chrome would otherwise turn a Spanish page the visitor picked back into English).
+let LANG_FALLBACK = false;
 function pickLang() {
   const ok = x => { const k = String(x || '').toLowerCase().split(/[-_]/)[0]; return T[k] ? k : null; };
   let q = null; try { q = new URLSearchParams(location.search).get('lang'); } catch (e) {}
-  return ok(q) || ok(state.lang) || [...(navigator.languages || [navigator.language])].map(ok).find(Boolean) || 'en';
+  const l = ok(q) || ok(state.lang) || [...(navigator.languages || [navigator.language])].map(ok).find(Boolean);
+  LANG_FALLBACK = !l;
+  return l || 'en';
 }
 function applyLang() {
   const L = meta(), root = document.documentElement;
-  root.lang = L.html; root.dir = L.dir || 'ltr';
+  root.lang = L.html; root.dir = L.dir || 'ltr'; root.translate = LANG_FALLBACK;
   document.querySelectorAll('[data-t]').forEach(el => { const v = t(el.dataset.t); if (typeof v === 'string') el.textContent = v; });
   document.querySelectorAll('[data-tl]').forEach(el => { const v = t(el.dataset.tl); if (typeof v === 'string') el.setAttribute('aria-label', v); });
   $('langSel').value = LANG; $('langCode').textContent = LANG.toUpperCase();
@@ -1953,7 +1958,7 @@ function applyLang() {
 }
 $('langSel').innerHTML = LANGS.map(k => `<option value="${k}" lang="${T[k]._.html}">${T[k]._.name}</option>`).join('');
 $('langSel').onchange = e => {
-  LANG = e.target.value; state.lang = LANG; used = true; save(); applyLang();
+  LANG = e.target.value; LANG_FALLBACK = false; state.lang = LANG; used = true; save(); applyLang();
   try { const u = new URL(location.href); if (u.searchParams.has('lang')) { u.searchParams.set('lang', LANG); history.replaceState(null, '', u); } } catch (e) {}
 };
 

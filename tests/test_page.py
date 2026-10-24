@@ -297,7 +297,10 @@ def test_languages(browser, base):
     check(v["dir"] == "rtl" and "lang=ar" in v["url"] and v["saved"] == "ar", f"choosing a language switches the page, the link and the saved choice {v}")
     pg.close()
     pg = page_with(browser, base, init="Object.defineProperty(navigator, 'languages', {get: () => ['pt-BR', 'en']});")
-    check(pg.evaluate("LANG") == "pt", "a first visit follows the browser's language")
+    check(pg.evaluate("LANG") == "pt" and pg.evaluate("document.documentElement.translate") is False, "a first visit follows the browser's language, and the browser does not translate it again")
+    pg.close()
+    pg = page_with(browser, base, init="Object.defineProperty(navigator, 'languages', {get: () => ['ja-JP']});")
+    check(pg.evaluate("LANG") == "en" and pg.evaluate("document.documentElement.translate") is True, "a language the page lacks gets English, which the browser may translate")
     pg.close()
 
 

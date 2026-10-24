@@ -1761,6 +1761,7 @@ async function postChat(body) {
   const headers = {'content-type':'application/json'}, code = accessCode();
   if (code) headers['x-access-code'] = code;
   let r;
+  if (window.MRM_ASSISTANT_MODEL) body = {...body, model:window.MRM_ASSISTANT_MODEL};   // one of the server's MODELS; set in assistant/config.json
   try { r = await fetch(String(window.MRM_ASSISTANT_URL).replace(/\/+$/, '') + '/chat', {method:'POST', headers, body:JSON.stringify(body), signal:chat.ctl.signal}); }
   catch (e) { throw {code:e && e.name === 'AbortError' ? 'cancelled' : 'offline'}; }
   let j = null; try { j = await r.json(); } catch (e) {}

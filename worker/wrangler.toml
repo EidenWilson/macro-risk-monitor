@@ -14,6 +14,9 @@ binding = "AI"
 #   "@cf/qwen/qwen3-30b-a3b-fp8"   cheaper, about 4x more questions a day
 #   "@cf/openai/gpt-oss-120b"      stronger reasoning, fewer questions a day
 MODEL = "@cf/mistralai/mistral-small-3.1-24b-instruct"
+# Other models the page may ask for (assistant/config.json "model"), all on the Workers Free plan. Switching
+# between these needs only a page change, no redeploy.
+MODELS = "@cf/google/gemma-4-26b-a4b-it,@cf/meta/llama-4-scout-17b-16e-instruct,@cf/openai/gpt-oss-120b,@cf/openai/gpt-oss-20b,@cf/qwen/qwen3-30b-a3b-fp8"
 # How the model calls tools: "auto" (default) passes them natively and switches to listing them in the
 # instructions if the model refuses; "native" or "prompt" force one way.
 # TOOL_MODE = "auto"

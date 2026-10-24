@@ -116,7 +116,7 @@ npx wrangler deploy       # prints the URL, e.g. https://mrm-assistant.<your-sub
 curl https://mrm-assistant.<your-subdomain>.workers.dev/health
 ```
 
-Then put that URL in `assistant/config.json` (`{"url": "https://mrm-assistant..."}`), run `python build_page.py` and push. Optional: `npx wrangler secret put ACCESS_CODE` so only people you give the code to can use it. The model, the allowed origins and how the model calls tools (`TOOL_MODE`) are set in `worker/wrangler.toml`. If a question fails, `npx wrangler tail` in `worker/` shows the model's error while you ask again.
+Then put that URL in `assistant/config.json` (`{"url": "https://mrm-assistant..."}`), run `python build_page.py` and push. Optional: `npx wrangler secret put ACCESS_CODE` so only people you give the code to can use it. The default model, the other models a page may ask for (`MODELS`), the allowed origins and how the model calls tools (`TOOL_MODE`) are set in `worker/wrangler.toml`. To switch the website to another model from `MODELS`, set `"model"` in `assistant/config.json` and rebuild; no redeploy is needed. If a question fails, `npx wrangler tail` in `worker/` shows the model's error while you ask again.
 
 ## Tests
 

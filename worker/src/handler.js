@@ -22,6 +22,10 @@ export const LIMITS = {
 export const DEFAULT_MODEL = '@cf/mistralai/mistral-small-3.1-24b-instruct';
 
 const model = env => (env.MODEL || DEFAULT_MODEL).trim();
+// MODELS lists the other models a page may ask for (all on the Workers Free plan), so models can be compared
+// and switched from the page's config without a redeploy
+export const models = env => [...new Set([model(env), ...String(env.MODELS || '').split(',').map(s => s.trim()).filter(Boolean)])];
+const pickModel = (env, asked) => typeof asked === 'string' && models(env).includes(asked.trim()) ? asked.trim() : model(env);
 const origins = env => String(env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim().replace(/\/$/, '')).filter(Boolean);
 const toolMode = env => (env.TOOL_MODE === 'native' || env.TOOL_MODE === 'prompt') ? env.TOOL_MODE : 'auto';
 let nativeRefused = false;                                   // per isolate: this model answers without tools but not with them
@@ -69,7 +73,7 @@ export function validate(body, spec) {
     } else return {error: 'unknown role'};
   }
   if (messages[messages.length - 1].role === 'assistant') return {error: 'the last message must be from the user or a tool'};
-  return {messages, context, final: body.final === true};
+  return {messages, context, final: body.final === true, model: typeof body.model === 'string' ? body.model.slice(0, 120) : null};
 }
 
 // prompt mode: the tools are described in the instructions and called with one line of JSON
@@ -119,16 +123,36 @@ function callFromText(text) {
   try { let j = JSON.parse(s.slice(a, b + 1)); if (Array.isArray(j)) j = j[0]; return toCall(j); } catch { return null; }
 }
 
-// Workers AI answers in three shapes depending on the model:
+// per-model request settings: reasoning models need room to think, or are told not to
+export function modelParams(name, params) {
+  const p = {...params};
+  if (/gemma-4/.test(name)) { p.max_completion_tokens = p.max_tokens; delete p.max_tokens; p.chat_template_kwargs = {enable_thinking: false}; }
+  if (/gpt-oss/.test(name)) p.max_tokens = 2500;                                 // reasoning cannot be switched off and counts as output
+  if (/qwen3/.test(name)) {                                                        // Qwen 3 skips its thinking step when asked to
+    const msgs = p.messages.map(m => ({...m})), last = msgs[msgs.length - 1];
+    if (last && last.role === 'user') last.content += ' /no_think';
+    p.messages = msgs;
+  }
+  return p;
+}
+
+// Workers AI answers in four shapes depending on the model:
 //   {response, tool_calls: [{name, arguments}]}                        (Llama 3.x, Mistral)
 //   {response, tool_calls: [{id, type, function: {name, arguments}}]}   (Llama 4)
-//   {choices: [{message: {content, tool_calls: [...]}}]}                (Qwen 3, gpt-oss: OpenAI style)
+//   {choices: [{message: {content, tool_calls: [...]}}]}                (Qwen 3, Gemma 4: OpenAI chat style)
+//   {output: [{type: 'message', content: [{type: 'output_text', text}]}]}  (gpt-oss: OpenAI responses style)
+const partsText = c => Array.isArray(c) ? c.map(x => typeof x === 'string' ? x : x && (x.type === 'output_text' || x.type === 'text') ? x.text || '' : '').join('') : c;
 export function normalize(out, spec, {fromText = true} = {}) {
   const names = new Set(spec.tools.map(t => t.name));
   if (out == null) return {text: '', calls: []};
   if (typeof out === 'string') out = {response: out};
   const msg = Array.isArray(out.choices) && out.choices[0] && out.choices[0].message;
-  let text = msg ? msg.content : out.response, calls = msg ? msg.tool_calls : out.tool_calls;
+  let text = msg ? partsText(msg.content) : out.response, calls = msg ? msg.tool_calls : out.tool_calls;
+  if (text == null && Array.isArray(out.output)) {
+    text = out.output.filter(o => o && o.type === 'message').map(o => partsText(o.content)).join('');
+    calls = out.output.filter(o => o && o.type === 'function_call').map(o => ({name: o.name, arguments: o.arguments}));
+  }
+  if (text == null && typeof out.output_text === 'string') text = out.output_text;
   if (text != null && typeof text !== 'string') text = JSON.stringify(text);
   text = String(text || '').replace(/<think>[\s\S]*?<\/think>/g, '').replace(/^[\s\S]*?<\/think>/, '');
   calls = (Array.isArray(calls) ? calls : []).map(toCall).filter(c => c && names.has(c.name));
@@ -148,7 +172,7 @@ export async function handle(request, env, spec) {
   const allowed = origin && origins(env).includes(origin);
   const cors = allowed ? {'Access-Control-Allow-Origin': origin, 'Vary': 'Origin'} : {'Vary': 'Origin'};
 
-  if (url.pathname === '/health') return json({ok: true, model: model(env), tools: toolMode(env) === 'auto' && nativeRefused ? 'prompt' : toolMode(env)}, 200, cors);
+  if (url.pathname === '/health') return json({ok: true, model: model(env), models: models(env), tools: toolMode(env) === 'auto' && nativeRefused ? 'prompt' : toolMode(env)}, 200, cors);
   if (request.method === 'OPTIONS') {
     if (!allowed) return new Response(null, {status: 403});
     return new Response(null, {status: 204, headers: {...cors, 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'content-type, x-access-code', 'Access-Control-Max-Age': '86400'}});
@@ -169,13 +193,13 @@ export async function handle(request, env, spec) {
   const v = validate(body, spec);
   if (v.error) return json({error: 'bad_request', message: v.error}, 400, cors);
 
-  const tm = toolMode(env);
+  const tm = toolMode(env), name = pickModel(env, v.model);
   const mode = v.final ? 'none' : (tm === 'prompt' || (tm === 'auto' && nativeRefused)) ? 'prompt' : 'native';
-  const run = m => env.AI.run(model(env), {
+  const run = m => env.AI.run(name, modelParams(name, {
     messages: buildMessages(spec.prompt, v, {tools: m === 'prompt' ? spec.tools : null}),
     max_tokens: LIMITS.maxTokens, temperature: 0.2,
     ...(m === 'native' ? {tools: spec.tools} : {}),
-  });
+  }));
   let out, used = mode;
   try {
     out = await run(mode);
@@ -185,5 +209,5 @@ export async function handle(request, env, spec) {
     try { out = await run('prompt'); used = 'prompt'; nativeRefused = true; } catch (e2) { return fail(e2, cors); }
   }
   const r = normalize(out, spec, {fromText: !v.final});
-  return json({text: r.text, calls: v.final ? [] : r.calls, mode: used}, 200, cors);
+  return json({text: r.text, calls: v.final ? [] : r.calls, mode: used, model: name}, 200, cors);
 }

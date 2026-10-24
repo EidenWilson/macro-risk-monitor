@@ -2,7 +2,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {handle, normalize, buildMessages, validate, LIMITS, resetToolMemory} from '../src/handler.js';
+import {handle, normalize, buildMessages, validate, LIMITS, resetToolMemory, modelParams, models} from '../src/handler.js';
 
 const root = new URL('../../assistant/', import.meta.url);
 const SPEC = {prompt: readFileSync(new URL('prompt.txt', root), 'utf8').trim(), tools: JSON.parse(readFileSync(new URL('tools.json', root), 'utf8'))};
@@ -41,7 +41,7 @@ test('a question goes to the model with the fixed instructions, the page data an
   const {env: e, calls} = env({response: 'Energy is the biggest risk.'});
   const r = await handle(req(ask), e, SPEC);
   assert.equal(r.status, 200);
-  assert.deepEqual(await r.json(), {text: 'Energy is the biggest risk.', calls: [], mode: 'native'});
+  assert.deepEqual(await r.json(), {text: 'Energy is the biggest risk.', calls: [], mode: 'native', model: '@cf/test/model'});
   const {m, p} = calls[0];
   assert.equal(m, '@cf/test/model');
   assert.equal(p.messages[0].role, 'system');
@@ -90,7 +90,7 @@ test('tool results are sent back as plain turns that alternate user and assistan
 test('the last round is asked without tools so the model has to answer', async () => {
   const {env: e, calls} = env({response: 'Done.', tool_calls: [{name: 'shock', arguments: {}}]});
   const r = await handle(req({...ask, messages: [...ask.messages, {role: 'tool', name: 'shock', args: {}, result: {}}], final: true}), e, SPEC);
-  assert.deepEqual(await r.json(), {text: 'Done.', calls: [], mode: 'none'});
+  assert.deepEqual(await r.json(), {text: 'Done.', calls: [], mode: 'none', model: '@cf/test/model'});
   assert.equal(calls[0].p.tools, undefined);
 });
 
@@ -154,7 +154,7 @@ test('a model that refuses native tools is asked again with the tools in its ins
   const answer = p => { if (p.tools) throw new Error('AiError: 5006: tools not supported'); return {response: 'Let me run that.\n{"tool": "shock", "arguments": {"energy_pct": 30}}'}; };
   const {env: e, calls} = env(answer);
   const r1 = await (await handle(req({...ask, messages: [{role: 'user', content: 'What if energy rises 30%?'}]}), e, SPEC)).json();
-  assert.deepEqual(r1, {text: '', calls: [{id: null, name: 'shock', args: {energy_pct: 30}}], mode: 'prompt'});
+  assert.deepEqual(r1, {text: '', calls: [{id: null, name: 'shock', args: {energy_pct: 30}}], mode: 'prompt', model: '@cf/test/model'});
   assert.equal(calls.length, 2);
   assert.ok(calls[0].p.tools && !calls[1].p.tools);
   const sys = calls[1].p.messages[0].content;
@@ -195,4 +195,29 @@ test('the final answer is never read as a tool call', async () => {
   const r = await (await handle(req({...ask, messages: [...ask.messages, {role: 'tool', name: 'shock', args: {}, result: {}}], final: true}), e, SPEC)).json();
   assert.deepEqual(r.calls, []);
   assert.equal(r.text, '{"tool": "shock", "arguments": {}}');
+});
+
+test('a page may pick a model from MODELS; anything else falls back to MODEL', async () => {
+  const {env: e, calls} = env({response: 'ok'}, {MODELS: '@cf/google/gemma-4-26b-a4b-it, @cf/openai/gpt-oss-120b'});
+  assert.deepEqual(models(e), ['@cf/test/model', '@cf/google/gemma-4-26b-a4b-it', '@cf/openai/gpt-oss-120b']);
+  const r1 = await (await handle(req({...ask, final: true, model: '@cf/openai/gpt-oss-120b'}), e, SPEC)).json();
+  const r2 = await (await handle(req({...ask, final: true, model: '@cf/moonshotai/kimi-k2.6'}), e, SPEC)).json();
+  assert.equal(r1.model, '@cf/openai/gpt-oss-120b'); assert.equal(calls[0].m, '@cf/openai/gpt-oss-120b');
+  assert.equal(r2.model, '@cf/test/model'); assert.equal(calls[1].m, '@cf/test/model');
+});
+
+test('reasoning models get their own settings', () => {
+  const base = {messages: [{role: 'system', content: 's'}, {role: 'user', content: 'q'}], max_tokens: 900, temperature: 0.2};
+  const g = modelParams('@cf/google/gemma-4-26b-a4b-it', base);
+  assert.deepEqual(g.chat_template_kwargs, {enable_thinking: false}); assert.equal(g.max_completion_tokens, 900); assert.equal(g.max_tokens, undefined);
+  assert.equal(modelParams('@cf/openai/gpt-oss-120b', base).max_tokens, 2500);
+  const q = modelParams('@cf/qwen/qwen3-30b-a3b-fp8', base);
+  assert.equal(q.messages[1].content, 'q /no_think'); assert.equal(base.messages[1].content, 'q');
+  assert.deepEqual(modelParams('@cf/mistralai/mistral-small-3.1-24b-instruct', base), base);
+});
+
+test('answers in the OpenAI responses shape and with content parts are read', () => {
+  const r = normalize({output: [{type: 'reasoning', content: [{type: 'reasoning_text', text: 'thinking...'}]}, {type: 'message', content: [{type: 'output_text', text: 'Energy is the risk.'}]}]}, SPEC);
+  assert.deepEqual(r, {text: 'Energy is the risk.', calls: []});
+  assert.equal(normalize({choices: [{message: {content: [{type: 'text', text: 'Hi'}]}}]}, SPEC).text, 'Hi');
 });

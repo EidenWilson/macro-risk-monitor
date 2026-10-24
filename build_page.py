@@ -50,6 +50,8 @@ else:
         flags["MRM_LEGAL"] = True
     if str(cfg.get("url", "")).startswith("https://"):                  # the Business assistant's server (worker/)
         flags["MRM_ASSISTANT_URL"] = cfg["url"].rstrip("/")
+        if cfg.get("model"):                                             # one of the server's MODELS (worker/wrangler.toml)
+            flags["MRM_ASSISTANT_MODEL"] = str(cfg["model"])
     # the template starts with its <title> and <meta> tags; they belong in the document head
     m = re.match(r"\s*(?:(?:<title>.*?</title>|<meta\b[^>]*>)\s*)+", page, re.S)
     head_tags, body = (m.group(0).strip(), page[m.end():]) if m else ("", page)

@@ -106,7 +106,7 @@ python build_page.py                           # writes docs/index.html (font fr
 
 ### The assistant server (Business plan, free)
 
-The Workers Free plan covers it: 100,000 requests a day and 10,000 Workers AI neurons a day, about 40 questions with the default model (Mistral Small 3.1, Apache 2.0). When the allowance is used up, the assistant says so until 00:00 UTC; nothing is billed. No API keys are involved.
+The Workers Free plan covers it: 100,000 requests a day and 10,000 Workers AI neurons a day. The website uses Google's Gemma 4 (26B), chosen after comparing answers on the live site: about 150 questions a day, two to nine seconds each. When the allowance is used up, the assistant says so until 00:00 UTC; nothing is billed. No API keys are involved.
 
 ```bash
 cd worker

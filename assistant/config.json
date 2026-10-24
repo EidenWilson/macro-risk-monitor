@@ -1,3 +1,4 @@
 {
-  "url": "https://mrm-assistant.eidenwilson.workers.dev"
+  "url": "https://mrm-assistant.eidenwilson.workers.dev",
+  "model": "@cf/google/gemma-4-26b-a4b-it"
 }

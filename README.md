@@ -105,7 +105,9 @@ FRED ────────────┘                        │
 
 The model learns from history, so it misses shocks bigger than anything it had seen; the page says which shock each business's misses came from and, when it fails, how to read the bad year instead (for the print shop, roughly 1 in 6 rather than 1 in 20). Volatility scaling cut the restaurant's miss rate from about 21%, and taking Covid closures out of the history from 8.5%.
 
-**Privacy and speed.** The page sets no cookies, loads nothing from third parties (the Archivo font is embedded and jsPDF is served from `docs/vendor/`), processes DATEV files and builds the PDF in the browser, and only writes to the browser's local storage once someone uses it (with a button to delete it). The exceptions are on the Business plan: when someone asks the assistant a question, the question and the page's computed figures (never client names or ledger lines) go to the assistant server and the model behind it; and when someone subscribes to the alert email, their email address (and nothing else) goes to Buttondown. The privacy page needs a paragraph on this before the assistant goes live. The backtest runs only when its section is opened.
+**Privacy and speed.** The page sets no cookies, loads nothing from third parties (the font is embedded and jsPDF is served from `docs/vendor/`), processes DATEV files and builds the PDF in the browser, and only writes to the browser's local storage once someone uses it (with a button to delete it). The exceptions are on the Business plan: when someone asks the assistant a question, the question and the page's computed figures (never client names or ledger lines) go to the assistant server and the model behind it; and when someone subscribes to the alert email, their email address (and nothing else) goes to Buttondown. The privacy page needs a paragraph on this before the assistant goes live. The backtest runs only when its section is opened.
+
+**Design.** The page is set like a bookkeeping sheet, the paper its users already read: blue-black ink for text and profit, red for losses (the German *schwarze* and *rote Zahlen*), the headline sum written out as a statement with a rule over the total and a double rule under the result, the inputs as white boxes on the tint of a printed form, and a highlighter for the one line that needs attention. The logo is the business-cycle clock from the economy section. One typeface, Sofia Sans Semi Condensed, in the spirit of German DIN lettering, with tabular figures wherever numbers line up.
 
 ## Run it locally
 
@@ -115,7 +117,7 @@ echo "FRED_API_KEY=your_key" > .env          # free key from fred.stlouisfed.org
 python pipeline.py --db macro.db --start 2000-01
 python build_data.py --db macro.db --out docs/data.json
 python build_page.py                           # writes docs/index.html (text from i18n/, fonts from assets/, jsPDF from docs/vendor/)
-python assets/og_image.py                      # optional: the link-preview picture docs/og.png
+python assets/og_image.py                      # optional: the link-preview picture docs/og.png and the README screenshot
 ```
 
 ## Deploy (free)
@@ -151,7 +153,7 @@ Then put that URL in `assistant/config.json` (`{"url": "https://mrm-assistant...
 
 ## Languages
 
-All text lives in `i18n/`, one file per language; `en.js` is the source and explains the format. To add a language, copy `en.js`, translate the values, set its `_` line (name in the menu, locale for numbers and dates, `dir: 'rtl'` for right-to-left scripts, `pdf: true` only for Western European languages) and rebuild. `build_page.py` stops on a key written twice and warns about missing ones (the page shows English for those); `tests/test_page.py` checks every language for matching keys, broken text, sideways scrolling and the right-to-left layout. Archivo covers Latin scripts (with a small embedded subset for Polish and Turkish letters); Cyrillic, Arabic, Hindi and Chinese use the visitor's system fonts. The PDF's built-in fonts write Western European languages only, so other languages get an English report and are told so. The assistant answers in the language the question is written in.
+All text lives in `i18n/`, one file per language; `en.js` is the source and explains the format. To add a language, copy `en.js`, translate the values, set its `_` line (name in the menu, locale for numbers and dates, `dir: 'rtl'` for right-to-left scripts, `pdf: true` only for Western European languages) and rebuild. `build_page.py` stops on a key written twice and warns about missing ones (the page shows English for those); `tests/test_page.py` checks every language for matching keys, broken text, sideways scrolling and the right-to-left layout. The embedded font covers Latin (including Polish and Turkish letters) and Cyrillic; Arabic, Hindi and Chinese use the visitor's system fonts. The PDF's built-in fonts write Western European languages only, so other languages get an English report and are told so. The assistant answers in the language the question is written in.
 
 ## Tests
 
@@ -168,7 +170,7 @@ Germany requires a legal notice (Impressum) and a privacy policy. Put `impressum
 
 ## Licences
 
-Archivo font: SIL Open Font License 1.1 (`assets/OFL.txt`). jsPDF: MIT (`docs/vendor/jspdf.LICENSE.txt`).
+Sofia Sans Semi Condensed font: SIL Open Font License 1.1 (`assets/fonts/OFL.txt`). jsPDF: MIT (`docs/vendor/jspdf.LICENSE.txt`).
 
 ## Limits
 

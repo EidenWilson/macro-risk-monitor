@@ -1,4 +1,7 @@
-"""Build the static site: inject data.json, the embedded font and the assistant spec into template.html.
+"""Build the static site: inject data.json, the embedded fonts and the assistant spec into template.html.
+
+Fonts: each __FONT:assets/fonts/<file>.woff2__ in the template becomes that file, base64-encoded, so visitors'
+browsers never contact a font server.
 
 Default (GitHub Pages): writes docs/index.html with a full document head. The PDF library is loaded from
 docs/vendor/ when that file exists, so visitors' browsers only ever talk to this site, and the footer links to
@@ -22,8 +25,6 @@ import re
 ap = argparse.ArgumentParser()
 ap.add_argument("--data", default="docs/data.json")
 ap.add_argument("--template", default="template.html")
-ap.add_argument("--font", default="assets/archivo-latin-wdth-normal.woff2")
-ap.add_argument("--font-ext", default="assets/archivo-pl-tr-wdth-normal.woff2", help="the Polish and Turkish letters")
 ap.add_argument("--i18n", default="i18n", help="folder with one text file per language")
 ap.add_argument("--out", default="docs/index.html")
 ap.add_argument("--assistant", default="assistant", help="folder with prompt.txt, tools.json and config.json")
@@ -33,9 +34,13 @@ a = ap.parse_args()
 
 out = pathlib.Path(a.out)
 page = pathlib.Path(a.template).read_text(encoding="utf-8")
-for key in ("__DATA__", "__FONT_WOFF2__", "__FONT_EXT_WOFF2__", "__I18N__", "__ASSISTANT_PROMPT__", "__ASSISTANT_TOOLS__"):
+for key in ("__DATA__", "__I18N__", "__ASSISTANT_PROMPT__", "__ASSISTANT_TOOLS__"):
     if page.count(key) != 1:
         raise SystemExit(f"{a.template} must contain {key} exactly once")
+FONT = re.compile(r"__FONT:([\w./-]+\.woff2)__")
+if not FONT.search(page):
+    raise SystemExit(f"{a.template} must embed at least one __FONT:<file>.woff2__")
+page = FONT.sub(lambda m: base64.b64encode(pathlib.Path(m.group(1)).read_bytes()).decode("ascii"), page)
 spec = pathlib.Path(a.assistant)
 safe = lambda js: js.replace("</", "<\\/")                             # can never close the script tag
 prompt = (spec / "prompt.txt").read_text(encoding="utf-8").strip()
@@ -43,8 +48,6 @@ tools = json.loads((spec / "tools.json").read_text(encoding="utf-8"))
 cfg = json.loads((spec / "config.json").read_text(encoding="utf-8")) if (spec / "config.json").exists() else {}
 page = page.replace("__ASSISTANT_PROMPT__", safe(json.dumps(prompt))).replace("__ASSISTANT_TOOLS__", safe(json.dumps(tools)))
 data = safe(pathlib.Path(a.data).read_text(encoding="utf-8"))
-font = base64.b64encode(pathlib.Path(a.font).read_bytes()).decode("ascii")
-font_ext = base64.b64encode(pathlib.Path(a.font_ext).read_bytes()).decode("ascii")
 
 
 def skip_string(src, i):
@@ -133,7 +136,7 @@ for code, top in keys.items():
         print(f"warning: {code}.js has no text for {', '.join(missing[:8])}{' ...' if len(missing) > 8 else ''} (English is shown)")
 order = ["en"] + sorted(k for k in packs if k != "en")
 i18n = safe("{" + ",\n".join(f"{code}:{packs[code]}" for code in order) + "}")
-page = page.replace("__FONT_WOFF2__", font).replace("__FONT_EXT_WOFF2__", font_ext).replace("__I18N__", i18n).replace("__DATA__", data)
+page = page.replace("__I18N__", i18n).replace("__DATA__", data)
 
 if a.bare:
     html = page
@@ -163,9 +166,9 @@ else:
     if (out.parent / "og.png").exists():                                 # made by assets/og_image.py
         share += (f'<meta property="og:image" content="{site}og.png"><meta property="og:image:width" content="1200">'
                   f'<meta property="og:image:height" content="630"><meta property="og:image:alt" content="Macro Risk Monitor: in a bad year, the economy could take €44,300 out of a €72,000 profit.">')
-    icon = ("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%233358f0'/>"
-            "<rect x='5' y='12' width='22' height='8' rx='4' fill='%23ffffff'/><rect x='5' y='12' width='9' height='8' rx='4' fill='%2310a37f'/>"
-            "<rect x='14' y='12' width='13' height='8' rx='4' fill='%23f0483e'/></svg>")
+    # the logo: the business-cycle clock (growth across, inflation up) with a red dot for where the economy stands
+    icon = ("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='%23ffffff' stroke='%231f2a3a' stroke-width='2.5'/>"
+            "<path d='M16 2.5v27M2.5 16h27' stroke='%231f2a3a' stroke-width='1.6'/><circle cx='22.6' cy='9.4' r='4.2' fill='%23b3261e'/></svg>")
     share += f'<link rel="icon" href="data:image/svg+xml,{icon}">'
     html = ("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
             "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1,viewport-fit=cover\">"

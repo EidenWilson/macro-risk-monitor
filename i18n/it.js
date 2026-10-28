@@ -207,6 +207,8 @@ foot1: m => `Dati: ECB Data Portal (Euribor, EUR/USD, IPCA Germania), Eurostat (
 foot2: 'Metodo: la fase della bussola è la direzione della variazione a 6 mesi di inflazione e produzione industriale (medie a 3 mesi). Il modello statistico è un modello di Markov nascosto gaussiano a 4 stati sui loro livelli, con probabilità filtrate. Il ventaglio degli esiti applica alle sue cifre le variazioni reali a 12 mesi seguite a ogni mese dal 2000, accumulate in modo lineare nel corso dell’anno e amplificate quando oggi i mercati sono più volatili di allora (simulazione storica filtrata).',
 foot3: 'Prototipo per discussione. Non è una consulenza finanziaria.',
 forget: 'Cancella i numeri che questa pagina ha salvato nel suo browser',
+footAdvisors: 'Per commercialisti e banche',
+footPortfolio: 'Stress test di portafoglio',
 legalNotice: 'Note legali',
 privacy: 'Privacy',
 editNumbers: 'Modifica i suoi numeri',

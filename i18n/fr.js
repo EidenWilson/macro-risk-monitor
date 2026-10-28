@@ -207,6 +207,8 @@ foot1: m => `Données : ECB Data Portal (Euribor, EUR/USD, IPCH Allemagne), Euro
 foot2: 'Méthode : la phase de la boussole est le sens de la variation sur 6 mois de l’inflation et de la production industrielle (moyennes sur 3 mois). Le modèle statistique est un modèle de Markov caché gaussien à 4 états sur leurs niveaux, avec probabilités filtrées. L’éventail des résultats applique à vos chiffres les variations réelles sur 12 mois qui ont suivi chaque mois depuis 2000, accumulées de façon linéaire sur l’année et amplifiées quand les marchés sont aujourd’hui plus volatils qu’alors (simulation historique filtrée).',
 foot3: 'Prototype pour discussion. Ne constitue pas un conseil financier.',
 forget: 'Effacer les chiffres que cette page a enregistrés dans votre navigateur',
+footAdvisors: 'Pour les experts-comptables et les banques',
+footPortfolio: 'Test de résistance de portefeuille',
 legalNotice: 'Mentions légales',
 privacy: 'Confidentialité',
 editNumbers: 'Modifier vos chiffres',

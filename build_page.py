@@ -158,7 +158,7 @@ else:
     m = re.match(r"\s*(?:(?:<title>.*?</title>|<meta\b[^>]*>)\s*)+", page, re.S)
     head_tags, body = (m.group(0).strip(), page[m.end():]) if m else ("", page)
     # link previews (LinkedIn, WhatsApp, Slack) and a small icon for the browser tab
-    desc = "How much of next year's profit could the economy take? A free macro risk check for German small businesses, built on live ECB, Eurostat and FRED data."
+    desc = "How much of next year's profit could the economy take? A free macro risk check for German small businesses, built on current ECB, Eurostat and FRED data."
     site = a.site_url.rstrip("/") + "/"
     share = (f'<meta property="og:type" content="website"><meta property="og:title" content="Macro Risk Monitor">'
              f'<meta property="og:description" content="{desc}"><meta property="og:url" content="{site}">'
@@ -170,6 +170,14 @@ else:
     icon = ("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='%23ffffff' stroke='%231f2a3a' stroke-width='2.5'/>"
             "<path d='M16 2.5v27M2.5 16h27' stroke='%231f2a3a' stroke-width='1.6'/><circle cx='22.6' cy='9.4' r='4.2' fill='%23b3261e'/></svg>")
     share += f'<link rel="icon" href="data:image/svg+xml,{icon}">'
+    # search engines: one address for the page, the same page in each language (?lang=xx), and what it is
+    share += f'<link rel="canonical" href="{site}">' + "".join(
+        f'<link rel="alternate" hreflang="{code}" href="{site}{"" if code == "en" else "?lang=" + code}">' for code in order) + \
+        f'<link rel="alternate" hreflang="x-default" href="{site}">'
+    app = {"@context": "https://schema.org", "@type": "WebApplication", "name": "Macro Risk Monitor", "url": site,
+           "applicationCategory": "FinanceApplication", "operatingSystem": "Any (runs in the browser)", "inLanguage": order, "description": desc,
+           "offers": [{"@type": "Offer", "name": n, "price": p, "priceCurrency": "EUR"} for n, p in (("Free", "0"), ("Pro", "19"), ("Business", "89.99"))]}
+    share += f'<script type="application/ld+json">{safe(json.dumps(app, ensure_ascii=False))}</script>'
     html = ("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
             "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1,viewport-fit=cover\">"
             + head_tags +

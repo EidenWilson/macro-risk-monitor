@@ -2,7 +2,7 @@
 
 [![Tests](https://github.com/EidenWilson/macro-risk-monitor/actions/workflows/tests.yml/badge.svg)](https://github.com/EidenWilson/macro-risk-monitor/actions/workflows/tests.yml)
 
-**Live:** [eidenwilson.github.io/macro-risk-monitor](https://eidenwilson.github.io/macro-risk-monitor/) · [Business plan with the AI assistant](https://eidenwilson.github.io/macro-risk-monitor/?plan=business)
+**Live:** [the risk check](https://eidenwilson.github.io/macro-risk-monitor/), [the Business plan with the AI assistant](https://eidenwilson.github.io/macro-risk-monitor/?plan=business), [the page for tax advisors and banks](https://eidenwilson.github.io/macro-risk-monitor/advisors/) and [the portfolio stress test](https://eidenwilson.github.io/macro-risk-monitor/portfolio/)
 
 ![The page for the example restaurant: in a bad year the economy could take €44,300 of its €72,000 profit, with the biggest risks, the cash outlook and the economy below](assets/screenshot.png)
 
@@ -18,7 +18,8 @@ Built by Eiden Wilson Neralaily (data and modelling) and Channappa (finance and 
 - **Risk model.** Filtered historical simulation over 280+ past 12-month windows, conditional on the current regime, with a 4-state hidden Markov model as a second opinion and an out-of-sample backtest since 2008 (Kupiec test).
 - **Product.** Answer first, Free, Pro and Business plans, DATEV import (SKR03 and SKR04), a PDF report, 13 languages (Arabic right to left), a phone layout, no cookies, and no third-party requests outside the Business assistant.
 - **AI assistant (Business).** An open model (Gemma 4) on Cloudflare Workers AI, on the free plan. It never computes numbers itself: it calls tools that run the page's own risk model. Client names never leave the browser, and a routing step plus a check of every euro amount keep it from inventing figures.
-- **Tested.** Server tests and browser checks (plans, phone layout, the assistant's tools and conversation loop) run on every push.
+- **Portfolio stress test.** Load a fund report's or a bank's holdings list (CSV, German or English formats): yields solved from prices and coupon dates, duration, convexity and the value of a basis point, then five stated scenarios and one of your own, split into rates, spreads, inflation, equities and gold, holding by holding. In the browser, nothing uploaded.
+- **Tested.** Server tests and browser checks (plans, phone layout, the assistant's tools and conversation loop, bond arithmetic against closed forms, the pages around the tool) run on every push.
 
 **Stack:** Python (pandas, NumPy, SciPy, hmmlearn, SQLite) · JavaScript without a framework · Cloudflare Workers and Workers AI · GitHub Actions and Pages · Playwright
 
@@ -109,6 +110,12 @@ The model learns from history, so it misses shocks bigger than anything it had s
 
 **Design.** The page is set like a bookkeeping sheet, the paper its users already read: blue-black ink for text and profit, red for losses (the German *schwarze* and *rote Zahlen*), the headline sum written out as a statement with a rule over the total and a double rule under the result, the inputs as white boxes on the tint of a printed form, and a highlighter for the one line that needs attention. The logo is the business-cycle clock from the economy section. One typeface, Sofia Sans Semi Condensed, in the spirit of German DIN lettering, with tabular figures wherever numbers line up.
 
+## The pages around the tool
+
+`site/` builds two more pages, each in English and German, in the tool's design: **/advisors/**, the page for tax advisors and banks (what it does, how it works, prices, a pilot request, questions), and **/portfolio/**, the portfolio stress test. `site/build_site.py` also writes `404.html` and `sitemap.xml`. The advisors page's figures (the example restaurant, the six examples ranked, the economy now, the backtest) are read from the built tool in a headless browser, so they always match it; the data refresh rebuilds both. Text lives in `site/text.py`; a contact address for pilot requests goes in `site/config.json` (`"contact_email"`), and the button appears once it is set.
+
+The portfolio test reads any CSV with a name or ISIN and a market value; holding, price (in % for bonds), maturity and coupon make the bond arithmetic exact, and `type`, `duration` and `beta` columns override its guesses. `docs/portfolio/template.csv` shows the columns; the example is the first page of holdings from a published fund report (`site/data/example-fund.csv`, maturities checked against exchange listings). The scenarios are stated round numbers, not forecasts or replays of history.
+
 ## Run it locally
 
 ```bash
@@ -117,6 +124,7 @@ echo "FRED_API_KEY=your_key" > .env          # free key from fred.stlouisfed.org
 python pipeline.py --db macro.db --start 2000-01
 python build_data.py --db macro.db --out docs/data.json
 python build_page.py                           # writes docs/index.html (text from i18n/, fonts from assets/, jsPDF from docs/vendor/)
+python site/build_site.py                      # the advisors page, the portfolio stress test, 404 and sitemap (needs jinja2 and Playwright)
 python assets/og_image.py                      # optional: the link-preview picture docs/og.png and the README screenshot
 ```
 
@@ -160,6 +168,7 @@ All text lives in `i18n/`, one file per language; `en.js` is the source and expl
 ```bash
 cd worker && npm test                                   # assistant server: CORS, limits, access code, all model output formats
 python build_page.py && python tests/test_page.py       # browser: plans, phone layout, tools, assistant loop, all 13 languages
+python site/build_site.py && python tests/test_site.py # browser: bond arithmetic, file reading, scenarios, export, the pages around the tool
 ```
 
 The browser checks need Playwright (`pip install playwright && python -m playwright install chromium`). They check that the assistant's tools reproduce the page's own numbers and that no client name appears in anything sent to the server or to Claude.

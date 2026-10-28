@@ -1,0 +1,4 @@
+name,isin,type,quantity_unit,holding,price_currency,price,market_value_eur,maturity,coupon,duration,beta
+"3,4500 % Spanien EO-Obligaciones 2024(34)",ES0000012N35,government,EUR '000,380,%,100.400,381520.00,2034-10-31,3.45,,
+Invesco Physical Markets PLC O.E. ETC Gold,XS2183935274,gold,pieces,1800,EUR,104.600,188280.00,,,,
+Example euro equity fund,,equity fund,units,590,EUR,105.770,62404.30,,,,1.0

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block main %}
+<section class="lost">
+  <div class="wrap">
+    <h1>{{ t.h1 }}</h1>
+    <p class="lead" lang="de">{{ de.h1 }}</p>
+    <p class="lead">{{ t.p }} <span lang="de">{{ de.p }}</span></p>
+    <div class="actions">
+      <a class="btn primary" href="{{ tool }}">{{ c.nav_tool }}</a>
+      <a href="{{ root }}portfolio/">{{ c.nav_portfolio }}</a>
+      <a href="{{ root }}advisors/">{{ c.nav_advisors }}</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

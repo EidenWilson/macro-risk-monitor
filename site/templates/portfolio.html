@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block main %}
+<section class="hero">
+  <div class="wrap">
+    <div>
+      <p class="kicker">{{ t.kicker }}</p>
+      <h1>{{ t.h1 }}</h1>
+      <p class="lead">{{ t.lead }}</p>
+      <p class="lead small">{{ t.privacy }}</p>
+    </div>
+    <div class="exhibit">
+      <div class="drop" id="drop">
+        <p>{{ t.drop }}</p>
+        <div class="actions" style="margin-top:0">
+          <label class="btn primary" for="file">{{ t.choose }}</label>
+          <input type="file" id="file" accept=".csv,.txt,text/csv" class="sr">
+          <button type="button" class="btn" id="example">{{ t.example }}</button>
+        </div>
+        <p class="small">{{ t.example_note }}</p>
+      </div>
+      <p class="small" style="margin-top:12px">{{ t.columns }} <a href="{{ root }}portfolio/template.csv" download>{{ t.template }}</a></p>
+      <p class="status" id="status" role="status" aria-live="polite"></p>
+    </div>
+  </div>
+</section>
+
+<div id="out" hidden>
+  <section class="sec" id="sumSec" aria-labelledby="h-sum" style="padding-top:0">
+    <div class="wrap">
+      <div class="head"><h2 id="h-sum">{{ t.s1_h }}</h2><p>{{ t.s1_p }}</p></div>
+      <div class="figs" id="figs"></div>
+      <div class="cols3">
+        <div class="exhibit"><div class="label">{{ t.mix_label }}</div><table class="ledger" id="mix"></table></div>
+        <div class="exhibit"><div class="label">{{ t.country_label }}</div><ul class="rank" id="countries"></ul></div>
+        <div class="exhibit"><div class="label">{{ t.mat_label }}</div><ul class="rank" id="mats"></ul></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec tint" aria-labelledby="h-scen">
+    <div class="wrap">
+      <div class="head"><h2 id="h-scen">{{ t.s2_h }}</h2><p>{{ t.s2_p }}</p></div>
+      <div class="tabs" id="scenTabs" role="group" aria-label="{{ t.s2_h }}"></div>
+      <p class="prose" id="scenDesc"></p>
+      <div class="cols2">
+        <div class="exhibit">
+          <div class="label">{{ t.result_label }}</div>
+          <table class="ledger" id="impact"></table>
+          <p class="impact-line" id="impactLine" aria-live="polite"></p>
+        </div>
+        <div>
+          <div class="exhibit"><div class="label">{{ t.shock_label }}</div><div id="shock"></div></div>
+          <div class="exhibit"><div class="label">{{ t.losers_label }}</div><ul class="losers" id="losers"></ul></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" aria-labelledby="h-hold">
+    <div class="wrap">
+      <div class="head"><h2 id="h-hold">{{ t.s3_h }}</h2><p>{{ t.s3_p }}</p></div>
+      <div class="scroll" tabindex="0" role="region" aria-labelledby="h-hold"><table class="tbl holdings"><thead id="holdHead"></thead><tbody id="holdBody"></tbody><tfoot id="holdFoot"></tfoot></table></div>
+      <div class="actions"><button type="button" class="btn" id="exportBtn">{{ t.export }}</button></div>
+    </div>
+  </section>
+</div>
+
+<section class="sec" aria-labelledby="h-method">
+  <div class="wrap">
+    <div class="head"><h2 id="h-method">{{ t.s4_h }}</h2></div>
+    <div class="prose method">{% for p in t.method %}<p>{{ p }}</p>{% endfor %}</div>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>window.PT = {{ pt | safe }};</script>
+<script src="{{ root }}assets/portfolio.js?v={{ v.js }}" defer></script>
+{% endblock %}

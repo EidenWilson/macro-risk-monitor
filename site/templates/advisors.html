@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block main %}
+<section class="hero">
+  <div class="wrap">
+    <div>
+      <p class="kicker">{{ t.kicker }}</p>
+      <h1>{{ t.h1 }}</h1>
+      <p class="lead">{{ t.lead }}</p>
+      <div class="actions"><a class="btn primary" href="{{ tool_business }}">{{ t.cta }}</a><a href="#how">{{ t.cta2 }}</a></div>
+    </div>
+    <div>
+      <figure class="exhibit" style="margin:0">
+        <table class="ledger">
+          <caption>{{ s.ex1_label }}</caption>
+          <thead><tr><td></td><th scope="col">€</th><th scope="col">%</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">{{ t.ebit }}</th><td>{{ s.ebit }}</td><td>{{ s.hundred }}</td></tr>
+            <tr class="neg"><th scope="row">{{ t.bad }}</th><td>{{ s.loss }}</td><td>{{ s.loss_pct }}</td></tr>
+            <tr class="sum"><th scope="row">{{ t.left }}</th><td>{{ s.left }}</td><td>{{ s.left_pct }}</td></tr>
+          </tbody>
+        </table>
+        <div class="bar" aria-hidden="true"><div class="keep" style="width:{{ s.left_w }}%"></div><div class="lose" style="left:{{ s.left_w }}%"></div></div>
+      </figure>
+      <figure class="exhibit" style="margin:32px 0 0">
+        <figcaption class="label">{{ t.ex2_label }}</figcaption>
+        <ul class="rank">{% for e in s.ranked %}<li><span>{{ e.name }}</span><i style="width:{{ e.w }}%"{% if e.over %} class="over"{% endif %}></i><b{% if e.over %} class="over-b"{% endif %}>{{ e.share }}</b></li>{% endfor %}</ul>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="why" aria-labelledby="h-why">
+  <div class="wrap">
+    <div class="head"><h2 id="h-why">{{ t.why_h }}</h2><p>{{ t.why_p }}</p></div>
+    <dl class="figs">
+      <div><dt>{{ t.now_econ }}</dt><dd>{{ s.regime }}<span class="s">{{ s.since }}</span></dd></div>
+      <div><dt>{{ t.now_euribor }}</dt><dd>{{ s.euribor }}<span class="s">{{ t.now_euribor_sub }}</span></dd></div>
+      <div><dt>{{ t.now_energy }}</dt><dd>{{ s.energy }}<span class="s">{{ t.now_energy_sub }}</span></dd></div>
+      <div><dt>{{ t.now_wage }}</dt><dd>{{ s.wage_to }}<span class="s">{{ s.wage_sub }}</span></dd></div>
+    </dl>
+    <p class="small" style="margin-top:16px">{{ s.now_note }}</p>
+  </div>
+</section>
+
+<section class="sec tint" id="how" aria-labelledby="h-how">
+  <div class="wrap">
+    <div class="head"><h2 id="h-how">{{ t.how_h }}</h2><p>{{ t.how_p }}</p></div>
+    <ol class="steps">{% for h, p in t.steps %}<li><span class="n" aria-hidden="true">{{ loop.index }}</span><h3>{{ h }}</h3><p>{{ p }}</p></li>{% endfor %}</ol>
+  </div>
+</section>
+
+<section class="sec" id="get" aria-labelledby="h-get">
+  <div class="wrap">
+    <div class="head"><h2 id="h-get">{{ t.get_h }}</h2><p>{{ t.get_p }}</p></div>
+    <ul class="feats">{% for b, sp in t.feats %}<li><b>{{ b }}</b><span>{{ sp }}</span></li>{% endfor %}</ul>
+  </div>
+</section>
+
+<section class="sec" id="trust" aria-labelledby="h-trust" style="padding-top:0">
+  <div class="wrap">
+    <div class="head"><h2 id="h-trust">{{ t.trust_h }}</h2><p>{{ t.trust_p }}</p></div>
+    <dl class="figs">
+      <div><dt>{{ t.t_rate }}</dt><dd>{{ s.bt_rate }}<span class="s">{{ t.t_rate_sub }}</span></dd></div>
+      <div><dt>{{ t.t_test }}</dt><dd>{{ s.bt_verdict }}<span class="s">{{ s.bt_p }}</span></dd></div>
+      <div><dt>{{ t.t_series }}</dt><dd>21<span class="s">{{ t.t_series_sub }}</span></dd></div>
+      <div><dt>{{ t.t_cookies }}</dt><dd>0<span class="s">{{ t.t_cookies_sub }}</span></dd></div>
+    </dl>
+    <p style="margin-top:24px"><a href="https://github.com/EidenWilson/macro-risk-monitor#readme">{{ t.trust_more }}</a></p>
+  </div>
+</section>
+
+<section class="sec tint" id="prices" aria-labelledby="h-prices">
+  <div class="wrap">
+    <div class="head"><h2 id="h-prices">{{ t.prices_h }}</h2><p>{{ t.prices_p }}</p></div>
+    <div class="prices">{% for name, who, price, feats, cls in s.plans %}
+      <div{% if cls %} class="{{ cls }}"{% endif %}><h3>{{ name }}</h3><p class="small">{{ who }}</p>
+        <div class="price">{{ price }}{% if name != 'Free' %}<small>{{ t.per_month }}</small>{% endif %}</div>
+        <ul>{% for f in feats %}<li>{{ f }}</li>{% endfor %}</ul></div>{% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="pilot" aria-labelledby="h-pilot">
+  <div class="wrap">
+    <div class="head"><h2 id="h-pilot">{{ t.pilot_h }}</h2><p>{{ t.pilot_p }}</p></div>
+    <div class="actions" style="margin-top:0">{% if contact %}<a class="btn primary" href="mailto:{{ contact }}?subject={{ t.pilot_cta | urlencode }}">{{ t.pilot_cta }}</a><a href="{{ tool_business }}">{{ t.pilot_try }}</a>{% else %}<a class="btn primary" href="{{ tool_business }}">{{ t.pilot_try_only }}</a>{% endif %}</div>
+  </div>
+</section>
+
+<section class="sec" id="team" aria-labelledby="h-team" style="padding-top:0">
+  <div class="wrap">
+    <div class="head"><h2 id="h-team">{{ t.team_h }}</h2><p>{{ t.team_p }}</p></div>
+    <div class="team">{% for n, r in t.team %}<p><b>{{ n }}</b><span>{{ r }}</span></p>{% endfor %}</div>
+  </div>
+</section>
+
+<section class="sec" id="faq" aria-labelledby="h-faq" style="padding-top:0">
+  <div class="wrap">
+    <div class="head"><h2 id="h-faq">{{ t.faq_h }}</h2></div>
+    <div class="faq">{% for q, a in t.faq %}<details><summary>{{ q }}</summary><p>{{ a }}</p></details>{% endfor %}</div>
+  </div>
+</section>
+{% endblock %}

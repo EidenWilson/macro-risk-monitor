@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>{{ title }}</title>
+<meta name="description" content="{{ desc }}">
+<link rel="canonical" href="{{ site }}{{ path }}">
+{% for l, p in alternates %}<link rel="alternate" hreflang="{{ l }}" href="{{ site }}{{ p }}">
+{% endfor %}<link rel="alternate" hreflang="x-default" href="{{ site }}{{ alternates[0][1] }}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Macro Risk Monitor">
+<meta property="og:title" content="{{ title }}">
+<meta property="og:description" content="{{ desc }}">
+<meta property="og:url" content="{{ site }}{{ path }}">
+<meta property="og:image" content="{{ site }}og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="{{ 'de_DE' if lang == 'de' else 'en_GB' }}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#ffffff">
+<link rel="icon" href="{{ icon }}">
+<link rel="preload" href="{{ root }}assets/fonts/sofia-sans-semi-condensed-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="{{ root }}assets/site.css?v={{ v.css }}">
+<script type="application/ld+json">{{ jsonld | safe }}</script>
+</head>
+<body>
+<a class="skip" href="#main">{{ c.skip }}</a>
+<header class="site-bar"><div class="wrap">
+  <a class="brand" href="{{ tool }}"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10.4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 1.6v20.8M1.6 12h20.8" stroke="currentColor" stroke-width="1.15"/><circle cx="16.8" cy="7.2" r="3.1" fill="#b3261e"/></svg><span>Macro Risk Monitor</span></a>
+  <nav class="site-nav" aria-label="{{ c.nav_label }}">
+    <a href="{{ tool }}">{{ c.nav_tool }}</a>
+    <a href="{{ root }}portfolio/{{ 'de/' if lang == 'de' }}"{% if key == 'portfolio' %} aria-current="page"{% endif %}>{{ c.nav_portfolio }}</a>
+    <a href="{{ root }}advisors/{{ 'de/' if lang == 'de' }}"{% if key == 'advisors' %} aria-current="page"{% endif %}>{{ c.nav_advisors }}</a>
+  </nav>
+  {% if other %}<nav class="lang" aria-label="{{ c.lang_label }}"><a href="{{ here_en }}" hreflang="en" lang="en"{% if lang == 'en' %} aria-current="true"{% endif %}>EN</a><a href="{{ here_de }}" hreflang="de" lang="de"{% if lang == 'de' %} aria-current="true"{% endif %}>DE</a></nav>{% endif %}
+</div></header>
+<main id="main">
+{% block main %}{% endblock %}
+</main>
+<footer class="site-foot"><div class="wrap">
+  <p>{{ c.foot_note }}</p>
+  <nav aria-label="{{ c.foot_label }}">
+    <a href="{{ tool }}">{{ c.nav_tool }}</a>
+    <a href="{{ root }}portfolio/{{ 'de/' if lang == 'de' }}">{{ c.nav_portfolio }}</a>
+    <a href="{{ root }}advisors/{{ 'de/' if lang == 'de' }}">{{ c.nav_advisors }}</a>
+    <a href="https://github.com/EidenWilson/macro-risk-monitor">{{ c.foot_code }}</a>
+    {% if legal %}<a href="{{ root }}impressum.html">{{ c.imprint }}</a><a href="{{ root }}datenschutz.html">{{ c.privacy }}</a>{% endif %}
+  </nav>
+</div></footer>
+{% block scripts %}{% endblock %}
+</body>
+</html>

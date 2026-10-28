@@ -334,6 +334,7 @@ footer .inner{border-top:1px solid var(--line);padding-top:20px}
 footer p{margin:0 0 6px;max-width:90ch}
 footer a{color:var(--ink);font-weight:600}
 .legal{display:flex;gap:18px;margin-top:10px}
+.more-links{display:flex;flex-wrap:wrap;gap:6px 22px;margin-top:12px!important}
 .sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 svg.chart{width:100%;height:auto}
 .short,.mobile-only,.sheet-head,.editbar,.asof-m{display:none}
@@ -612,6 +613,7 @@ svg.chart{width:100%;height:auto}
 
 <footer class="gutter"><div class="inner">
   <p id="foot1"></p><p id="foot2"></p><p id="foot3"></p>
+  <p class="more-links"><a id="lnkAdvisors" data-t="footAdvisors" href="https://eidenwilson.github.io/macro-risk-monitor/advisors/">For tax advisors and banks</a><a id="lnkPortfolio" data-t="footPortfolio" href="https://eidenwilson.github.io/macro-risk-monitor/portfolio/">Portfolio stress test</a></p>
   <p><button type="button" class="linkbtn" id="forget" data-t="forget">Delete the numbers this page saved in your browser</button></p>
   <p class="legal" id="legal" hidden></p>
 </div></footer>
@@ -2070,6 +2072,8 @@ function applyLang() {
   for (const k in CW) delete CW[k];
   $('foot1').textContent = t('foot1', month(D.current.asOf)); $('foot2').textContent = t('foot2'); $('foot3').textContent = t('foot3');
   if (window.MRM_LEGAL) { $('legal').hidden = false; $('legal').innerHTML = `<a href="impressum.html">${t('legalNotice')}</a><a href="datenschutz.html">${t('privacy')}</a>`; }
+  const SITE = 'https://eidenwilson.github.io/macro-risk-monitor/', sub = LANG === 'de' ? 'de/' : '';   // the pages around the tool exist in English and German
+  $('lnkAdvisors').href = `${SITE}advisors/${sub}`; $('lnkPortfolio').href = `${SITE}portfolio/${sub}`;
   $('upsList').innerHTML = t('upsList').map(x => `<li>${x}</li>`).join('');
   $('relBtn').textContent = t($('relBody').hidden ? 'show' : 'hide');
   $('chatInput').placeholder = t('chatPh');

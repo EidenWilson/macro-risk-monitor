@@ -207,6 +207,8 @@ foot1: m => `Dados: ECB Data Portal (Euribor, EUR/USD, IHPC da Alemanha), Eurost
 foot2: 'Método: a fase da bússola é a direção da variação em 6 meses da inflação e da produção industrial (médias de 3 meses). O modelo estatístico é um modelo oculto de Markov gaussiano de 4 estados sobre os seus níveis, com probabilidades filtradas. A faixa de resultados aplica aos seus números as variações reais de 12 meses que se seguiram a cada mês desde 2000, acumuladas de forma linear ao longo do ano e ampliadas quando os mercados estão hoje mais voláteis do que na época (simulação histórica filtrada).',
 foot3: 'Protótipo para discussão. Não é consultoria financeira.',
 forget: 'Apagar os números que esta página salvou no seu navegador',
+footAdvisors: 'Para contadores e bancos',
+footPortfolio: 'Teste de estresse de carteira',
 legalNotice: 'Aviso legal',
 privacy: 'Privacidade',
 editNumbers: 'Editar seus números',

@@ -207,6 +207,8 @@ foot1: m => `Datos: ECB Data Portal (Euribor, EUR/USD, IAPC de Alemania), Eurost
 foot2: 'Método: la fase de la brújula es la dirección del cambio a 6 meses de la inflación y la producción industrial (media de 3 meses). El modelo estadístico es un modelo oculto de Márkov gaussiano de 4 estados sobre sus niveles, con probabilidades filtradas. El abanico de resultados aplica a sus cifras los movimientos reales a 12 meses que siguieron a cada mes desde 2000, acumulados de forma lineal a lo largo del año y ampliados cuando hoy los mercados son más volátiles que entonces (simulación histórica filtrada).',
 foot3: 'Prototipo para debate. No es asesoramiento financiero.',
 forget: 'Borrar las cifras que esta página guardó en su navegador',
+footAdvisors: 'Para asesores fiscales y bancos',
+footPortfolio: 'Prueba de estrés de carteras',
 legalNotice: 'Aviso legal',
 privacy: 'Privacidad',
 editNumbers: 'Editar sus cifras',

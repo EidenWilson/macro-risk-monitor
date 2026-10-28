@@ -32,11 +32,15 @@ jobs:
           python-version: "3.12"
       - name: Install Playwright
         run: |
-          pip install playwright
+          pip install playwright jinja2
           python -m playwright install --with-deps chromium
       - name: Build the page from the template
         run: python build_page.py
+      - name: Build the pages around it (advisors, portfolio stress test)
+        run: python site/build_site.py
       - name: Browser checks
         run: python tests/test_page.py
+      - name: Browser checks for the pages around it
+        run: python tests/test_site.py
       - name: Alert email (dry run)
         run: python alerts/digest.py --dry-run

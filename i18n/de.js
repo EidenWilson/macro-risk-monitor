@@ -207,6 +207,8 @@ foot1: m => `Daten: EZB Data Portal (Euribor, EUR/USD, HVPI Deutschland), Eurost
 foot2: 'Methode: Die Kompass-Phase ergibt sich aus der Richtung der 6-Monats-Veränderung von Inflation und Industrieproduktion (3-Monats-Durchschnitt). Das statistische Modell ist ein Gaußsches Hidden-Markov-Modell mit 4 Zuständen auf deren Niveaus, mit gefilterten Wahrscheinlichkeiten. Die Bandbreite wendet die tatsächlichen 12-Monats-Veränderungen nach jedem früheren Monat seit 2000 auf Ihre Zahlen an, linear über das Jahr aufgebaut und hochskaliert, wenn die Märkte heute schwankungsanfälliger sind als damals (gefilterte historische Simulation).',
 foot3: 'Prototyp zur Diskussion. Keine Finanzberatung.',
 forget: 'Von dieser Seite im Browser gespeicherte Zahlen löschen',
+footAdvisors: 'Für Steuerkanzleien und Banken',
+footPortfolio: 'Portfolio-Stresstest',
 legalNotice: 'Impressum',
 privacy: 'Datenschutz',
 editNumbers: 'Ihre Zahlen bearbeiten',

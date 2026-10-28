@@ -212,6 +212,8 @@ foot1: m => `Data: ECB Data Portal (Euribor, EUR/USD, HICP Germany), Eurostat (i
 foot2: 'Method: the compass regime is the direction of the 6-month change in 3-month-average inflation and industrial output. The statistical model is a 4-state Gaussian hidden Markov model on their levels, with filtered probabilities. The range of outcomes applies the actual 12-month moves that followed each past month since 2000 to your figures, building up linearly through the year and scaled up when markets are more volatile today than they were then (filtered historical simulation).',
 foot3: 'Prototype for discussion. Not financial advice.',
 forget: 'Delete the numbers this page saved in your browser',
+footAdvisors: 'For tax advisors and banks',
+footPortfolio: 'Portfolio stress test',
 legalNotice: 'Legal notice',
 privacy: 'Privacy',
 editNumbers: 'Edit your numbers',

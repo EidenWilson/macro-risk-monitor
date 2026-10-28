@@ -207,6 +207,8 @@ foot1: m => `Dane: ECB Data Portal (Euribor, EUR/USD, HICP Niemcy), Eurostat (pr
 foot2: 'Metoda: faza kompasu to kierunek 6-miesięcznej zmiany inflacji i produkcji przemysłowej (średnie 3-miesięczne). Model statystyczny to gaussowski ukryty model Markowa z 4 stanami na ich poziomach, z prawdopodobieństwami filtrowanymi. Zakres wyników nakłada na Twoje liczby rzeczywiste 12-miesięczne zmiany, które nastąpiły po każdym miesiącu od 2000 roku, narastające liniowo w ciągu roku i powiększane, gdy rynki są dziś bardziej zmienne niż wtedy (filtrowana symulacja historyczna).',
 foot3: 'Prototyp do dyskusji. To nie jest doradztwo finansowe.',
 forget: 'Usuń liczby zapisane przez tę stronę w przeglądarce',
+footAdvisors: 'Dla doradców podatkowych i banków',
+footPortfolio: 'Test warunków skrajnych portfela',
 legalNotice: 'Nota prawna',
 privacy: 'Prywatność',
 editNumbers: 'Edytuj swoje liczby',

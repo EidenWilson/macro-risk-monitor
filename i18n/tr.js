@@ -207,6 +207,8 @@ foot1: m => `Veriler: ECB Data Portal (Euribor, EUR/USD, Almanya HICP), Eurostat
 foot2: 'Yöntem: pusula evresi, enflasyon ve sanayi üretiminin (3 aylık ortalamalar) 6 aylık değişiminin yönüdür. İstatistiksel model, bunların düzeyleri üzerinde 4 durumlu Gauss gizli Markov modelidir ve filtrelenmiş olasılıklar kullanır. Sonuç aralığı, 2000’den beri her ayı izleyen gerçek 12 aylık hareketleri rakamlarınıza uygular; hareketler yıl boyunca doğrusal birikir ve piyasalar bugün o zamankinden daha oynaksa büyütülür (filtrelenmiş tarihsel simülasyon).',
 foot3: 'Tartışma amaçlı prototip. Finansal tavsiye değildir.',
 forget: 'Bu sayfanın tarayıcınıza kaydettiği rakamları sil',
+footAdvisors: 'Mali müşavirler ve bankalar için',
+footPortfolio: 'Portföy stres testi',
 legalNotice: 'Yasal bilgiler',
 privacy: 'Gizlilik',
 editNumbers: 'Rakamlarınızı düzenleyin',

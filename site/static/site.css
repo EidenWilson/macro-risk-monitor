@@ -227,3 +227,4 @@ p{margin:0}
 .tbl tbody th{white-space:normal;color:var(--ink);font-size:15px;font-weight:400;border-bottom:1px solid var(--line);padding-inline-start:0;vertical-align:top}
 .nw{white-space:nowrap}
 .tint .prices .focus{background:var(--bg)}
+#file:focus-visible+label{outline:2px solid var(--ink);outline-offset:3px}   /* the hidden file input shows its focus on its button */

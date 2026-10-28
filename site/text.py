@@ -60,6 +60,7 @@ PORTFOLIO = {
         "s3_h": "Holding by holding",
         "s3_p": "Sorted by value. Notes under a name show where the file was missing something and what was assumed.",
         "export": "Download results (CSV)",
+        "table_label": "Table of holdings, scrolls sideways",
         "s4_h": "How it is calculated",
         "method": [
             "Bonds: the yield is solved from the clean price plus accrued interest, over the bond's own coupon dates (yearly, half-yearly for Italian BTPs). Duration and convexity come from moving that yield one basis point either way.",
@@ -94,6 +95,7 @@ PORTFOLIO = {
         "s3_h": "Position für Position",
         "s3_p": "Nach Kurswert sortiert. Hinweise unter einem Namen zeigen, wo der Datei etwas fehlte und was angenommen wurde.",
         "export": "Ergebnisse herunterladen (CSV)",
+        "table_label": "Tabelle der Positionen, seitlich scrollbar",
         "s4_h": "So wird gerechnet",
         "method": [
             "Anleihen: Die Rendite wird aus dem Kurs plus Stückzinsen über die eigenen Kupontermine der Anleihe gelöst (jährlich, halbjährlich bei italienischen BTPs). Duration und Konvexität ergeben sich, wenn man diese Rendite um einen Basispunkt nach oben und unten verschiebt.",

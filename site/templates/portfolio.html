@@ -12,8 +12,8 @@
       <div class="drop" id="drop">
         <p>{{ t.drop }}</p>
         <div class="actions" style="margin-top:0">
-          <label class="btn primary" for="file">{{ t.choose }}</label>
           <input type="file" id="file" accept=".csv,.txt,text/csv" class="sr">
+          <label class="btn primary" for="file">{{ t.choose }}</label>
           <button type="button" class="btn" id="example">{{ t.example }}</button>
         </div>
         <p class="small">{{ t.example_note }}</p>
@@ -59,7 +59,7 @@
   <section class="sec" aria-labelledby="h-hold">
     <div class="wrap">
       <div class="head"><h2 id="h-hold">{{ t.s3_h }}</h2><p>{{ t.s3_p }}</p></div>
-      <div class="scroll" tabindex="0" role="region" aria-labelledby="h-hold"><table class="tbl holdings"><thead id="holdHead"></thead><tbody id="holdBody"></tbody><tfoot id="holdFoot"></tfoot></table></div>
+      <div class="scroll" tabindex="0" role="region" aria-label="{{ t.table_label }}"><table class="tbl holdings"><thead id="holdHead"></thead><tbody id="holdBody"></tbody><tfoot id="holdFoot"></tfoot></table></div>
       <div class="actions"><button type="button" class="btn" id="exportBtn">{{ t.export }}</button></div>
     </div>
   </section>

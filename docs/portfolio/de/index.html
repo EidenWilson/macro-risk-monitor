@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#ffffff">
 <link rel="icon" href="data:image/svg+xml,&lt;svg xmlns=&#39;http://www.w3.org/2000/svg&#39; viewBox=&#39;0 0 32 32&#39;&gt;&lt;circle cx=&#39;16&#39; cy=&#39;16&#39; r=&#39;14&#39; fill=&#39;%23ffffff&#39; stroke=&#39;%231f2a3a&#39; stroke-width=&#39;2.5&#39;/&gt;&lt;path d=&#39;M16 2.5v27M2.5 16h27&#39; stroke=&#39;%231f2a3a&#39; stroke-width=&#39;1.6&#39;/&gt;&lt;circle cx=&#39;22.6&#39; cy=&#39;9.4&#39; r=&#39;4.2&#39; fill=&#39;%23b3261e&#39;/&gt;&lt;/svg&gt;">
 <link rel="preload" href="../../assets/fonts/sofia-sans-semi-condensed-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="../../assets/site.css?v=ad6c00dd">
+<link rel="stylesheet" href="../../assets/site.css?v=b21e3261">
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebApplication", "name": "Portfolio-Stresstest", "url": "https://eidenwilson.github.io/macro-risk-monitor/portfolio/de/", "applicationCategory": "FinanceApplication", "operatingSystem": "Any (runs in the browser)", "inLanguage": "de", "isPartOf": {"@type": "WebSite", "name": "Macro Risk Monitor", "url": "https://eidenwilson.github.io/macro-risk-monitor/"}, "description": "Bestandsliste laden und sehen, was Rendite und Duration sind und was ein Zinsanstieg, ein Spread-Schock oder ein Aktiencrash kosten würden. Läuft im Browser.", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "EUR"}}</script>
 </head>
 <body>
@@ -48,8 +48,8 @@
       <div class="drop" id="drop">
         <p>CSV-Datei hier ablegen. Komma oder Semikolon, deutsches oder englisches Zahlenformat.</p>
         <div class="actions" style="margin-top:0">
-          <label class="btn primary" for="file">Datei auswählen</label>
           <input type="file" id="file" accept=".csv,.txt,text/csv" class="sr">
+          <label class="btn primary" for="file">Datei auswählen</label>
           <button type="button" class="btn" id="example">Beispiel laden</button>
         </div>
         <p class="small">Das Beispiel: 21 Positionen von Seite 6 des Halbjahresberichts BayernInvest Lux Multi Asset Income zum 31. März 2026 (18 Anleihen, Gold, zwei Fondsanteile).</p>
@@ -95,7 +95,7 @@
   <section class="sec" aria-labelledby="h-hold">
     <div class="wrap">
       <div class="head"><h2 id="h-hold">Position für Position</h2><p>Nach Kurswert sortiert. Hinweise unter einem Namen zeigen, wo der Datei etwas fehlte und was angenommen wurde.</p></div>
-      <div class="scroll" tabindex="0" role="region" aria-labelledby="h-hold"><table class="tbl holdings"><thead id="holdHead"></thead><tbody id="holdBody"></tbody><tfoot id="holdFoot"></tfoot></table></div>
+      <div class="scroll" tabindex="0" role="region" aria-label="Tabelle der Positionen, seitlich scrollbar"><table class="tbl holdings"><thead id="holdHead"></thead><tbody id="holdBody"></tbody><tfoot id="holdFoot"></tfoot></table></div>
       <div class="actions"><button type="button" class="btn" id="exportBtn">Ergebnisse herunterladen (CSV)</button></div>
     </div>
   </section>

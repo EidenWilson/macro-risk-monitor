@@ -7,15 +7,19 @@
 @font-face{font-family:"Sofia Sans SC";font-style:normal;font-display:swap;font-weight:1 1000;src:url(data:font/woff2;base64,__FONT:assets/fonts/sofia-sans-semi-condensed-cyrillic.woff2__) format("woff2");unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
 /* Set like a bookkeeping sheet: white paper, blue-black ink for text and profit (schwarze Zahlen), red pencil for
    losses (rote Zahlen), the pale tint of a printed form behind the inputs, a rule over every sum and a double rule
-   under the result, and a highlighter for the one thing that needs attention. One light theme, like paper. */
+   under the result, and a highlighter for the one thing that needs attention. One light theme, like paper.
+   Seven colours, one job each; the same seven in site/static/site.css. */
 :root{
-  --bg:#ffffff; --surface:#ffffff; --sunk:#edf1ea; --ink:#1f2a3a; --ink-2:#36445c; --muted:#566170; --line:#cfd6dc; --field-line:#8e9aa6;
-  --accent:#1f2a3a; --accent-soft:#e3e8ec; --on-accent:#ffffff;
-  --loss:#b3261e; --loss-soft:#f7e3e0; --gain:#1f2a3a; --gain-soft:#e3e8ec; --warn:#c48a1a; --warn-soft:#fff3c4;
-  /* text shades (WCAG AA, 4.5:1 or better on white and on the form tint) */
-  --loss-ink:#a4231c; --gain-ink:#1f2a3a; --warn-ink:#7f5300; --contr-ink:#3d5876;
-  --rec:#6d8e79; --over:#c48a1a; --stag:#b3261e; --contr:#6984a2;
-  --marker:#ffe45e;
+  --bg:#ffffff;      /* paper: the page, cards and fields */
+  --ink:#1f2a3a;     /* text, figures, profit, buttons and chart lines */
+  --muted:#566170;   /* secondary text, and the border of every field and button (6.3:1 on white) */
+  --line:#cfd6dc;    /* hairlines between rows */
+  --sunk:#edf1ea;    /* the printed form behind the inputs */
+  --loss:#b3261e;    /* losses and anything above the alert level (6.5:1 on white) */
+  --marker:#ffe45e;  /* the one thing that needs attention */
+  /* the four phases of the economy, only in the two charts that show them, always labelled; checked for
+     colour-blind separation across all pairs */
+  --rec:#1d8562; --over:#cc9600; --stag:#b3261e; --contr:#3c6eae;
   --f:"Sofia Sans SC",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
   color-scheme:light;
 }
@@ -27,26 +31,26 @@ html:is([lang|=ar],[lang|=hi]) *{letter-spacing:0!important}   /* spacing breaks
 html:is([lang|=ar],[lang|=hi]) :is(.lede,.regname,.price,.tile .tv,h2){line-height:1.45}   /* room for marks above and below */
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--f);font-size:16px;line-height:1.5}
-body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
 .gutter{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .inner{max-width:1200px;margin:0 auto}
 button,input,select,textarea{font:inherit}
 :focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 table,output,.money input,.drv b,.callout b,.fact b,.stat b,.crow .risk,svg text{font-variant-numeric:tabular-nums}
 
-.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--ink)}
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--ink)}
 .bar .inner{display:flex;align-items:center;justify-content:space-between;gap:10px 14px;padding-block:9px;flex-wrap:wrap}
 .brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:19px;letter-spacing:.01em;line-height:1.2}
 .brand svg{width:24px;height:24px;flex:none}
 .tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .chip{font-size:14px;color:var(--muted);white-space:nowrap;margin-inline-end:6px}
-.btn{font-size:15px;font-weight:600;line-height:1.25;padding:6px 13px;border-radius:3px;border:1px solid var(--field-line);background:var(--surface);color:var(--ink);cursor:pointer;white-space:nowrap}
+.btn{font-size:15px;font-weight:600;line-height:1.25;padding:6px 13px;border-radius:3px;border:1px solid var(--muted);background:var(--bg);color:var(--ink);cursor:pointer;white-space:nowrap}
 .btn:hover:not(:disabled){border-color:var(--ink);background:var(--sunk)}
-.btn.primary{background:var(--ink);border-color:var(--ink);color:var(--on-accent)}
-.btn.primary:hover:not(:disabled){background:var(--ink-2);border-color:var(--ink-2)}
+.btn.primary{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.btn.primary:hover:not(:disabled){opacity:.85}
 .btn:disabled{cursor:default;opacity:.55}
 /* language menu: a native select (keyboard, screen readers and phone pickers for free) laid over a small button */
-.langpick{position:relative;display:inline-flex;align-items:center;gap:5px;padding:6px 10px;border-radius:3px;border:1px solid var(--field-line);background:var(--surface);color:var(--ink);font-size:14px;font-weight:700;white-space:nowrap;cursor:pointer}
+.langpick{position:relative;display:inline-flex;align-items:center;gap:5px;padding:6px 10px;border-radius:3px;border:1px solid var(--muted);background:var(--bg);color:var(--ink);font-size:14px;font-weight:700;white-space:nowrap;cursor:pointer}
 .langpick:hover{border-color:var(--ink);background:var(--sunk)}
 .langpick:has(select:focus-visible){outline:2px solid var(--ink);outline-offset:2px}
 .langpick select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:16px;border:0;padding:0}
@@ -58,7 +62,7 @@ table,output,.money input,.drv b,.callout b,.fact b,.stat b,.crow .risk,svg text
 .lede{font-size:clamp(30px,4.2vw,48px);line-height:1.06;font-weight:650;letter-spacing:-.005em;max-width:26ch;margin:0;text-wrap:balance}
 .lede :is(.num,.ok,.base){white-space:nowrap}
 .profitbar{margin-top:24px;max-width:640px}
-.pb-track{direction:ltr;position:relative;height:14px;background:var(--surface);box-shadow:inset 0 0 0 1px var(--ink)}
+.pb-track{direction:ltr;position:relative;height:14px;background:var(--bg);box-shadow:inset 0 0 0 1px var(--ink)}
 .pb-keep{position:absolute;inset:0 auto 0 0;background:var(--ink);transition:width .5s cubic-bezier(.2,.8,.2,1)}
 .pb-lose{position:absolute;top:0;bottom:0;background:repeating-linear-gradient(135deg,var(--loss) 0 2.5px,transparent 2.5px 6px);box-shadow:inset 0 0 0 1px var(--loss);transition:left .5s cubic-bezier(.2,.8,.2,1),width .5s cubic-bezier(.2,.8,.2,1)}
 .pb-typ{position:absolute;top:-6px;bottom:-6px;width:2px;background:var(--ink);transition:left .5s cubic-bezier(.2,.8,.2,1)}
@@ -68,7 +72,7 @@ table,output,.money input,.drv b,.callout b,.fact b,.stat b,.crow .risk,svg text
 .ledger thead th{font-size:14px;font-weight:600;color:var(--muted);text-align:end;border-bottom:2px solid var(--ink)}   /* rules run under the figures only, as on a statement */
 .ledger tbody th{text-align:start;font-weight:400;color:var(--ink);font-size:16px;white-space:normal;padding-inline-end:10px}
 .ledger td{text-align:end;padding-inline-start:18px;font-weight:600}
-.ledger .neg td{color:var(--loss-ink)}
+.ledger .neg td{color:var(--loss)}
 .ledger .sum :is(th,td){font-weight:700;padding-block:7px}
 .ledger .sum td{border-top:1px solid var(--ink);border-bottom:3px double var(--ink)}   /* a rule over the sum, a double rule under the result */
 .ledger-note{margin:12px 0 0;font-size:14px;color:var(--muted)}
@@ -115,7 +119,7 @@ html[data-plan=pro] [data-only=free],html[data-plan=business] [data-only=free],h
 .planbtn .long{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
 /* the current plan, like a stamp on the page */
 .tier{font-size:13px;font-weight:700;line-height:1;padding:3px 6px 4px;border:1.5px solid var(--ink);border-radius:2px;color:var(--ink)}
-html[data-plan=business] .tier{background:var(--ink);color:var(--on-accent)}
+html[data-plan=business] .tier{background:var(--ink);color:var(--bg)}
 
 /* answer first: four plain-language answers under the headline, ruled like a table of key figures */
 .tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin-top:34px;border-top:2px solid var(--ink)}
@@ -142,17 +146,17 @@ html[data-plan=business] .tier{background:var(--ink);color:var(--on-accent)}
 .drv b{font-weight:700;text-align:end}
 
 /* inputs: a printed form, white boxes on the form tint */
-details.more{border-top:1px solid var(--field-line);margin-top:8px}
+details.more{border-top:1px solid var(--line);margin-top:8px}
 details.more>summary{list-style:none;cursor:pointer;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px;min-height:44px}
 details.more>summary::-webkit-details-marker{display:none}
 details.more>summary small{font-weight:400;color:var(--muted);font-size:14px}
 details.more>summary::after{content:"+";color:var(--ink);font-weight:500;font-size:21px;line-height:1;margin-inline-start:auto}
 details.more[open]>summary::after{content:"–"}
-.sub{font-size:16px;font-weight:700;color:var(--ink);margin:18px 0 10px;padding-top:12px;border-top:1px solid var(--field-line)}
+.sub{font-size:16px;font-weight:700;color:var(--ink);margin:18px 0 10px;padding-top:12px;border-top:1px solid var(--line)}
 details.more>.sub:first-of-type{border-top:0;padding-top:0;margin-top:4px}
 .field{display:grid;grid-template-columns:1fr auto;align-items:center;gap:4px 10px;margin-bottom:10px}
 .field>label{font-size:15px;color:var(--ink);line-height:1.3}
-.money{display:flex;align-items:center;background:var(--surface);border:1px solid var(--field-line);border-radius:2px;padding:0 8px;width:132px}
+.money{display:flex;align-items:center;background:var(--bg);border:1px solid var(--muted);border-radius:2px;padding:0 8px;width:132px}
 .money span{color:var(--muted);font-size:14px}
 .money input{border:0;background:transparent;font-weight:600;font-size:16px;color:var(--ink);width:100%;padding:5px 0;padding-inline-start:4px;text-align:end}
 .money input:focus{outline:none}
@@ -160,7 +164,7 @@ details.more>.sub:first-of-type{border-top:0;padding-top:0;margin-top:4px}
 .range{grid-column:1/-1;display:grid;grid-template-columns:1fr 64px;gap:10px;align-items:center}
 .range output{font-weight:700;text-align:end;font-size:15px}
 input[type=range]{width:100%;accent-color:var(--ink)}
-select{background:var(--surface);border:1px solid var(--field-line);border-radius:2px;padding:5px 8px;color:var(--ink);font-size:15px;max-width:100%}
+select{background:var(--bg);border:1px solid var(--muted);border-radius:2px;padding:5px 8px;color:var(--ink);font-size:15px;max-width:100%}
 .field>select{grid-column:1/-1;width:100%}
 .toggle{display:flex;align-items:center;gap:8px;font-size:15px;color:var(--ink);margin-bottom:10px}
 .toggle input{accent-color:var(--ink);width:16px;height:16px}
@@ -179,7 +183,7 @@ select{background:var(--surface);border:1px solid var(--field-line);border-radiu
 .crow .open{background:none;border:0;padding:0;font:inherit;color:inherit;text-align:start;cursor:pointer;display:flex;align-items:center;min-width:0;overflow-wrap:anywhere}
 .flag{display:inline-block;width:8px;height:8px;margin-inline-end:7px;flex:none}
 .saverow{display:flex;gap:6px}
-.saverow input{flex:1;min-width:0;background:var(--surface);border:1px solid var(--field-line);border-radius:2px;padding:6px 8px;color:var(--ink);font-size:15px}
+.saverow input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--muted);border-radius:2px;padding:6px 8px;color:var(--ink);font-size:15px}
 
 /* regime */
 .regime{display:grid;grid-template-columns:250px minmax(0,1fr);gap:28px;align-items:center}
@@ -190,7 +194,7 @@ select{background:var(--surface);border:1px solid var(--field-line);border-radiu
 @media (max-width:440px){.facts{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .fact b{display:block;font-size:22px;font-weight:700}
 .fact span{font-size:14px;color:var(--muted)}
-.hot{color:var(--loss-ink)} .cool{color:var(--ink)} .warm{color:var(--warn-ink)}
+.hot{color:var(--loss)} .cool{color:var(--ink)}
 .second{margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}
 .stack{display:flex;height:12px;overflow:hidden;background:var(--sunk);margin:8px 0}
 .stack i{display:block;height:100%}
@@ -224,7 +228,7 @@ tr:last-child td{border-bottom:0}
 .hedge-row td:first-child{min-width:220px}
 .hedge-row small{display:block;color:var(--muted);font-size:14px;margin-inline-start:24px}
 .verdict{font-weight:700;font-size:14px;white-space:nowrap}
-.v-good{color:var(--ink)} .v-meh{color:var(--muted)} .v-bad{color:var(--loss-ink)}
+.v-good{color:var(--ink)} .v-meh{color:var(--muted)} .v-bad{color:var(--loss)}
 
 .dist{display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:20px;align-items:center}
 @media (max-width:720px){.dist{grid-template-columns:minmax(0,1fr)}}
@@ -235,16 +239,16 @@ tr:last-child td{border-bottom:0}
 
 .legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:14px;color:var(--muted);margin-top:10px}
 .legend i{display:inline-block;width:14px;height:10px;margin-inline-end:6px;vertical-align:-1px}
-.tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--on-accent);font-size:14px;padding:8px 10px;border-radius:2px;line-height:1.4;z-index:20;max-width:240px}
+.tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--bg);font-size:14px;padding:8px 10px;border-radius:2px;line-height:1.4;z-index:20;max-width:240px}
 
 /* modal */
 .modal{position:fixed;inset:0;background:rgba(31,42,58,.45);display:flex;align-items:center;justify-content:center;z-index:30;padding:16px}
 .modal[hidden]{display:none!important}
-.sheet{background:var(--surface);border-radius:3px;border-top:4px solid var(--ink);max-width:640px;width:100%;max-height:88vh;overflow:auto;padding:22px 24px;box-shadow:0 24px 60px -24px rgba(31,42,58,.55)}
-.drop{border:1.5px dashed var(--field-line);border-radius:2px;padding:22px;text-align:center;color:var(--muted);font-size:15px;margin:12px 0;background:var(--sunk)}
-.drop.over{border-color:var(--ink);background:var(--accent-soft)}
+.sheet{background:var(--bg);border-radius:3px;border-top:4px solid var(--ink);max-width:640px;width:100%;max-height:88vh;overflow:auto;padding:22px 24px;box-shadow:0 24px 60px -24px rgba(31,42,58,.55)}
+.drop{border:1.5px dashed var(--muted);border-radius:2px;padding:22px;text-align:center;color:var(--muted);font-size:15px;margin:12px 0;background:var(--sunk)}
+.drop.over{border-color:var(--ink);background:var(--bg)}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--on-accent);padding:10px 16px;border-radius:3px;font-size:15px;z-index:40}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:3px;font-size:15px;z-index:40}
 .iconbtn{background:none;border:0;color:var(--muted);font:inherit;font-size:26px;line-height:1;cursor:pointer;border-radius:3px;min-width:40px;min-height:40px;flex:none}
 .iconbtn:hover{color:var(--ink);background:var(--sunk)}
 
@@ -281,13 +285,13 @@ tr:last-child td{border-bottom:0}
 .pcard .btn{margin-top:auto;min-height:40px}
 
 /* risk assistant (Business) */
-.fab{position:fixed;right:calc(20px + env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:22;display:inline-flex;align-items:center;gap:8px;padding:11px 16px 11px 14px;border-radius:3px;border:0;background:var(--ink);color:var(--on-accent);font:inherit;font-weight:700;font-size:15px;box-shadow:0 8px 24px -10px rgba(31,42,58,.6);cursor:pointer}
-.fab:hover{background:var(--ink-2)}
+.fab{position:fixed;right:calc(20px + env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:22;display:inline-flex;align-items:center;gap:8px;padding:11px 16px 11px 14px;border-radius:3px;border:0;background:var(--ink);color:var(--bg);font:inherit;font-weight:700;font-size:15px;box-shadow:0 8px 24px -10px rgba(31,42,58,.6);cursor:pointer}
+.fab:hover{opacity:.85}
 .fab svg,.ask svg{width:18px;height:18px;flex:none}
 body.chat-open .fab{display:none}
 [dir=rtl] .fab{right:auto;left:calc(20px + env(safe-area-inset-left,0px))}
 [dir=rtl] .pb-track{transform:scaleX(-1)}   /* the profit bar fills from the right, like the text */
-.chat{position:fixed;top:0;right:0;bottom:0;z-index:28;width:min(440px,100%);display:flex;flex-direction:column;background:var(--surface);border-left:1px solid var(--ink);box-shadow:-18px 0 40px -28px rgba(31,42,58,.5);padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) 0}
+.chat{position:fixed;top:0;right:0;bottom:0;z-index:28;width:min(440px,100%);display:flex;flex-direction:column;background:var(--bg);border-left:1px solid var(--ink);box-shadow:-18px 0 40px -28px rgba(31,42,58,.5);padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) 0}
 [dir=rtl] .chat{right:auto;left:0;border-left:0;border-right:1px solid var(--ink);box-shadow:18px 0 40px -28px rgba(31,42,58,.5);padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
 .chat-head{display:flex;align-items:center;gap:8px;padding:12px;padding-inline:18px 10px;border-bottom:1px solid var(--line)}
 .chat-head>div{flex:1;min-width:0}
@@ -298,7 +302,7 @@ body.chat-open .fab{display:none}
 .hello p{margin:0 0 10px;font-size:15px;max-width:52ch}
 .hello .small{display:block;margin-bottom:16px}
 .sugg{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
-.sugg button{font:inherit;font-size:15px;text-align:start;padding:7px 12px;border-radius:3px;border:1px solid var(--field-line);background:var(--surface);color:var(--ink);cursor:pointer;line-height:1.35}
+.sugg button{font:inherit;font-size:15px;text-align:start;padding:7px 12px;border-radius:3px;border:1px solid var(--muted);background:var(--bg);color:var(--ink);cursor:pointer;line-height:1.35}
 .sugg button:hover{border-color:var(--ink);background:var(--sunk)}
 .msg{font-size:15px;line-height:1.5;overflow-wrap:anywhere;min-width:0}
 .msg.u{align-self:flex-end;max-width:88%;background:var(--sunk);color:var(--ink);padding:9px 13px;border-radius:3px;white-space:pre-wrap}
@@ -309,9 +313,9 @@ body.chat-open .fab{display:none}
 .acts{display:flex;flex-direction:column;gap:3px;margin:0 0 6px;margin-inline-start:4px}
 .acts span{font-size:14px;color:var(--muted)}
 .acts span::before{content:"";display:inline-block;width:6px;height:6px;background:var(--ink);margin-inline-end:7px;vertical-align:1px}
-.msg .err{color:var(--loss-ink);font-size:15px;margin:8px 4px 0}
+.msg .err{color:var(--loss);font-size:15px;margin:8px 4px 0}
 .msg .err.quiet{color:var(--muted)}
-.msg .chk{margin:6px 4px 0;font-size:14px;color:var(--warn-ink)}
+.msg .chk{margin:6px 4px 0;font-size:14px;color:var(--ink);background:var(--marker);padding:2px 6px;width:fit-content;max-width:100%}
 .msg .btns{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0;margin-inline-start:4px}
 .thinking{color:var(--muted)}
 .dots i{display:inline-block;width:4px;height:4px;margin-left:3px;border-radius:50%;background:currentColor;vertical-align:middle;animation:blink 1.2s infinite both}
@@ -319,13 +323,13 @@ body.chat-open .fab{display:none}
 @keyframes blink{0%,80%,100%{opacity:.2}40%{opacity:1}}
 @media (prefers-reduced-motion:reduce){.dots i{animation:none;opacity:.6}}
 .chat-form{display:flex;gap:8px;align-items:flex-end;padding:10px 14px 8px;padding-inline-start:18px;border-top:1px solid var(--line)}
-.chat-form textarea{flex:1;min-width:0;resize:none;font:inherit;font-size:16px;line-height:1.4;border:1px solid var(--field-line);border-radius:2px;padding:8px 10px;background:var(--surface);color:var(--ink);max-height:140px}
+.chat-form textarea{flex:1;min-width:0;resize:none;font:inherit;font-size:16px;line-height:1.4;border:1px solid var(--muted);border-radius:2px;padding:8px 10px;background:var(--bg);color:var(--ink);max-height:140px}
 .chat-form textarea:focus{outline:none;border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
 .chat-form .btn{min-height:40px}
 .chat-foot{margin:0;padding:0 18px 12px;font-size:13.5px;color:var(--muted)}
 .clink{background:none;border:0;padding:0;font:inherit;font-weight:700;color:var(--ink);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
 .codeform{display:flex;gap:6px;margin:8px 0 0;margin-inline-start:4px}
-.codeform input{flex:1;min-width:0;font:inherit;font-size:15px;padding:7px 10px;border:1px solid var(--field-line);border-radius:2px;background:var(--surface);color:var(--ink)}
+.codeform input{flex:1;min-width:0;font:inherit;font-size:15px;padding:7px 10px;border:1px solid var(--muted);border-radius:2px;background:var(--bg);color:var(--ink)}
 .ask{display:none}
 .ebtns{display:flex;gap:8px;flex:none}
 @media (min-width:1280px){body.chat-open{padding-right:440px}[dir=rtl] body.chat-open{padding-right:0;padding-left:440px}body.chat-open .lede{font-size:clamp(30px,2.7vw,40px)}}
@@ -360,7 +364,7 @@ svg.chart{width:100%;height:auto}
   .sheet-head{display:flex;order:-3;position:sticky;top:0;z-index:2;align-items:center;justify-content:space-between;gap:12px;
     margin:0 calc(-1 * max(16px,env(safe-area-inset-right,0px))) 0 calc(-1 * max(16px,env(safe-area-inset-left,0px)));
     padding:calc(10px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));
-    background:var(--surface);border-bottom:1px solid var(--ink)}
+    background:var(--bg);border-bottom:1px solid var(--ink)}
   .sheet-head h2{font-size:19px;margin:0}
   .sheet-head h2:focus{outline:none}
   .sheet-head .small{display:block;line-height:1.35}
@@ -368,7 +372,7 @@ svg.chart{width:100%;height:auto}
   #form{order:-1}
   .editbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:20;align-items:center;justify-content:space-between;gap:12px;
     padding:10px max(16px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));
-    background:var(--surface);border-top:1px solid var(--ink)}
+    background:var(--bg);border-top:1px solid var(--ink)}
   .editbar .small{line-height:1.35;min-width:0}
   body{padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))}
   body.sheet-open{overflow:hidden}
@@ -658,7 +662,7 @@ svg.chart{width:100%;height:auto}
   <p class="sr" id="chatStatus" role="status"></p>
 </div>
 <div class="tip" id="tip" hidden></div>
-<div class="toast" id="toast" hidden></div>
+<div class="toast" id="toast" role="status" hidden></div>
 
 <script>
 const D = __DATA__;
@@ -974,7 +978,7 @@ function renderTiles(h) {
     : `<div class="drv">${top.map(d => `<span>${N[d.k]}</span><i style="width:${Math.max(8, d.share / top[0].share * 100)}%"></i><b>${pc(d.share * 100)}</b>`).join('')}</div><div class="ts">${t('tRiskSub')}</div>`;
   const when = c.outIdx > 0 ? monthLong(addM(D.current.asOf, c.outIdx)) : '';
   const cash = c.outIdx > 0 ? `<div class="tv hot">${t('tCashNo', when)}</div><div class="ts">${t('tCashNoSub')}</div>`
-    : `<div class="tv ${c.lowest < 0 ? 'warm' : 'cool'}">${c.lowest < 0 ? t('tCashCredit') : t('tCashYes')}</div><div class="ts">${t('tCashLow', neur(c.lowest))}</div>`;
+    : `<div class="tv ${c.lowest < 0 ? 'hot' : 'cool'}">${c.lowest < 0 ? t('tCashCredit') : t('tCashYes')}</div><div class="ts">${t('tCashLow', neur(c.lowest))}</div>`;
   const econ = `<div class="tv">${t(reg)}</div><div class="ts">${firstSentence(t('d' + reg))}</div>`;
   const b = bestHedge(), on = b && state.hedges[b.r.h.k] ? ` (${t('tApplied')})` : '';
   const act = !b ? `<div class="tv">${t('tActNone')}</div><div class="ts">${t('tActNoneSub')}</div>`
@@ -987,8 +991,7 @@ function renderTiles(h) {
 /* ---------------- regime ---------------- */
 const REG = {Recovery:'--rec', Overheating:'--over', Stagflation:'--stag', Contraction:'--contr'};
 const HMMC = {'Expansion':'--rec', 'Sluggish growth':'--contr', 'Inflation shock':'--over', 'Recession':'--stag'};
-const INK = {'--loss':'--loss-ink', '--stag':'--loss-ink', '--gain':'--gain-ink', '--rec':'--gain-ink', '--warn':'--warn-ink', '--over':'--warn-ink', '--contr':'--contr-ink'};
-const ink = tok => INK[tok] || tok;                                     // darker shade of a colour, for text
+const ink = tok => tok === '--loss' || tok === '--stag' ? '--loss' : '--ink';   // text is ink, or red for a loss; never a chart colour
 function compass() {
   const h = D.hist, n = h.period.length, N = 24;
   const gx = h.g.slice(n - N), iy = h.i.slice(n - N);
@@ -1009,7 +1012,7 @@ function compass() {
   let d = ''; gx.forEach((g, i) => { if (g === null || iy[i] === null) return; d += (d ? 'L' : 'M') + X(g).toFixed(1) + ' ' + Y(iy[i]).toFixed(1); });
   s += `<path d="${d}" fill="none" stroke="${css('--ink')}" stroke-opacity=".45" stroke-width="1.5" stroke-linejoin="round"/>`;
   gx.forEach((g, i) => { if (g === null || iy[i] === null) return; const last = i === N - 1;   // the red dot of the logo: where the economy stands now
-    s += `<circle cx="${X(g)}" cy="${Y(iy[i])}" r="${last ? 7 : 2.5}" fill="${last ? css('--loss') : css('--ink')}" fill-opacity="${last ? 1 : .25 + .6 * i / N}" ${last ? `stroke="${css('--surface')}" stroke-width="2.5"` : ''}/>`; });
+    s += `<circle cx="${X(g)}" cy="${Y(iy[i])}" r="${last ? 7 : 2.5}" fill="${last ? css('--loss') : css('--ink')}" fill-opacity="${last ? 1 : .25 + .6 * i / N}" ${last ? `stroke="${css('--bg')}" stroke-width="2.5"` : ''}/>`; });
   const i0 = gx.findIndex(x => x !== null);
   s += `<text x="${X(gx[i0]) + 6}" y="${Y(iy[i0]) - 6}" style="font-size:10px">${month(h.period[n - N + i0])}</text>`;
   s += `<text x="${X(gx[N - 1]) + 10}" y="${Y(iy[N - 1]) + 4}" style="fill:${css('--ink')};font-weight:700;font-size:11px">${t('now')}</text>`;
@@ -1056,20 +1059,20 @@ function cashCard(v) {
   const L = axisL(56, ticks.map(short));
   const X = i => L + i / 12 * (W - L - R), Y = y => T + (hi - y) / (hi - lo) * (H - T - B);
   let s = '';
-  s += `<rect x="${L}" y="${Y(0)}" width="${W - L - R}" height="${Math.max(0, Y(-v.credit) - Y(0))}" fill="${css('--warn')}" fill-opacity=".10"/>`;
+  s += `<rect x="${L}" y="${Y(0)}" width="${W - L - R}" height="${Math.max(0, Y(-v.credit) - Y(0))}" fill="${css('--ink')}" fill-opacity=".07"/>`;
   if (Y(-v.credit) < H - B) s += `<rect x="${L}" y="${Y(-v.credit)}" width="${W - L - R}" height="${H - B - Y(-v.credit)}" fill="${css('--loss')}" fill-opacity=".10"/>`;
   ticks.forEach(y => { s += `<line x1="${L}" x2="${W - R}" y1="${Y(y)}" y2="${Y(y)}" stroke="${css('--line')}" stroke-width="${Math.abs(y) < step / 2 ? 1.4 : .6}"/><text x="${L - 8}" y="${Y(y) + 4}" text-anchor="end">${short(y)}</text>`; });
   const xl = [...Array(13).keys()].map(i => i === 0 ? t('now') : mLabel(addM(D.current.asOf, i)));
   for (let i = 0, e = labelStep(xl, (W - L - R) / 12, W < 420 ? 3 : W < 640 ? 2 : 1); i <= 12; i += e) s += `<text x="${X(i)}" y="${H - 10}" text-anchor="middle">${xl[i]}</text>`;
   const line = (a, col, w, dash) => `<path d="${a.map((y, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(y).toFixed(1)).join('')}" fill="none" stroke="${col}" stroke-width="${w}" ${dash ? 'stroke-dasharray="5 4"' : ''} stroke-linejoin="round"/>`;
-  s += line(paths.flat, css('--muted'), 1.5, true) + line(paths.typ, css('--accent'), 2) + line(paths.bad, css('--loss'), 2.6);
+  s += line(paths.flat, css('--muted'), 1.5, true) + line(paths.typ, css('--ink'), 2) + line(paths.bad, css('--loss'), 2.6);
   s += `<circle cx="${X(12)}" cy="${Y(paths.bad[12])}" r="4" fill="${css('--loss')}"/>`;
   $('cashChart').innerHTML = s;
-  $('cashLegend').innerHTML = `<span><i style="background:var(--muted)"></i>${t('noShock')}</span><span><i style="background:var(--accent)"></i>${t('typYear')}</span><span><i style="background:var(--loss)"></i>${t('badYear')}</span><span><i style="background:var(--warn);opacity:.4"></i>${t('creditLine')}</span>`;
+  $('cashLegend').innerHTML = `<span><i style="background:var(--muted)"></i>${t('noShock')}</span><span><i style="background:var(--ink)"></i>${t('typYear')}</span><span><i style="background:var(--loss)"></i>${t('badYear')}</span><span><i style="background:var(--ink);opacity:.15"></i>${t('creditLine')}</span>`;
   const {lowest, outIdx, known} = cp;
   $('cashCallout').innerHTML = `<div><span>${t('lowest')}</span><b class="${lowest < 0 ? 'hot' : ''}">${neur(lowest)}</b></div>` +
     `<div><span>${t('runsOut')}</span><b class="${outIdx > 0 ? 'hot' : 'cool'}">${outIdx > 0 ? t('inM', monthLong(addM(D.current.asOf, outIdx))) : t('never')}</b></div>` +
-    `<div><span>${t('lockedIn')}</span><b class="warm">${eur(known)}</b> <span style="display:inline">${t('lockedNote')}</span></div>`;
+    `<div><span>${t('lockedIn')}</span><b>${eur(known)}</b> <span style="display:inline">${t('lockedNote')}</span></div>`;
   return cp;
 }
 function calendar(v) {
@@ -1099,10 +1102,10 @@ function calendar(v) {
                 : `<text x="${L - 10}" y="${y + 14}" text-anchor="end" style="fill:${css('--ink')};font-size:12px">${name}</text>`;
     s += `<rect x="${L}" y="${y + by}" width="${W - L - Rr}" height="${bh}" rx="4" fill="${css('--sunk')}"/>`;
     segs.forEach(g => { const to = g.to ?? 12; if (to < g.from) return;
-      const col = g.kind === 'fixed' ? css('--gain') : g.kind === 'known' ? css('--warn') : css('--loss');
-      s += `<rect x="${X(g.from) + 1}" y="${y + by}" width="${(to - g.from + 1) * cwid - 2}" height="${bh}" rx="4" fill="${col}" fill-opacity="${g.kind === 'fixed' ? .35 : .8}"/>`; });
+      const col = css(g.kind === 'fixed' || g.kind === 'known' ? '--ink' : '--loss');
+      s += `<rect x="${X(g.from) + 1}" y="${y + by}" width="${(to - g.from + 1) * cwid - 2}" height="${bh}" rx="4" fill="${col}" fill-opacity="${g.kind === 'fixed' ? .3 : g.kind === 'known' ? .85 : .8}"/>`; });
   });
-  let lx = 0; const key = [['--gain', .35, t('fixedL')], ['--loss', .8, t('live')], ['--warn', .8, t('known')]].map(([c, o, l]) => {
+  let lx = 0; const key = [['--ink', .3, t('fixedL')], ['--loss', .8, t('live')], ['--ink', .85, t('known')]].map(([c, o, l]) => {
     const g = `<rect x="${lx}" width="10" height="10" y="-9" rx="2" fill="${css(c)}" fill-opacity="${o}"/><text x="${lx + 14}">${l}</text>`; lx += 32 + textW(l); return g; }).join('');
   s += `<g transform="translate(${L},${H - 8})">${key}</g>`;
   $('calendar').innerHTML = s;
@@ -1141,7 +1144,7 @@ function waterfall(v, el = $('wf'), forceW) {
   let lo = Math.min(0, ...tops), hi = Math.max(0, ...tops);
   if (hi - lo < 1) { hi += 1000; lo -= 1000; }                          // nothing to show: keep the axis drawable
   const label = (val, kind) => kind === 'base' ? neur(val) : (Math.abs(val) < 1 ? eur(0) : seur(val));
-  const colOf = (val, kind) => kind === 'base' ? (val >= 0 ? '--accent' : '--loss') : (val < 0 ? '--loss' : '--gain');
+  const colOf = (val, kind) => val < 0 ? '--loss' : '--ink';
   let s = '';
   if (narrow) {                                                         // phones: one row per step, amount above a horizontal bar
     const rh = 44, H = steps.length * rh + 6, P = 2, X = x => P + (x - lo) / (hi - lo) * (W - 2 * P);
@@ -1220,10 +1223,10 @@ function distribution(v) {
   const mx = Math.max(...cnt) || 1, bw = (W - L - R) / bins, X = x => L + (x - lo) / ((hi - lo) || 1) * (W - L - R);
   let s = '';
   [.5, 1].forEach(f => { const y = T + (H - T - B) * (1 - f); s += `<line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}" stroke="${css('--line')}" stroke-width=".7"/>`; });
-  cnt.forEach((c, i) => { const mid = lo + (i + .5) * step, h = (H - T - B) * c / mx; if (!c) return; s += `<rect x="${L + i * bw + 1}" y="${H - B - h}" width="${bw - 2}" height="${h}" rx="2" fill="${css(mid < 0 ? '--loss' : '--gain')}" fill-opacity="${mid <= p5 ? 1 : .45}"/>`; });
+  cnt.forEach((c, i) => { const mid = lo + (i + .5) * step, h = (H - T - B) * c / mx; if (!c) return; s += `<rect x="${L + i * bw + 1}" y="${H - B - h}" width="${bw - 2}" height="${h}" rx="2" fill="${css(mid < 0 ? '--loss' : '--ink')}" fill-opacity="${mid <= p5 ? 1 : .45}"/>`; });
   const xp = X(p5), x0 = X(0), xm = X(p50);
   s += `<line x1="${x0}" x2="${x0}" y1="${T}" y2="${H - B}" stroke="${css('--muted')}" stroke-dasharray="3 3"/><line x1="${xp}" x2="${xp}" y1="${T}" y2="${H - B + 4}" stroke="${css('--loss')}" stroke-width="2"/><line x1="${xm}" x2="${xm}" y1="${T}" y2="${H - B + 4}" stroke="${css('--ink')}" stroke-width="1.5"/>`;
-  s += `<text x="${Math.max(xp, 34)}" y="${H - B + 17}" text-anchor="middle" style="fill:${css('--loss-ink')};font-weight:700">1/20</text><text x="${Math.min(Math.max(xm, xp + 50), W - 40)}" y="${H - B + 17}" text-anchor="middle" style="fill:${css('--ink')};font-weight:700">${t('typical')}</text>`;
+  s += `<text x="${Math.max(xp, 34)}" y="${H - B + 17}" text-anchor="middle" style="fill:${css('--loss')};font-weight:700">1/20</text><text x="${Math.min(Math.max(xm, xp + 50), W - 40)}" y="${H - B + 17}" text-anchor="middle" style="fill:${css('--ink')};font-weight:700">${t('typical')}</text>`;
   s += `<text x="${L}" y="${H - 4}">${short(lo)}</text><text x="${W - R}" y="${H - 4}" text-anchor="end">${short(hi)}</text>`;
   $('hist').innerHTML = s;
   $('stats').innerHTML = [[t('badYear'), p5], [t('typYear'), p50], [t('good'), p95]].map(([l, x]) => `<div class="stat"><span>${l}</span><b class="${x < 0 ? 'hot' : 'cool'}">${seur(x)}</b> <span style="display:inline">${v.ebit > 0 ? pct(x / v.ebit * 100, 0) + ' ' + t('ofProfit') : ''}</span></div>`).join('');
@@ -1281,11 +1284,11 @@ function backtestCard(v) {
   for (const y of ticks) s += `<line x1="${L}" x2="${W - R}" y1="${Y(y)}" y2="${Y(y)}" stroke="${css('--line')}" stroke-width="${Math.abs(y) < st / 2 ? 1.3 : .6}"/><text x="${L - 8}" y="${Y(y) + 4}" text-anchor="end">${yl(y)}</text>`;
   const every = W < 520 ? 6 : 3;
   bt.forEach((b, i) => { if (b.p.endsWith('-01') && (+b.p.slice(0, 4) - 2008) % every === 0) s += `<text x="${X(i)}" y="${H - 8}" text-anchor="middle">${b.p.slice(0, 4)}</text>`; });
-  s += `<path d="${bt.map((b, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(f(b.real)).toFixed(1)).join('')}" fill="none" stroke="${css('--accent')}" stroke-width="1.6"/>`;
+  s += `<path d="${bt.map((b, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(f(b.real)).toFixed(1)).join('')}" fill="none" stroke="${css('--ink')}" stroke-width="1.6"/>`;
   s += `<path d="${bt.map((b, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(f(b.pred)).toFixed(1)).join('')}" fill="none" stroke="${css('--loss')}" stroke-width="1.6" stroke-dasharray="4 3"/>`;
   bt.forEach((b, i) => { if (b.breach) s += `<circle cx="${X(i)}" cy="${Y(f(b.real))}" r="3.5" fill="${css('--loss')}"/>`; });
   $('bt').innerHTML = s;
-  $('btLegend').innerHTML = `<span><i style="background:var(--accent)"></i>${t('btReal')}</span><span><i style="background:var(--loss)"></i>${t('btPred')}</span><span><i style="background:var(--loss);border-radius:50%"></i>${t('btBreach')}</span>`;
+  $('btLegend').innerHTML = `<span><i style="background:var(--ink)"></i>${t('btReal')}</span><span><i style="background:var(--loss)"></i>${t('btPred')}</span><span><i style="background:var(--loss);border-radius:50%"></i>${t('btBreach')}</span>`;
   const pass = k.pval > .05, rate = n ? x / n * 100 : 0;
   // each miss is a 12-month window; give it to the shock it overlaps most, otherwise to its starting year
   const groups = {};
@@ -1326,10 +1329,10 @@ function timeline() {
   for (const v of ticks) s += `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="${css('--line')}" stroke-width="${v === 0 ? 1.3 : .6}"/><text x="${L - 6}" y="${Y(v) + 4}" text-anchor="end">${pc(v)}</text>`;
   h.period.forEach((p, i) => { if (p.endsWith('-01') && (+p.slice(0, 4)) % (W < 520 ? 6 : 3) === 2) s += `<text x="${X(i)}" y="${H - 8}" text-anchor="middle">${p.slice(0, 4)}</text>`; });
   const line = (a, col, w) => { let d = ''; a.forEach((v, i) => { if (v === null) return; d += (d ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1); }); return `<path d="${d}" fill="none" stroke="${col}" stroke-width="${w}" stroke-linejoin="round"/>`; };
-  s += line(h.ip, css('--muted'), 1.2) + line(h.hicp, css('--accent'), 2.2);
+  s += line(h.ip, css('--muted'), 1.2) + line(h.hicp, css('--ink'), 2.2);
   s += `<line id="cross" x1="0" x2="0" y1="${T}" y2="${H - B}" stroke="${css('--ink')}" stroke-width="1" opacity="0"/><rect id="hit" x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}" fill="transparent"/>`;
   $('tl').innerHTML = s;
-  $('tlleg').innerHTML = `<span><i style="background:var(--accent)"></i>${t('tlInfl')}</span><span><i style="background:var(--muted)"></i>${t('tlIp')}</span>` + `<span style="flex-basis:100%;height:0"></span><span><b>${t('tlTop')}:</b></span>` + Object.keys(REG).map(r => `<span><i style="background:var(${REG[r]})"></i>${t(r)}</span>`).join('') + `<span style="flex-basis:100%;height:0"></span><span><b>${t('tlBottom')}:</b></span>` + Object.keys(HMMC).map(r => `<span><i style="background:var(${HMMC[r]})"></i>${t(r)}</span>`).join('');
+  $('tlleg').innerHTML = `<span><i style="background:var(--ink)"></i>${t('tlInfl')}</span><span><i style="background:var(--muted)"></i>${t('tlIp')}</span>` + `<span style="flex-basis:100%;height:0"></span><span><b>${t('tlTop')}:</b></span>` + Object.keys(REG).map(r => `<span><i style="background:var(${REG[r]})"></i>${t(r)}</span>`).join('') + `<span style="flex-basis:100%;height:0"></span><span><b>${t('tlBottom')}:</b></span>` + Object.keys(HMMC).map(r => `<span><i style="background:var(${HMMC[r]})"></i>${t(r)}</span>`).join('');
   const svg = $('tl'), tip = $('tip'), cross = svg.querySelector('#cross');
   const hide = () => { tip.hidden = true; cross.setAttribute('opacity', 0); };
   const move = e => { const pt = e.touches ? e.touches[0] : e, rc = svg.getBoundingClientRect(); const x = (pt.clientX - rc.left) / rc.width * W, i = Math.round((x - L) / (W - L - R) * (n - 1));
@@ -1378,7 +1381,7 @@ function renderClients() {
   $('clientName').placeholder = t('namePh');
   $('clientsNote').textContent = t('clientsNote', clients.length) + (clients.length ? ' ' + (store ? t('clientsCloud') : t('clientsLocal')) : '');
   const rows = clients.map(c => ({c, share:clientShare(c)})).sort((a, b) => (b.share ?? 1e9) - (a.share ?? 1e9));
-  $('clist').innerHTML = rows.map(({c, share}) => { const col = share === null || share > state.threshold ? '--loss' : share > state.threshold / 2 ? '--warn' : '--gain';
+  $('clist').innerHTML = rows.map(({c, share}) => { const col = share === null || share > state.threshold ? '--loss' : '--ink';
     const name = esc(c.name);
     return `<div class="crow ${state.client === c.id ? 'active' : ''}" data-id="${esc(c.id)}"><button type="button" class="open" aria-current="${state.client === c.id}"><span class="flag" style="background:var(${col})"></span>${name}</button><span class="risk" style="color:var(${ink(col)})">${share === null ? '–' : pc(share)}</span><button type="button" class="x" data-del="${esc(c.id)}" aria-label="${esc(t('deleteX', c.name))}">×</button></div>`; }).join('');
 }

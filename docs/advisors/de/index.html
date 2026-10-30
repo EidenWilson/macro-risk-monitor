@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#ffffff">
 <link rel="icon" href="data:image/svg+xml,&lt;svg xmlns=&#39;http://www.w3.org/2000/svg&#39; viewBox=&#39;0 0 32 32&#39;&gt;&lt;circle cx=&#39;16&#39; cy=&#39;16&#39; r=&#39;14&#39; fill=&#39;%23ffffff&#39; stroke=&#39;%231f2a3a&#39; stroke-width=&#39;2.5&#39;/&gt;&lt;path d=&#39;M16 2.5v27M2.5 16h27&#39; stroke=&#39;%231f2a3a&#39; stroke-width=&#39;1.6&#39;/&gt;&lt;circle cx=&#39;22.6&#39; cy=&#39;9.4&#39; r=&#39;4.2&#39; fill=&#39;%23b3261e&#39;/&gt;&lt;/svg&gt;">
 <link rel="preload" href="../../assets/fonts/sofia-sans-semi-condensed-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="../../assets/site.css?v=b21e3261">
+<link rel="stylesheet" href="../../assets/site.css?v=808d924a">
 <script type="application/ld+json">[{"@context": "https://schema.org", "@type": "WebApplication", "name": "Macro Risk Monitor", "url": "https://eidenwilson.github.io/macro-risk-monitor/", "applicationCategory": "FinanceApplication", "operatingSystem": "Any (runs in the browser)", "inLanguage": ["en", "ar", "de", "es", "fr", "hi", "it", "pl", "pt", "ru", "tr", "uk", "zh"], "description": "Sehen Sie, welche Mandanten ein schlechtes Jahr nicht verkraften: alle Mandanten nach dem Gewinn sortiert, den die Konjunktur kosten könnte, aus DATEV-Zahlen und aktuellen Daten von EZB, Eurostat und FRED.", "offers": [{"@type": "Offer", "name": "Free", "price": "0", "priceCurrency": "EUR"}, {"@type": "Offer", "name": "Pro", "price": "19", "priceCurrency": "EUR"}, {"@type": "Offer", "name": "Business", "price": "89.99", "priceCurrency": "EUR"}]}, {"@context": "https://schema.org", "@type": "FAQPage", "inLanguage": "de", "mainEntity": [{"@type": "Question", "name": "Sind Mandantendaten sicher?", "acceptedAnswer": {"@type": "Answer", "text": "Mandantenzahlen werden im Browser verarbeitet und nirgends sonst gespeichert. Der KI-Assistent erhält Kürzel statt Mandantennamen, und die Warn-E-Mail kennt nur die Adresse der Abonnenten."}}, {"@type": "Question", "name": "Woher kommen die Daten?", "acceptedAnswer": {"@type": "Answer", "text": "Euribor, Inflation und Wechselkurse von der EZB, Industrieproduktion, Einzelhandelsumsätze und Erzeugerpreise von Eurostat, Öl und US-Zinsen von FRED. Aktualisiert am 3. und 18. jedes Monats."}}, {"@type": "Question", "name": "Was heißt „schlechtes Jahr“?", "acceptedAnswer": {"@type": "Answer", "text": "Das 1-von-20-Ergebnis für den Gewinn des nächsten Jahres: was der Betrieb verloren hätte, wenn sich die nächsten zwölf Monate wie frühere Monate derselben Konjunkturphase entwickelt hätten, skaliert auf die heutige Schwankung."}}, {"@type": "Question", "name": "Welche Buchhaltung lässt sich importieren?", "acceptedAnswer": {"@type": "Answer", "text": "Eine Summen- und Saldenliste als CSV-Export aus DATEV, mit dem Kontenrahmen SKR03 oder SKR04."}}, {"@type": "Question", "name": "Ist das Finanzberatung?", "acceptedAnswer": {"@type": "Answer", "text": "Nein. Es ist ein Prototyp, der Risiken und die Kosten von Absicherungen zeigt, für das Gespräch zwischen Kanzlei und Mandant."}}]}]</script>
 </head>
 <body>
@@ -39,9 +39,8 @@
 <section class="hero">
   <div class="wrap">
     <div>
-      <p class="kicker">Für Steuerkanzleien und Banken</p>
       <h1>Welcher Mandant verkraftet ein schlechtes Jahr nicht?</h1>
-      <p class="lead">Macro Risk Monitor liest die Summen- und Saldenliste eines Mandanten und zeigt, wie viel vom Gewinn des nächsten Jahres Energiepreise, Zinsen, Einkaufspreise und schwächere Umsätze kosten könnten. Für jeden Mandanten, sortiert, mit frischen Daten zweimal im Monat.</p>
+      <p class="lead">Macro Risk Monitor liest die Summen- und Saldenliste eines Mandanten und zeigt, wie viel vom Gewinn des nächsten Jahres Energiepreise, Zinsen, Einkaufspreise und schwächere Umsätze kosten könnten. Für Steuerkanzleien und Banken: alle Mandanten sortiert, mit frischen Daten zweimal im Monat.</p>
       <div class="actions"><a class="btn primary" href="../../?plan=business&amp;lang=de">Mit einem Beispiel testen</a><a href="#how">So funktioniert es</a></div>
     </div>
     <div>
@@ -67,7 +66,7 @@
 
 <section class="sec" id="why" aria-labelledby="h-why">
   <div class="wrap">
-    <div class="head"><h2 id="h-why">Die Kosten folgen der Konjunktur. Der Jahresabschluss nicht.</h2><p>Ein Energievertrag läuft aus, ein variabler Kredit wird neu verzinst, eine Indexmiete wird angepasst, der Mindestlohn steigt. Der Abschluss zeigt das letzte Jahr, das Risiko liegt in den nächsten zwölf Monaten.</p></div>
+    <div class="head"><h2 id="h-why">Woher das Risiko im nächsten Jahr kommt</h2><p>Ein Energievertrag läuft aus, ein variabler Kredit wird neu verzinst, eine Indexmiete wird angepasst, der Mindestlohn steigt. Der Abschluss zeigt das letzte Jahr, das Risiko liegt in den nächsten zwölf Monaten.</p></div>
     <dl class="figs">
       <div><dt>Konjunktur jetzt</dt><dd>Stagflation<span class="s">Seit Mai 2026</span></dd></div>
       <div><dt>Euribor 3M</dt><dd>2,64 %<span class="s">Daran hängen variable Kredite</span></dd></div>
@@ -82,13 +81,23 @@
   <div class="wrap">
     <div class="head"><h2 id="h-how">So funktioniert es</h2><p>Fünfzehn Minuten mit einer Mandantenakte, vom Export bis zum Gespräch.</p></div>
     <ol class="steps"><li><span class="n" aria-hidden="true">1</span><h3>Importieren</h3><p>Die Summen- und Saldenliste aus DATEV exportieren (SKR03 oder SKR04) und hineinziehen. Die Datei verlässt den Browser nie.</p></li><li><span class="n" aria-hidden="true">2</span><h3>Lesen</h3><p>Der Verlust im schlechten Jahr, die größten Risiken, ob die Liquidität das Jahr über reicht und wann welcher Vertrag greift.</p></li><li><span class="n" aria-hidden="true">3</span><h3>Handeln</h3><p>Absicherungen vergleichen (Zins festschreiben, Energie fixieren, Preise weitergeben, Dollar sichern), ein PDF für Mandant oder Bank drucken und eine E-Mail erhalten, wenn die Konjunktur die Phase wechselt.</p></li></ol>
+    <figure class="shot">
+      <img src="../../assets/shots/result-de.webp" width="1280" height="592" loading="lazy" decoding="async" alt="Das Tool für das Beispielrestaurant: Ein schlechtes Jahr könnte 44.300 € von 72.000 € Gewinn kosten, als Rechnung ausgeschrieben, darunter die größten Risiken, die Liquidität, die Konjunktur und die beste Absicherung.">
+      <figcaption>Das Ergebnis für das Beispielrestaurant, Daten bis September 2026.</figcaption>
+    </figure>
   </div>
 </section>
 
 <section class="sec" id="get" aria-labelledby="h-get">
   <div class="wrap">
     <div class="head"><h2 id="h-get">Gemacht für den Kanzleialltag</h2><p>Alles, was der Business-Tarif zum kostenlosen Check hinzufügt.</p></div>
-    <ul class="feats"><li><b>Alle Mandanten nach Risiko sortiert</b><span>Eine Liste, sortiert nach dem Anteil des Gewinns, den ein schlechtes Jahr kosten könnte, mit Ihrer Warnschwelle.</span></li><li><b>Seit Ihrem letzten Besuch</b><span>Wenn neue Daten kommen, sehen Sie, wer Ihre Warnschwelle überschritten hat und wessen Risiko gestiegen ist.</span></li><li><b>Eine monatliche Warn-E-Mail</b><span>Die Konjunkturphase, die wichtigen Zinsen und wie sich typische Betriebe bewegt haben, auf Deutsch und Englisch.</span></li><li><b>Ein KI-Assistent</b><span>Erklärt Ergebnisse, rechnet Was-wäre-wenn mit dem Modell und entwirft Mandantennotizen. Mandantennamen verlassen den Browser nie.</span></li><li><b>Ein PDF-Bericht</b><span>Zwei Seiten für das Mandantengespräch oder die Kreditakte der Bank.</span></li><li><b>13 Sprachen</b><span>Für Mandanten, die lieber Türkisch, Polnisch, Arabisch oder Ukrainisch lesen.</span></li><li><b>Portfolio-Stresstest</b><span>Für Depot- und Fondsbestände: Rendite, Duration und fünf Stressszenarien.</span></li><li><b>Keine Installation</b><span>Läuft im Browser. Kein Konto, keine Cookies, kein Tracking.</span></li></ul>
+    <div class="with-shot">
+      <figure class="shot">
+        <img src="../../assets/shots/clients-de.webp" width="366" height="494" loading="lazy" decoding="async" alt="Gespeicherte Mandanten im Business-Plan, sortiert nach dem Anteil am Gewinn, den ein schlechtes Jahr kosten könnte: Bäckerei 77 %, Restaurant 62 %, Druckerei 55 %, Metallbau 49 %, Onlineshop (Import) 35 %, Foodtruck 26 %.">
+        <figcaption>Die sechs Beispiele als Mandanten gespeichert und sortiert. Die Farbe richtet sich nach Ihrer Warnschwelle.</figcaption>
+      </figure>
+      <ul class="feats"><li><b>Alle Mandanten nach Risiko sortiert</b><span>Eine Liste, sortiert nach dem Anteil des Gewinns, den ein schlechtes Jahr kosten könnte, mit Ihrer Warnschwelle.</span></li><li><b>Seit Ihrem letzten Besuch</b><span>Wenn neue Daten kommen, sehen Sie, wer Ihre Warnschwelle überschritten hat und wessen Risiko gestiegen ist.</span></li><li><b>Eine monatliche Warn-E-Mail</b><span>Die Konjunkturphase, die wichtigen Zinsen und wie sich typische Betriebe bewegt haben, auf Deutsch und Englisch.</span></li><li><b>Ein KI-Assistent</b><span>Erklärt Ergebnisse, rechnet Was-wäre-wenn mit dem Modell und entwirft Mandantennotizen. Mandantennamen verlassen den Browser nie.</span></li><li><b>Ein PDF-Bericht</b><span>Zwei Seiten für das Mandantengespräch oder die Kreditakte der Bank.</span></li><li><b>13 Sprachen</b><span>Für Mandanten, die lieber Türkisch, Polnisch, Arabisch oder Ukrainisch lesen.</span></li><li><b>Portfolio-Stresstest</b><span>Für Depot- und Fondsbestände: Rendite, Duration und fünf Stressszenarien.</span></li><li><b>Keine Installation</b><span>Läuft im Browser. Kein Konto, keine Cookies, kein Tracking.</span></li></ul>
+    </div>
   </div>
 </section>
 
@@ -101,7 +110,13 @@
       <div><dt>Datenreihen</dt><dd>21<span class="s">EZB, Eurostat und FRED, jeweils um die Veröffentlichungsverzögerung versetzt</span></dd></div>
       <div><dt>Cookies und Tracker</dt><dd>0<span class="s">Mandantenzahlen bleiben im Browser</span></dd></div>
     </dl>
-    <p style="margin-top:24px"><a href="https://github.com/EidenWilson/macro-risk-monitor#readme">Methode, Backtest und Grenzen stehen in der README auf GitHub.</a></p>
+    <div class="with-shot wide-shot">
+      <figure class="shot">
+        <img src="../../assets/shots/backtest-de.webp" width="850" height="551" loading="lazy" decoding="async" alt="Backtest-Grafik: was in den folgenden zwölf Monaten mit dem Gewinn passiert ist, gegen die 1-von-20-Prognose, jeden Monat seit 2008. In 5,6 % der Monate kam es schlimmer als prognostiziert.">
+        <figcaption>Der Backtest, wie das Tool ihn zeigt: Die gestrichelte Linie ist das prognostizierte schlechte Jahr, die Punkte sind die Monate, die schlimmer ausfielen.</figcaption>
+      </figure>
+      <p><a href="https://github.com/EidenWilson/macro-risk-monitor#readme">Methode, Backtest und Grenzen stehen in der README auf GitHub.</a></p>
+    </div>
   </div>
 </section>
 

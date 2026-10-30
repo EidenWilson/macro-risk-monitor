@@ -3,7 +3,6 @@
 <section class="hero">
   <div class="wrap">
     <div>
-      <p class="kicker">{{ t.kicker }}</p>
       <h1>{{ t.h1 }}</h1>
       <p class="lead">{{ t.lead }}</p>
       <div class="actions"><a class="btn primary" href="{{ tool_business }}">{{ t.cta }}</a><a href="#how">{{ t.cta2 }}</a></div>
@@ -46,13 +45,23 @@
   <div class="wrap">
     <div class="head"><h2 id="h-how">{{ t.how_h }}</h2><p>{{ t.how_p }}</p></div>
     <ol class="steps">{% for h, p in t.steps %}<li><span class="n" aria-hidden="true">{{ loop.index }}</span><h3>{{ h }}</h3><p>{{ p }}</p></li>{% endfor %}</ol>
+    <figure class="shot">
+      <img src="{{ root }}{{ shots.result.src }}" width="{{ shots.result.w }}" height="{{ shots.result.h }}" loading="lazy" decoding="async" alt="{{ s.shot_result_alt }}">
+      <figcaption>{{ s.shot_result_cap }}</figcaption>
+    </figure>
   </div>
 </section>
 
 <section class="sec" id="get" aria-labelledby="h-get">
   <div class="wrap">
     <div class="head"><h2 id="h-get">{{ t.get_h }}</h2><p>{{ t.get_p }}</p></div>
-    <ul class="feats">{% for b, sp in t.feats %}<li><b>{{ b }}</b><span>{{ sp }}</span></li>{% endfor %}</ul>
+    <div class="with-shot">
+      <figure class="shot">
+        <img src="{{ root }}{{ shots.clients.src }}" width="{{ shots.clients.w }}" height="{{ shots.clients.h }}" loading="lazy" decoding="async" alt="{{ s.shot_clients_alt }}">
+        <figcaption>{{ t.shot_clients_cap }}</figcaption>
+      </figure>
+      <ul class="feats">{% for b, sp in t.feats %}<li><b>{{ b }}</b><span>{{ sp }}</span></li>{% endfor %}</ul>
+    </div>
   </div>
 </section>
 
@@ -65,7 +74,13 @@
       <div><dt>{{ t.t_series }}</dt><dd>21<span class="s">{{ t.t_series_sub }}</span></dd></div>
       <div><dt>{{ t.t_cookies }}</dt><dd>0<span class="s">{{ t.t_cookies_sub }}</span></dd></div>
     </dl>
-    <p style="margin-top:24px"><a href="https://github.com/EidenWilson/macro-risk-monitor#readme">{{ t.trust_more }}</a></p>
+    <div class="with-shot wide-shot">
+      <figure class="shot">
+        <img src="{{ root }}{{ shots.backtest.src }}" width="{{ shots.backtest.w }}" height="{{ shots.backtest.h }}" loading="lazy" decoding="async" alt="{{ s.shot_bt_alt }}">
+        <figcaption>{{ t.shot_bt_cap }}</figcaption>
+      </figure>
+      <p><a href="https://github.com/EidenWilson/macro-risk-monitor#readme">{{ t.trust_more }}</a></p>
+    </div>
   </div>
 </section>
 

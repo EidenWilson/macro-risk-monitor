@@ -5,7 +5,8 @@ test (/portfolio/), each in English and German, plus 404.html and sitemap.xml. R
 
 The advisors page shows figures from the tool itself (the example restaurant, the six examples ranked, the economy
 now and the backtest). They are read from the built tool in a headless browser, the same way alerts/digest.py reads
-the alert email's figures, so the page can never disagree with the tool. The data refresh rebuilds both.
+the alert email's figures, so the page can never disagree with the tool. Its screenshots of the tool are taken in the
+same way (docs/assets/shots/). The data refresh rebuilds both.
 """
 import datetime as dt
 import hashlib
@@ -50,6 +51,60 @@ def snapshot():
     return snap
 
 
+# Screenshots of the tool for the advisors page, taken from the built tool on every build so they always show the
+# same data as the page around them. WebP straight from Chromium (no image library needed), at twice the CSS size.
+SHOTS = {"result": "section.hero", "clients": "section.clients", "backtest": "section[aria-labelledby=h-bt]"}
+SHOT_END = {"backtest": "#btLegend"}  # stop below the chart's legend; the page states the backtest figures itself
+SHOT_PAD = {"clients": 18, "backtest": 18}  # white margin around a card, so its text doesn't touch the frame
+
+
+def screenshots():
+    import base64
+    from playwright.sync_api import sync_playwright
+    out = DOCS / "assets" / "shots"
+    out.mkdir(parents=True, exist_ok=True)
+    for old in out.glob("*.webp"):
+        old.unlink()
+    sizes = {}
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        for lang in LANGS:
+            ctx = browser.new_context(viewport={"width": 1280, "height": 900}, device_scale_factor=2, locale="de-DE" if lang == "de" else "en-GB")
+            page = ctx.new_page()
+            page.goto((DOCS / "index.html").resolve().as_uri() + f"?plan=business&lang={lang}", wait_until="load")
+            page.evaluate("document.fonts.ready")
+            page.add_style_tag(content="#toast,.chat-fab,#askBtn{visibility:hidden!important} *{transition:none!important;animation:none!important}")
+            cdp = ctx.new_cdp_session(page)
+
+            def shoot(name):
+                el = page.locator(SHOTS[name]).first
+                el.scroll_into_view_if_needed()
+                page.wait_for_timeout(150)
+                r = page.evaluate("""([el, end, pad]) => { const b = el.getBoundingClientRect(), e = end ? document.querySelector(end).getBoundingClientRect() : b;
+                    return {x: b.left + scrollX - pad, y: b.top + scrollY - pad, width: b.width + 2 * pad, height: (end ? e.bottom + 12 : b.bottom) - b.top + 2 * pad}; }""",
+                                  [el.element_handle(), SHOT_END.get(name), SHOT_PAD.get(name, 0)])
+                img = cdp.send("Page.captureScreenshot", {"format": "webp", "quality": 80, "captureBeyondViewport": True,
+                                                          "clip": {**{k: round(v) for k, v in r.items()}, "scale": 2}})
+                (out / f"{name}-{lang}.webp").write_bytes(base64.b64decode(img["data"]))
+                sizes.setdefault(lang, {})[name] = {"src": f"assets/shots/{name}-{lang}.webp", "w": round(r["width"]), "h": round(r["height"])}
+
+            shoot("result")
+            # the six examples saved as clients, so the Business ranking has something to rank
+            names = page.eval_on_selector_all("#presets button", "bs => bs.map(b => b.textContent.trim())")
+            for i, name in enumerate(names):
+                page.locator("#presets button").nth(i).click()
+                page.fill("#clientName", name)
+                page.click("#saveClient")
+            page.locator("#presets button").first.click()
+            shoot("clients")
+            page.click("#relBtn")
+            page.wait_for_function("document.querySelector('#bt') && document.querySelector('#bt').childElementCount > 3")
+            shoot("backtest")
+            ctx.close()
+        browser.close()
+    return sizes
+
+
 # numbers as each language writes them (half up, like the page's Intl formatting)
 def num(x, lang, d=0):
     q = Decimal(str(x)).quantize(Decimal(1).scaleb(-d), rounding=ROUND_HALF_UP)
@@ -83,7 +138,12 @@ def figures(snap, lang):
         e.update(w=max(2, round(e["share"] / top * 100, 1)), over=e["share"] > 40, share=pct(e["share"], lang))
     bt = snap["bt"]
     mw = snap["minWage"]
+    bt_rate = pct(bt["x"] / bt["n"] * 100, lang, 1) if bt["n"] else "–"
     return {
+        "shot_result_alt": T["shot_result_alt"].format(lost=eur(lost, lang), ebit=eur(r["ebit"], lang)),
+        "shot_result_cap": T["shot_result_cap"].format(month=w["month"]),
+        "shot_clients_alt": T["shot_clients_alt"].format(list=", ".join(f"{e['name']} {e['share']}" for e in ranked)),
+        "shot_bt_alt": T["shot_bt_alt"].format(rate=bt_rate),
         "ex1_label": T["ex1_label"].format(month=w["month"]),
         "ebit": num(r["ebit"], lang), "loss": num(-lost, lang), "left": num(left, lang), "hundred": num(100, lang),
         "loss_pct": num(-lost_pct, lang), "left_pct": num(100 - lost_pct, lang), "left_w": max(0, 100 - lost_pct), "ranked": ranked,
@@ -91,7 +151,7 @@ def figures(snap, lang):
         "euribor": pct(snap["euribor"], lang, 2), "energy": pct(snap["energy"], lang, 1, sign=True),
         "wage_to": eur(mw["to"], lang, 2), "wage_sub": T["now_wage_sub"].format(wage_month=w["wageMonth"], wage_from=eur(mw["from"], lang, 2)),
         "now_note": T["now_note"].format(month=w["month"]),
-        "bt_rate": pct(bt["x"] / bt["n"] * 100, lang, 1) if bt["n"] else "–",
+        "bt_rate": bt_rate,
         "bt_verdict": T["t_test_pass"] if bt["p"] > 0.05 else T["t_test_fail"], "bt_p": T["t_test_sub"].format(p=num(bt["p"], lang, 2)),
         "plans": [[n, who, eur(float(price), lang, 0 if float(price).is_integer() else 2), feats, cls] for n, who, price, feats, cls in T["plans"]],
     }
@@ -107,7 +167,7 @@ def jsonld_advisors(lang, T):
 
 
 def jsonld_portfolio(lang, T):
-    return json.dumps({"@context": "https://schema.org", "@type": "WebApplication", "name": T["kicker"], "url": SITE + ("portfolio/de/" if lang == "de" else "portfolio/"),
+    return json.dumps({"@context": "https://schema.org", "@type": "WebApplication", "name": T["app_name"], "url": SITE + ("portfolio/de/" if lang == "de" else "portfolio/"),
                        "applicationCategory": "FinanceApplication", "operatingSystem": "Any (runs in the browser)", "inLanguage": lang,
                        "isPartOf": {"@type": "WebSite", "name": "Macro Risk Monitor", "url": SITE}, "description": T["desc"],
                        "offers": {"@type": "Offer", "price": "0", "priceCurrency": "EUR"}}, ensure_ascii=False).replace("</", "<\\/")
@@ -115,6 +175,7 @@ def jsonld_portfolio(lang, T):
 
 def main():
     snap = snapshot()
+    shots = screenshots()
     env = Environment(loader=FileSystemLoader(HERE / "templates"), autoescape=select_autoescape(["html"]), trim_blocks=True, lstrip_blocks=True)
     assets = DOCS / "assets"
     (assets / "fonts").mkdir(parents=True, exist_ok=True)
@@ -139,7 +200,7 @@ def main():
                        here_en=root + f"{key}/", here_de=root + f"{key}/de/", contact=CONFIG.get("contact_email", ""))
             if key == "advisors":
                 T = ADVISORS[lang]
-                ctx.update(t=T, s=figures(snap, lang), title=T["title"], desc=T["desc"], jsonld=jsonld_advisors(lang, T))
+                ctx.update(t=T, s=figures(snap, lang), shots=shots[lang], title=T["title"], desc=T["desc"], jsonld=jsonld_advisors(lang, T))
             else:
                 T = PORTFOLIO[lang]
                 pt = {"lang": lang, "locale": "de-DE" if lang == "de" else "en-GB", "text": PORTFOLIO_JS[lang], "example": example}

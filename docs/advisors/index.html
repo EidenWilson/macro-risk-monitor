@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#ffffff">
 <link rel="icon" href="data:image/svg+xml,&lt;svg xmlns=&#39;http://www.w3.org/2000/svg&#39; viewBox=&#39;0 0 32 32&#39;&gt;&lt;circle cx=&#39;16&#39; cy=&#39;16&#39; r=&#39;14&#39; fill=&#39;%23ffffff&#39; stroke=&#39;%231f2a3a&#39; stroke-width=&#39;2.5&#39;/&gt;&lt;path d=&#39;M16 2.5v27M2.5 16h27&#39; stroke=&#39;%231f2a3a&#39; stroke-width=&#39;1.6&#39;/&gt;&lt;circle cx=&#39;22.6&#39; cy=&#39;9.4&#39; r=&#39;4.2&#39; fill=&#39;%23b3261e&#39;/&gt;&lt;/svg&gt;">
 <link rel="preload" href="../assets/fonts/sofia-sans-semi-condensed-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="../assets/site.css?v=b21e3261">
+<link rel="stylesheet" href="../assets/site.css?v=808d924a">
 <script type="application/ld+json">[{"@context": "https://schema.org", "@type": "WebApplication", "name": "Macro Risk Monitor", "url": "https://eidenwilson.github.io/macro-risk-monitor/", "applicationCategory": "FinanceApplication", "operatingSystem": "Any (runs in the browser)", "inLanguage": ["en", "ar", "de", "es", "fr", "hi", "it", "pl", "pt", "ru", "tr", "uk", "zh"], "description": "See which of your SME clients can't take a bad year: clients ranked by the profit the economy could take, from DATEV figures and current ECB, Eurostat and FRED data.", "offers": [{"@type": "Offer", "name": "Free", "price": "0", "priceCurrency": "EUR"}, {"@type": "Offer", "name": "Pro", "price": "19", "priceCurrency": "EUR"}, {"@type": "Offer", "name": "Business", "price": "89.99", "priceCurrency": "EUR"}]}, {"@context": "https://schema.org", "@type": "FAQPage", "inLanguage": "en", "mainEntity": [{"@type": "Question", "name": "Is client data safe?", "acceptedAnswer": {"@type": "Answer", "text": "Client figures are processed in the browser and stored nowhere else. The AI assistant receives codes instead of client names, and the alert email knows only the subscriber's address."}}, {"@type": "Question", "name": "Where does the data come from?", "acceptedAnswer": {"@type": "Answer", "text": "Euribor, inflation and exchange rates from the ECB; industrial production, retail sales and producer prices from Eurostat; oil and US rates from FRED. Refreshed on the 3rd and the 18th of each month."}}, {"@type": "Question", "name": "What does “bad year” mean?", "acceptedAnswer": {"@type": "Answer", "text": "The 1-in-20 outcome for next year's profit: what the business would have lost if the next twelve months moved like past months in the same phase of the economy, scaled to today's volatility."}}, {"@type": "Question", "name": "Which accounts can it import?", "acceptedAnswer": {"@type": "Answer", "text": "A Summen- und Saldenliste exported as CSV from DATEV, with the SKR03 or SKR04 chart of accounts."}}, {"@type": "Question", "name": "Is this financial advice?", "acceptedAnswer": {"@type": "Answer", "text": "No. It is a prototype that shows exposures and what protection would cost, for a conversation between the advisor and the client."}}]}]</script>
 </head>
 <body>
@@ -39,9 +39,8 @@
 <section class="hero">
   <div class="wrap">
     <div>
-      <p class="kicker">For tax advisors and banks</p>
       <h1>Which of your clients can&#39;t take a bad year?</h1>
-      <p class="lead">Macro Risk Monitor reads a client&#39;s DATEV trial balance and shows how much of next year&#39;s profit energy prices, interest rates, purchase prices and weaker sales could take. For every client, ranked, with fresh data twice a month.</p>
+      <p class="lead">Macro Risk Monitor reads a client&#39;s DATEV trial balance and shows how much of next year&#39;s profit energy prices, interest rates, purchase prices and weaker sales could take. For tax advisors and banks: every client ranked, with fresh data twice a month.</p>
       <div class="actions"><a class="btn primary" href="../?plan=business">Try it with an example</a><a href="#how">See how it works</a></div>
     </div>
     <div>
@@ -67,7 +66,7 @@
 
 <section class="sec" id="why" aria-labelledby="h-why">
   <div class="wrap">
-    <div class="head"><h2 id="h-why">Costs follow the economy. Annual accounts don&#39;t.</h2><p>An energy contract runs out, a floating-rate loan resets, an index-linked rent adjusts, the minimum wage rises. The accounts show last year; the risk sits in the next twelve months.</p></div>
+    <div class="head"><h2 id="h-why">Where next year&#39;s risk comes from</h2><p>An energy contract runs out, a floating-rate loan resets, an index-linked rent adjusts, the minimum wage rises. The accounts show last year; the risk sits in the next twelve months.</p></div>
     <dl class="figs">
       <div><dt>The economy now</dt><dd>Stagflation<span class="s">Since May 2026</span></dd></div>
       <div><dt>Euribor 3M</dt><dd>2.64%<span class="s">What floating-rate loans follow</span></dd></div>
@@ -82,13 +81,23 @@
   <div class="wrap">
     <div class="head"><h2 id="h-how">How it works</h2><p>Fifteen minutes with a client file, from the export to the conversation.</p></div>
     <ol class="steps"><li><span class="n" aria-hidden="true">1</span><h3>Import</h3><p>Export the Summen- und Saldenliste from DATEV (SKR03 or SKR04) and drop it in. The file never leaves the browser.</p></li><li><span class="n" aria-hidden="true">2</span><h3>Read</h3><p>The bad-year loss, the biggest risks, whether cash lasts the year, and when each contract starts to bite.</p></li><li><span class="n" aria-hidden="true">3</span><h3>Act</h3><p>Compare protection (fix the loan, fix energy, pass on price rises, lock the dollar), print a PDF for the client or the bank, and get an email when the economy changes phase.</p></li></ol>
+    <figure class="shot">
+      <img src="../assets/shots/result-en.webp" width="1280" height="567" loading="lazy" decoding="async" alt="The tool for the example restaurant: a bad year could take €44,300 of its €72,000 profit, written out as a statement, with the biggest risks, the cash outlook, the economy and the best protection below.">
+      <figcaption>The result for the example restaurant, with data through September 2026.</figcaption>
+    </figure>
   </div>
 </section>
 
 <section class="sec" id="get" aria-labelledby="h-get">
   <div class="wrap">
     <div class="head"><h2 id="h-get">Built for an advisor&#39;s desk</h2><p>Everything the Business plan adds to the free check.</p></div>
-    <ul class="feats"><li><b>All clients, ranked by risk</b><span>One list, sorted by the share of profit a bad year could take, with your alert level marked.</span></li><li><b>Since your last visit</b><span>When new data arrives, see who crossed your alert level and whose risk rose.</span></li><li><b>A monthly alert email</b><span>The economy&#39;s phase, the key rates and how typical businesses moved, in German and English.</span></li><li><b>An AI assistant</b><span>Explains results, runs what-ifs on the model and drafts client notes. Client names never leave the browser.</span></li><li><b>A PDF report</b><span>Two pages for the client meeting or the bank&#39;s credit file.</span></li><li><b>13 languages</b><span>For clients who would rather read Turkish, Polish, Arabic or Ukrainian.</span></li><li><b>Portfolio stress test</b><span>For treasury and fund holdings: yield, duration and five stress scenarios.</span></li><li><b>No installation</b><span>Runs in the browser. No account, no cookies, no tracking.</span></li></ul>
+    <div class="with-shot">
+      <figure class="shot">
+        <img src="../assets/shots/clients-en.webp" width="366" height="471" loading="lazy" decoding="async" alt="Saved businesses in the Business plan, ranked by the share of profit a bad year could take: Bakery 77%, Restaurant 62%, Print shop 55%, Metal workshop 49%, Online importer 35%, Food truck 26%.">
+        <figcaption>The six examples saved as clients and ranked. Your alert level sets the colour.</figcaption>
+      </figure>
+      <ul class="feats"><li><b>All clients, ranked by risk</b><span>One list, sorted by the share of profit a bad year could take, with your alert level marked.</span></li><li><b>Since your last visit</b><span>When new data arrives, see who crossed your alert level and whose risk rose.</span></li><li><b>A monthly alert email</b><span>The economy&#39;s phase, the key rates and how typical businesses moved, in German and English.</span></li><li><b>An AI assistant</b><span>Explains results, runs what-ifs on the model and drafts client notes. Client names never leave the browser.</span></li><li><b>A PDF report</b><span>Two pages for the client meeting or the bank&#39;s credit file.</span></li><li><b>13 languages</b><span>For clients who would rather read Turkish, Polish, Arabic or Ukrainian.</span></li><li><b>Portfolio stress test</b><span>For treasury and fund holdings: yield, duration and five stress scenarios.</span></li><li><b>No installation</b><span>Runs in the browser. No account, no cookies, no tracking.</span></li></ul>
+    </div>
   </div>
 </section>
 
@@ -101,7 +110,13 @@
       <div><dt>Data series</dt><dd>21<span class="s">ECB, Eurostat and FRED, each shifted by its publication lag</span></dd></div>
       <div><dt>Cookies and trackers</dt><dd>0<span class="s">Client figures stay in the browser</span></dd></div>
     </dl>
-    <p style="margin-top:24px"><a href="https://github.com/EidenWilson/macro-risk-monitor#readme">The method, the backtest and the limits are written up in the README on GitHub.</a></p>
+    <div class="with-shot wide-shot">
+      <figure class="shot">
+        <img src="../assets/shots/backtest-en.webp" width="850" height="528" loading="lazy" decoding="async" alt="Backtest chart: what happened to profit over the next twelve months against the 1-in-20 forecast, every month since 2008. 5.6% of months came out worse than forecast.">
+        <figcaption>The backtest as the tool shows it: the dashed line is the forecast bad year, the dots are the months that came out worse.</figcaption>
+      </figure>
+      <p><a href="https://github.com/EidenWilson/macro-risk-monitor#readme">The method, the backtest and the limits are written up in the README on GitHub.</a></p>
+    </div>
   </div>
 </section>
 

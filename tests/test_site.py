@@ -100,6 +100,15 @@ def test_pages(browser, base):
                 check(pg.evaluate("document.querySelectorAll('h1').length") == 1, f"{path}: one h1")
                 lang = "de" if path.endswith("de/") else "en"
                 check(pg.evaluate("document.documentElement.lang") == lang, f"{path}: lang={lang}")
+                check(pg.evaluate("document.querySelector('h1').previousElementSibling === null"), f"{path}: no label above the headline")
+                check(pg.evaluate("[...document.querySelectorAll('.sec .head p, .steps p, .feats span, .faq p, .lead:not(.small)')].every(p => getComputedStyle(p).color === getComputedStyle(document.body).color)"),
+                      f"{path}: running text in full ink")
+                if path.startswith("advisors"):
+                    imgs = pg.evaluate("""async () => Promise.all([...document.images].map(async i => { i.loading = 'eager'; try { await i.decode(); } catch (e) {}
+                        return {src: i.getAttribute('src'), alt: i.alt, w: i.naturalWidth, aw: +i.getAttribute('width'), ah: +i.getAttribute('height')}; }))""")
+                    check(len(imgs) == 3 and all(i["w"] > 0 and len(i["alt"]) > 40 and i["aw"] and i["ah"] and i["src"].endswith(f"-{lang}.webp") for i in imgs),
+                          f"{path}: three screenshots of the tool in its language, loaded, with alt text and size")
+                    check(all(i["w"] >= 2 * i["aw"] - 2 for i in imgs), f"{path}: screenshots at twice their size for sharp screens")
             check(not pg.errors, f"{path} at {width}px: no console errors {pg.errors[:2]}")
             pg.close()
     pg = page_with(browser, base + "advisors/")

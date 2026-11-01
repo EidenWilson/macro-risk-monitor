@@ -1,0 +1,25 @@
+[project]
+name = "macro-risk-monitor"
+version = "1.1.0"
+description = "Macro risk check for German small businesses: ECB, Eurostat and FRED data -> profit at risk"
+requires-python = ">=3.12"          # numpy 2.5 and scipy 1.18 (constraints.txt) need 3.12
+
+[tool.pytest.ini_options]
+testpaths = ["tests/unit"]          # tests/test_page.py and tests/test_site.py are browser scripts, run on their own
+addopts = "-q -p no:cacheprovider"
+filterwarnings = [
+    "ignore::DeprecationWarning:hmmlearn.*",
+]
+
+[tool.ruff]
+line-length = 130
+target-version = "py312"
+extend-exclude = ["docs", "worker", "i18n"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "I"]
+ignore = [
+    "E501",   # long table rows (series keys, scenario lists) read better on one line
+    "E701", "E702", "E731",   # the existing compact style (one-line ifs, lambdas) is kept as written
+    "B023",
+]

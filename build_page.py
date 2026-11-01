@@ -18,6 +18,7 @@ the English text for those).
 """
 import argparse
 import base64
+import hashlib
 import json
 import pathlib
 import re
@@ -30,6 +31,7 @@ ap.add_argument("--out", default="docs/index.html")
 ap.add_argument("--assistant", default="assistant", help="folder with prompt.txt, tools.json and config.json")
 ap.add_argument("--bare", action="store_true", help="page only, without the <html>/<head> wrapper")
 ap.add_argument("--site-url", default="https://eidenwilson.github.io/macro-risk-monitor/", help="public address, for link previews")
+ap.add_argument("--no-csp", action="store_true", help="leave out the Content-Security-Policy (only for debugging)")
 a = ap.parse_args()
 
 out = pathlib.Path(a.out)
@@ -157,6 +159,7 @@ else:
     # the template starts with its <title> and <meta> tags; they belong in the document head
     m = re.match(r"\s*(?:(?:<title>.*?</title>|<meta\b[^>]*>)\s*)+", page, re.S)
     head_tags, body = (m.group(0).strip(), page[m.end():]) if m else ("", page)
+    head_tags = re.sub(r'<meta name="claude:[^>]*>\s*', "", head_tags)   # a hint for the Claude preview, not a web standard
     # link previews (LinkedIn, WhatsApp, Slack) and a small icon for the browser tab
     desc = "How much of next year's profit could the economy take? A free macro risk check for German small businesses, built on current ECB, Eurostat and FRED data."
     site = a.site_url.rstrip("/") + "/"
@@ -176,7 +179,7 @@ else:
         f'<link rel="alternate" hreflang="x-default" href="{site}">'
     app = {"@context": "https://schema.org", "@type": "WebApplication", "name": "Macro Risk Monitor", "url": site,
            "applicationCategory": "FinanceApplication", "operatingSystem": "Any (runs in the browser)", "inLanguage": order, "description": desc,
-           "offers": [{"@type": "Offer", "name": n, "price": p, "priceCurrency": "EUR"} for n, p in (("Free", "0"), ("Pro", "19"), ("Business", "89.99"))]}
+           "offers": [{"@type": "Offer", "name": n, "price": p, "priceCurrency": "EUR"} for n, p in (("Free", "0"), ("Pro", "19"), ("Business", "70"))]}
     share += f'<script type="application/ld+json">{safe(json.dumps(app, ensure_ascii=False))}</script>'
     html = ("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
             "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1,viewport-fit=cover\">"
@@ -186,6 +189,44 @@ else:
             "body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>"
             + (f"<script>{''.join(f'window.{k}={json.dumps(v)};' for k, v in flags.items())}</script>" if flags else "")
             + "</head><body>" + body + "</body></html>")
+
+def with_csp(html, assistant_url, alerts_form):
+    """Add a Content-Security-Policy that allows exactly the scripts in this build and the two servers it talks to.
+
+    The page already loads nothing from third parties; the policy turns that promise into something the browser
+    enforces, so an injected <script> (for example through a client name or a DATEV file that slipped past
+    escaping) cannot run or send data anywhere. Inline scripts are allowed by their SHA-256 hash, not by
+    'unsafe-inline'. GitHub Pages cannot send headers, so the policy goes in a <meta> tag (which cannot set
+    frame-ancestors; that would need a host with real headers)."""
+    hashes = []
+    for m in re.finditer(r"<script(?P<attrs>[^>]*)>(?P<body>.*?)</script>", html, re.S):
+        attrs = m.group("attrs")
+        if "src=" in attrs or "application/ld+json" in attrs:
+            continue
+        digest = base64.b64encode(hashlib.sha256(m.group("body").encode("utf-8")).digest()).decode("ascii")
+        hashes.append(f"'sha256-{digest}'")
+    origin = lambda u: re.match(r"https://[^/]+", u).group(0) if u and re.match(r"https://[^/]+", u) else None
+    connect = " ".join(x for x in ["'self'", origin(assistant_url)] if x)
+    form = " ".join(x for x in ["'self'", origin(alerts_form)] if x)
+    policy = "; ".join([
+        "default-src 'none'",
+        "script-src 'self' " + " ".join(hashes),
+        "style-src 'self' 'unsafe-inline'",           # the page sets inline styles from JavaScript (chart sizes, bars)
+        "font-src 'self' data:",                      # the embedded font
+        "img-src 'self' data: blob:",
+        "connect-src " + connect,
+        "form-action " + form,
+        "base-uri 'none'",
+        "object-src 'none'",
+        "manifest-src 'self'",
+    ])
+    tag = f'<meta http-equiv="Content-Security-Policy" content="{policy}">'
+    return html.replace('<meta charset="utf-8">', '<meta charset="utf-8">' + tag, 1), len(hashes)
+
+
+if not a.bare and not a.no_csp:
+    html, n_hashes = with_csp(html, flags.get("MRM_ASSISTANT_URL"), flags.get("MRM_ALERTS_FORM"))
+    flags["CSP"] = f"{n_hashes} inline scripts"
 
 out.write_text(html, encoding="utf-8")
 print(f"wrote {out} ({len(html) // 1024} KB, {len(packs)} languages){' flags: ' + ', '.join(flags) if not a.bare and flags else ''}")

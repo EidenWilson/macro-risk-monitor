@@ -250,7 +250,7 @@ ADVISORS = {
         "plans": [
             ["Free", "For owners who want a quick check", "0", ["Bad-year risk for one business", "The biggest risks, ranked", "Whether cash lasts the year", "The 2022 energy shock replayed"], ""],
             ["Pro", "For owners who want a plan", "19", ["Cash month by month", "All five stress scenarios", "Which protection pays off", "DATEV import and PDF report"], ""],
-            ["Business", "For tax advisors and banks", "89.99", ["All clients ranked by risk", "Alerts and the monthly email", "The AI assistant", "Per office, up to 50 clients"], "focus"],
+            ["Business", "For tax advisors and banks", "70", ["All clients ranked by risk", "Alerts and the monthly email", "The AI assistant", "Per office, up to 50 clients"], "focus"],
         ],
         "pilot_h": "Run a free pilot with us",
         "pilot_p": "We are looking for three tax offices or banks for a pilot this winter: one session with a real client file, then we fix whatever got in the way.",
@@ -326,7 +326,7 @@ ADVISORS = {
         "plans": [
             ["Free", "Für Inhaber, die schnell prüfen wollen", "0", ["Risiko im schlechten Jahr für einen Betrieb", "Die größten Risiken, nach Gewicht", "Ob die Liquidität das Jahr über reicht", "Der Energieschock 2022 als Szenario"], ""],
             ["Pro", "Für Inhaber, die einen Plan wollen", "19", ["Liquidität Monat für Monat", "Alle fünf Stressszenarien", "Welche Absicherung sich lohnt", "DATEV-Import und PDF-Bericht"], ""],
-            ["Business", "Für Steuerkanzleien und Banken", "89.99", ["Alle Mandanten nach Risiko sortiert", "Warnungen und die monatliche E-Mail", "Der KI-Assistent", "Pro Kanzlei, bis 50 Mandanten"], "focus"],
+            ["Business", "Für Steuerkanzleien und Banken", "70", ["Alle Mandanten nach Risiko sortiert", "Warnungen und die monatliche E-Mail", "Der KI-Assistent", "Pro Kanzlei, bis 50 Mandanten"], "focus"],
         ],
         "pilot_h": "Ein kostenloses Pilotprojekt mit uns",
         "pilot_p": "Wir suchen drei Steuerkanzleien oder Banken für ein Pilotprojekt in diesem Winter: eine Sitzung mit einer echten Mandantenakte, danach beheben wir alles, was im Weg stand.",

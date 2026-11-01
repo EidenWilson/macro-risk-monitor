@@ -49,7 +49,7 @@ with sync_playwright() as p:
     pg.wait_for_timeout(300)
     pg.screenshot(path=str(ROOT / "docs/og.png"))
     pg.close()
-    pg = b.new_page(viewport={"width": 1440, "height": 860})                # the README picture: the built page itself
+    pg = b.new_page(viewport={"width": 1440, "height": 860}, bypass_csp=True)                # the README picture: the built page itself
     pg.goto((ROOT / "docs/index.html").as_uri() + "?lang=en&plan=pro", wait_until="load")
     pg.wait_for_timeout(500)
     pg.screenshot(path=str(ROOT / "assets/screenshot.png"))

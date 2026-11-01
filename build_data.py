@@ -9,20 +9,24 @@ distribution), named stress scenarios, and the regime history for charts.
 """
 import argparse
 import json
+import logging
+import os
 import sqlite3
+import subprocess
 import warnings
+from datetime import datetime, timezone
 
 import numpy as np
 import pandas as pd
+from scipy.stats import multivariate_normal
 
-warnings.filterwarnings("ignore")
+from macro_config import LAG, MIN_WAGE, min_wage_warning  # publication lags: one copy, shared with pipeline.py
 
-# publication lag in months: a value for month t is knowable at the end of t+lag
-LAG = {"EURIBOR_3M": 0, "EURUSD": 0, "HICP_DE": 1, "HICP_FOOD_DE": 1, "HICP_ENERGY_DE": 1,
-       "IP_DE": 2, "EU_NATGAS": 1, "BRENT": 0,
-       "HICP_ELEC_DE": 1, "HICP_GAS_DE": 1, "RETAIL_DE": 2, "FOODSERV_DE": 2, "CONF_DE": 0,
-       "PPI_C10_DE": 1, "PPI_C24_DE": 1, "PPI_C17_DE": 1, "PPI_C22_DE": 1, "PPI_C16_DE": 1,
-       "YC_1Y": 0, "YC_3Y": 0, "US_1Y": 0}
+# Only silence the noise we know about (hmmlearn's convergence chatter and pandas' future-default notices);
+# a blanket filter would also hide real problems such as division by zero in the moves.
+warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", module="hmmlearn")
+logging.getLogger("hmmlearn").setLevel(logging.ERROR)
 
 # factor name -> (series, kind); kind "pp" = change in percentage points, "pct" = relative change
 FACTORS = {
@@ -78,6 +82,28 @@ def classify(k):
 HMM_NAMES = ["Expansion", "Sluggish growth", "Inflation shock", "Recession"]
 
 
+def filtered_probs(m, Z):
+    """P(state at t | observations up to t) for every t, in one forward pass.
+
+    Same numbers as calling m.predict_proba(Z[:t+1])[-1] for each t (the old code), but O(T) instead of O(T^2):
+    each of those calls re-ran forward-backward over the whole prefix."""
+    T, K = len(Z), m.n_components
+    covs = m.covars_                                   # (K, d, d) for covariance_type="full"
+    logb = np.column_stack([multivariate_normal(m.means_[k], covs[k], allow_singular=True).logpdf(Z) for k in range(K)])
+    logb = logb.reshape(T, K)
+    A = m.transmat_
+    out = np.empty((T, K))
+    prior = m.startprob_
+    for t in range(T):
+        la = np.log(np.maximum(prior, 1e-300)) + logb[t]
+        la -= la.max()
+        a = np.exp(la)
+        a /= a.sum()
+        out[t] = a
+        prior = a @ A
+    return out
+
+
 def hmm_states(k, seed=0):
     """4-state Gaussian HMM on the LEVELS of growth and inflation (3-month averages, as published).
     Returns filtered state probabilities (knowable at each month), state means and the transition matrix."""
@@ -106,7 +132,7 @@ def hmm_states(k, seed=0):
         for rank, idx in enumerate(order):
             names[idx] = ["Recession", "Sluggish growth", "Expansion", "Expansion+"][rank]
         names[int(np.argmax(means[:, 1]))] = "Inflation shock"
-    post = np.vstack([m.predict_proba(Z[: t + 1])[-1] for t in range(len(Z))])
+    post = filtered_probs(m, Z)
     probs = pd.DataFrame(post, index=X.index, columns=names)
     trans = {names[a]: {names[b]: round(float(m.transmat_[a, b]), 3) for b in range(4)} for a in range(4)}
     stmeans = {names[a]: {"growth": round(float(means[a, 0]), 2), "inflation": round(float(means[a, 1]), 2)} for a in range(4)}
@@ -120,7 +146,44 @@ def move(r, f, a, b):
     return float(r[s][b] - r[s][a]) if kind == "pp" else float(r[s][b] / r[s][a] - 1)
 
 
+def git_sha():
+    try:
+        return subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True,
+                              timeout=5, cwd=os.path.dirname(os.path.abspath(__file__))).stdout.strip() or None
+    except Exception:
+        return None
+
+
+def series_status(db):
+    """Last period and fetch status per series, from the pipeline's series_meta table (None for a CSV build)."""
+    if not db:
+        return None
+    con = sqlite3.connect(db)
+    try:
+        rows = con.execute("SELECT series_id, last_period, status FROM series_meta ORDER BY series_id").fetchall()
+    except sqlite3.OperationalError:
+        return None
+    finally:
+        con.close()
+    return {sid: {"last": lp, "status": st} for sid, lp, st in rows}
+
+
+def unchanged_meta(out, D):
+    """The previous file's provenance when nothing else in the data changed, else None. Without this the build time
+    alone would make every refresh commit a new data.json and a new 690 KB page, even when no source published anything."""
+    try:
+        with open(out) as fh:
+            old = json.load(fh)
+    except (OSError, ValueError):
+        return None
+    strip = lambda x: {k: v for k, v in x.items() if k != "meta"}
+    return old.get("meta") if "meta" in old and strip(old) == json.loads(json.dumps(strip(D))) else None
+
+
 def main(db=None, csv=None, out="data.json"):
+    msg = min_wage_warning()
+    if msg:
+        print("warning:", msg)
     r = load_raw(db, csv)
     # last complete month = latest month where both Euribor and headline HICP exist
     asof = r.dropna(subset=["EURIBOR_3M", "HICP_DE"]).index.max()
@@ -216,8 +279,12 @@ def main(db=None, csv=None, out="data.json"):
         hist[c] = [None if pd.isna(x) else round(float(x) * mult, 3) for x in h[c]]
 
     D = {"current": cur, "factors": factors, "samples": samples, "scenarios": scen, "hist": hist,
-         "minWage": {"from": 13.90, "to": 14.60, "effective": "2027-01"},
-         "lockdown": {"from": LOCKDOWN[0], "to": LOCKDOWN[1]}}
+         "minWage": dict(MIN_WAGE),
+         "lockdown": {"from": LOCKDOWN[0], "to": LOCKDOWN[1]},
+         # provenance: when and from what this file was built, so a figure on the page can be traced back
+         "meta": {"schema": 2, "generatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                  "code": git_sha(), "samples": len(samples), "series": series_status(db)}}
+    D["meta"] = unchanged_meta(out, D) or D["meta"]
     with open(out, "w") as fh:
         json.dump(D, fh, separators=(",", ":"))
     print(f"as of {asof}: regime {cur['regime']} since {cur['since']}; HMM {cur['hmm']}; "

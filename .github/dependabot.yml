@@ -1,0 +1,15 @@
+# Weekly pull requests for outdated GitHub Actions, Python packages and the assistant server's npm packages.
+# Each one runs the full test suite before anything reaches the live page.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: {interval: weekly}
+  - package-ecosystem: pip
+    directory: /
+    schedule: {interval: weekly}
+    groups:
+      python: {patterns: ["*"]}
+  - package-ecosystem: npm
+    directory: /worker
+    schedule: {interval: weekly}

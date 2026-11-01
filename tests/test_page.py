@@ -6,7 +6,7 @@
 No network access is needed: the assistant server and Claude are replaced by fakes, so these checks cover the
 page's side of the conversation (tool loop, privacy, apply and undo, errors), not the quality of a model's answers.
 """
-import functools, http.server, json, pathlib, sys, threading
+import functools, http.server, itertools, json, pathlib, sys, threading
 from playwright.sync_api import sync_playwright
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent / "docs"
@@ -37,7 +37,9 @@ def serve():
 
 
 def page_with(browser, url, width=1280, init=None):
-    pg = browser.new_page(viewport={"width": width, "height": 900})
+    # bypass_csp: these checks drive the page with string expressions (wait_for_function), which the page's
+    # Content-Security-Policy rightly forbids. test_csp below checks the policy itself, without the bypass.
+    pg = browser.new_page(viewport={"width": width, "height": 900}, bypass_csp=True)
     pg.errors = []
     pg.on("console", lambda m: pg.errors.append(m.text) if m.type == "error" else None)
     pg.on("pageerror", lambda e: pg.errors.append(str(e)))
@@ -82,14 +84,14 @@ def test_plans(browser, base):
     check(tabs == ["2022 energy shock", "more"], f"free shows one scenario and a Pro link: {tabs}")
     pg.click("#planBtn")
     price = "document.querySelector('[aria-labelledby=pl-business] .price').firstChild.textContent"
-    check(pg.evaluate(price) == "€89.99", f"business price keeps its cents: {pg.evaluate(price)}")
+    check(pg.evaluate(price) == "€70", f"business price, a whole euro amount, shows without cents: {pg.evaluate(price)}")
     pg.click("[data-setplan=pro]")
     check(pg.evaluate("document.documentElement.dataset.plan") == "pro" and pg.evaluate("document.getElementById('planModal').hidden"), "switching plan in the dialog")
     check(pg.evaluate("document.querySelectorAll('#scen button[data-s]').length") == 5, "pro shows all five scenarios")
     pg.close()
     pg = page_with(browser, f"{base}?lang=de"); pg.click("#planBtn")
     de = pg.evaluate(price).replace(chr(160), " ")
-    check(de == "89,99 €", f"business price in German format: {de}")
+    check(de == "70 €", f"business price in German format: {de}")
     pg.close()
 
 
@@ -116,7 +118,9 @@ def test_tools(browser, base):
     }""")
     check(r["before"] == r["after"], "what_if with no real change leaves every number as it was")
     check(r["before"]["bad_year_profit_change"] == r["hero"], f"what_if starts from the headline figure ({r['hero']})")
-    check(r["loanEffect"] == r["loanGap"] and r["loanEffect"] > 0, f"what_if states its effect explicitly ({r['loanEffect']})")
+    # The sign is the data's business: in a calm month fixing the loan can stop paying off. The amount is checked
+    # against the protection table below, so a what_if that ignored fix_loan_rate would still fail.
+    check(isinstance(r["loanEffect"], (int, float)) and r["loanEffect"] == r["loanGap"], f"what_if states its effect explicitly ({r['loanEffect']})")
     check(r["shockGap"] == r["total"], "shock: the two next-year profits differ by exactly the stated effect")
     check(any("fixed price" in n for n in r["notes"]), f"shock explains why the effect is smaller than the move: {r['notes']}")
     check(r["repaired"] == [{"name": "shock", "args": {"sales_index_pct": -5, "energy_pct": 20}}, {"name": "what_if", "args": {"fix_loan_rate": True}}, {"name": "compare_clients", "args": {}}],
@@ -133,7 +137,7 @@ def test_tools(browser, base):
 
 def test_server_transport(browser, base):
     print("assistant over the server (mocked)")
-    sent, check_final = [], []
+    sent, check_final, whatifs = [], [], []
 
     cors = {"Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "content-type, x-access-code", "Access-Control-Allow-Methods": "POST, OPTIONS"}
 
@@ -165,6 +169,7 @@ def test_server_transport(browser, base):
             elif last["name"] == "shock":
                 text = f"Profit next year would be €{res['next_year_profit_with_shock']:,} instead of €{res['next_year_profit_without_shock']:,}.\n- Energy: €{-res['effect_by_line'].get('energy'):,} more"
             else:
+                whatifs.append(res)
                 text = f"Fixing the loan changes the profit in a bad year to €{res['after']['profit_in_bad_year']:,}."
         route.fulfill(status=200, content_type="application/json", body=json.dumps({"text": text, "calls": []}))
 
@@ -197,7 +202,10 @@ def test_server_transport(browser, base):
     pg.wait_for_function("!chat.busy", timeout=5000)
     before = pg.evaluate("LAST.hero.p5")
     pg.click("[data-apply]")
-    check(pg.evaluate("state.hedges.loan === true") and pg.evaluate("LAST.hero.p5") > before, "apply puts the what-if on the page")
+    # Not "the bad year gets better": whether fixing the loan helps depends on the month's data. The page must show
+    # exactly what the what-if said it would.
+    shown, said = pg.evaluate("Math.round(LAST.hero.p5 / 100) * 100"), whatifs[-1]["after"]["bad_year_profit_change"] if whatifs else None
+    check(pg.evaluate("state.hedges.loan === true") and shown == said, f"apply puts the what-if on the page (headline {shown}, what-if {said})")
     pg.click("[data-apply]")
     check(pg.evaluate("!state.hedges.loan") and abs(pg.evaluate("LAST.hero.p5") - before) < 1e-6, "undo restores the page")
 
@@ -349,18 +357,58 @@ def test_pdf_language(browser, base):
         pg.close()
 
 
+REGIMES = ["Recovery", "Overheating", "Stagflation", "Contraction"]
+
+
+def alert_roles(shares, thr):
+    """Shares 'seen at the last visit' that make one saved business cross the alert level, one rise by 5 points or more
+    and one fall, whatever today's shares are. The refresh runs these checks on fresh data before publishing, so they
+    must not depend on which business is above the level this month. Returns ({id: seen share}, {role: id}); a role is
+    None when today's data cannot produce it (for example no business above the level at all)."""
+    can_cross = lambda x: x > thr
+    can_rise = lambda x: x > thr + 6 or 6 <= x <= thr       # rises by 6 without crossing the level on the way
+    ids = [c["id"] for c in CLIENTS if shares.get(c["id"]) is not None]
+    orders = [("c1", "c3", "c2")] + [p for p in itertools.permutations(ids, 3) if p != ("c1", "c3", "c2")]
+    pick = next(((a, b, c) for a, b, c in orders if {a, b, c} <= set(ids) and can_cross(shares[a]) and can_rise(shares[b])), None)
+    if pick:
+        crossed, rose, fell = pick
+    else:
+        crossed = max(ids, key=lambda i: shares[i]) if any(can_cross(shares[i]) for i in ids) else None
+        rest = [i for i in ids if i != crossed]
+        rose = next((i for i in rest if can_rise(shares[i])), None)
+        fell = next(i for i in rest if i != rose)
+    seen = {fell: shares[fell] + 20 if shares[fell] > thr else min(thr, shares[fell] + 3)}   # higher before, same side of the level
+    if crossed:
+        seen[crossed] = 0
+    if rose:
+        seen[rose] = shares[rose] - 6
+    return seen, {"crossed": crossed, "rose": rose, "fell": fell}
+
+
 def test_alerts(browser, base):
     print("since the last visit, and the alert email sign-up")
-    seen = """(() => { try { localStorage.setItem('mrm3-seen', JSON.stringify({asOf: '2000-01', regime: 'Recovery', clients: {c1: 0, c2: 99, c3: 41}})); } catch (e) {} })();"""
+    pg = page_with(browser, f"{base}?plan=business&lang=de", init=SEED)
+    now = pg.evaluate("() => ({shares: Object.fromEntries(clients.map(c => [c.id, clientShare(c)])), thr: state.threshold, regime: D.current.regime})")
+    pg.close()
+    seen_shares, role = alert_roles(now["shares"], now["thr"])
+    names = {c["id"]: c["name"] for c in CLIENTS}
+    last_visit = {"asOf": "2000-01", "regime": next(r for r in REGIMES if r != now["regime"]), "clients": seen_shares}
+    seen = "(() => { try { localStorage.setItem('mrm3-seen', JSON.stringify(%s)); } catch (e) {} })();" % json.dumps(last_visit)
     pg = page_with(browser, f"{base}?plan=business&lang=de#clients", init=SEED + seen)
     pg.wait_for_function("!document.getElementById('changes').hidden", timeout=5000)
     v = pg.evaluate("""() => ({text: document.getElementById('changes').innerText, title: T.de.chgTitle, regime: T.de[D.current.regime],
       top: Math.round(document.getElementById('changes').getBoundingClientRect().top), shares: Object.fromEntries(clients.map(c => [c.name, Math.round(clientShare(c))]))})""")
     check(v["title"] in v["text"] and v["regime"] in v["text"], f"the panel says what changed, in the page's language ({v['text'][:80]!r})")
-    above = v["text"].split("\n")
-    check(any("Bäckerei Müller" in l and "Warnschwelle" in l for l in above), f"a business that crossed the alert level is named {v['shares']}")
-    check(any("Gasthaus zur Post" in l and "5 Punkte" in l for l in above), "a business whose risk rose by 5 points or more is named")
-    check(not any("Druckerei Weiß" in l for l in above), "a business still above the level but lower than before is not named")
+    lines = v["text"].split("\n")
+    if role["crossed"]:
+        check(any(names[role["crossed"]] in l and "Warnschwelle" in l for l in lines), f"a business that crossed the alert level is named ({names[role['crossed']]}) {v['shares']}")
+    else:
+        print(f"  skip no business is above the {now['thr']}% alert level in this month's data, so none can cross it {v['shares']}")
+    if role["rose"]:
+        check(any(names[role["rose"]] in l and "5 Punkte" in l for l in lines), f"a business whose risk rose by 5 points or more is named ({names[role['rose']]})")
+    else:
+        print(f"  skip no business can rise by 5 points without crossing the alert level in this month's data {v['shares']}")
+    check(not any(names[role["fell"]] in l for l in lines), f"a business whose risk fell is not named ({names[role['fell']]})")
     check(50 <= v["top"] <= 120, f"the email link lands on the panel, below the sticky header ({v['top']}px from the top)")
     pg.click("#chgOk")
     check(pg.evaluate("document.getElementById('changes').hidden && JSON.parse(localStorage.getItem('mrm3-seen')).asOf === D.current.asOf"), "Got it hides it until new data arrives")
@@ -378,11 +426,45 @@ def test_alerts(browser, base):
     pg.close()
 
 
+def test_csp(browser, base):
+    """The Content-Security-Policy that build_page.py adds must not break anything a visitor does."""
+    print("content security policy")
+    pg = browser.new_page(viewport={"width": 1280, "height": 900})        # no bypass: the real policy applies
+    errors = []
+    pg.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)
+    pg.on("pageerror", lambda e: errors.append(str(e)))
+    pg.add_init_script("window.__csp = []; document.addEventListener('securitypolicyviolation', e => "
+                       "window.__csp.push(e.violatedDirective + ' ' + e.blockedURI));")
+    pg.route("**/chat", lambda route: route.fulfill(status=200, content_type="application/json",
+             headers={"Access-Control-Allow-Origin": "*"}, body=json.dumps({"text": "Energy is the biggest risk.", "calls": []})))
+    pg.goto(f"{base}?plan=business&lang=de", wait_until="networkidle")
+    policy = pg.locator('meta[http-equiv="Content-Security-Policy"]').get_attribute("content") or ""
+    check("script-src 'self' 'sha256-" in policy and "unsafe-inline" not in policy.split("style-src")[0],
+          "the page has a policy that allows its own scripts by hash, not 'unsafe-inline'")
+    pg.locator("#moreDetail > summary").click()
+    with pg.expect_download(timeout=20000) as dl:                            # loads jsPDF from vendor/ (script-src 'self')
+        pg.click("#pdfBtn")
+    check(dl.value.suggested_filename.endswith(".pdf"), f"the PDF report still downloads ({dl.value.suggested_filename})")
+    if pg.locator("#chatInput").is_visible() or pg.locator("#askBtn").count():
+        if not pg.locator("#chatInput").is_visible() and pg.locator("#askBtn").is_visible():
+            pg.click("#askBtn")
+        if pg.locator("#chatInput").is_visible():
+            pg.fill("#chatInput", "Was ist das größte Risiko?")
+            pg.click("#chatSend")
+            pg.wait_for_selector("text=Energy is the biggest risk.", timeout=10000)
+            check(True, "the assistant can still reach its server (connect-src)")
+    pg.wait_for_timeout(300)
+    violations = pg.evaluate("window.__csp")
+    check(not violations, f"no policy violations while using the page {violations}")
+    check(not errors, f"no console errors {errors[:3]}")
+    pg.close()
+
+
 if __name__ == "__main__":
     base = serve()
     with sync_playwright() as p:
         browser = p.chromium.launch()
-        for t in (test_plans, test_tools, test_server_transport, test_claude_transport, test_languages, test_formats, test_pdf_language, test_alerts):
+        for t in (test_plans, test_tools, test_server_transport, test_claude_transport, test_languages, test_formats, test_pdf_language, test_alerts, test_csp):
             t(browser, base)
         browser.close()
     print(f"\n{len(failures)} failed" if failures else "\nall checks passed")

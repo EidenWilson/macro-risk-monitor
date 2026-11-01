@@ -44,7 +44,7 @@ def snapshot():
     from playwright.sync_api import sync_playwright
     with sync_playwright() as p:
         browser = p.chromium.launch()
-        page = browser.new_page()
+        page = browser.new_page(bypass_csp=True)  # the build drives the page with string expressions, which its CSP forbids
         page.goto((DOCS / "index.html").resolve().as_uri(), wait_until="load")
         snap = page.evaluate(SNAPSHOT)
         browser.close()
@@ -69,7 +69,7 @@ def screenshots():
     with sync_playwright() as p:
         browser = p.chromium.launch()
         for lang in LANGS:
-            ctx = browser.new_context(viewport={"width": 1280, "height": 900}, device_scale_factor=2, locale="de-DE" if lang == "de" else "en-GB")
+            ctx = browser.new_context(viewport={"width": 1280, "height": 900}, device_scale_factor=2, locale="de-DE" if lang == "de" else "en-GB", bypass_csp=True)
             page = ctx.new_page()
             page.goto((DOCS / "index.html").resolve().as_uri() + f"?plan=business&lang={lang}", wait_until="load")
             page.evaluate("document.fonts.ready")

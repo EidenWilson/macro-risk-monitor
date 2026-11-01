@@ -221,3 +221,55 @@ test('answers in the OpenAI responses shape and with content parts are read', ()
   assert.deepEqual(r, {text: 'Energy is the risk.', calls: []});
   assert.equal(normalize({choices: [{message: {content: [{type: 'text', text: 'Hi'}]}}]}, SPEC).text, 'Hi');
 });
+
+// ---------------------------------------------------------------- added in 1.1
+import {withTimeout, TimeoutError} from '../src/handler.js';
+
+test('one model refusing native tools does not switch the other models to prompt mode', async () => {
+  resetToolMemory();
+  const refuses = '@cf/test/model', other = '@cf/test/other';
+  const e = {ALLOWED_ORIGINS: SITE, MODEL: refuses, MODELS: other, AI: {run: async (m, p) => {
+    if (m === refuses && p.tools) throw new Error('this model does not support tools');
+    return {response: 'ok'};
+  }}};
+  const first = await (await handle(req(ask), e, SPEC)).json();
+  assert.equal(first.mode, 'prompt');
+  const again = await (await handle(req(ask), e, SPEC)).json();
+  assert.equal(again.mode, 'prompt', 'the refusing model stays in prompt mode');
+  const otherModel = await (await handle(req({...ask, model: other}), e, SPEC)).json();
+  assert.equal(otherModel.model, other);
+  assert.equal(otherModel.mode, 'native', 'a different model still gets native tools');
+  const h = await (await handle(req(null, {method: 'GET', path: '/health'}), e, SPEC)).json();
+  assert.deepEqual(h.promptModels, [refuses]);
+  resetToolMemory();
+});
+
+test('a model that hangs is cut off with a 504 and the code "timeout"', async () => {
+  resetToolMemory();
+  const e = {ALLOWED_ORIGINS: SITE, MODEL: '@cf/test/model', TIMEOUT_MS: '30', AI: {run: () => new Promise(() => {})}};
+  const r = await handle(req(ask), e, SPEC);
+  assert.equal(r.status, 504);
+  assert.equal((await r.json()).error, 'timeout');
+});
+
+test('a timeout does not trigger the prompt-mode retry (it would only double the wait)', async () => {
+  resetToolMemory();
+  let n = 0;
+  const e = {ALLOWED_ORIGINS: SITE, MODEL: '@cf/test/model', TIMEOUT_MS: '20', AI: {run: () => { n++; return new Promise(() => {}); }}};
+  await handle(req(ask), e, SPEC);
+  assert.equal(n, 1);
+});
+
+test('withTimeout passes a fast answer through and clears its timer', async () => {
+  assert.equal(await withTimeout(Promise.resolve(42), 1000), 42);
+  await assert.rejects(withTimeout(new Promise(() => {}), 5), TimeoutError);
+});
+
+test('every answer carries the security headers', async () => {
+  const {env: e} = env({response: 'x'});
+  const r = await handle(req(ask), e, SPEC);
+  assert.equal(r.headers.get('x-content-type-options'), 'nosniff');
+  assert.equal(r.headers.get('x-frame-options'), 'DENY');
+  assert.equal(r.headers.get('referrer-policy'), 'no-referrer');
+  assert.equal(r.headers.get('cache-control'), 'no-store');
+});

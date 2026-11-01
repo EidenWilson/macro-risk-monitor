@@ -17,8 +17,10 @@ export const LIMITS = {
   toolArgs: 2 * 1024,
   toolResult: 8 * 1024,
   maxTokens: 900,         // Workers AI defaults to 256, too short for a drafted client note
+  timeoutMs: 25000,       // one model call; the page shows "try again" instead of a spinner that never ends
 };
 
+// The model when wrangler.toml sets none. The website asks for Gemma 4 (assistant/config.json), which must be in MODELS.
 export const DEFAULT_MODEL = '@cf/mistralai/mistral-small-3.1-24b-instruct';
 
 const model = env => (env.MODEL || DEFAULT_MODEL).trim();
@@ -28,11 +30,23 @@ export const models = env => [...new Set([model(env), ...String(env.MODELS || ''
 const pickModel = (env, asked) => typeof asked === 'string' && models(env).includes(asked.trim()) ? asked.trim() : model(env);
 const origins = env => String(env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim().replace(/\/$/, '')).filter(Boolean);
 const toolMode = env => (env.TOOL_MODE === 'native' || env.TOOL_MODE === 'prompt') ? env.TOOL_MODE : 'auto';
-let nativeRefused = false;                                   // per isolate: this model answers without tools but not with them
-export const resetToolMemory = () => { nativeRefused = false; };
+// Per isolate and PER MODEL: the models that answered without tools but refused them. (This used to be one flag
+// for the whole isolate, so one model refusing native tools switched every other model to prompt mode too.)
+const nativeRefused = new Set();
+export const resetToolMemory = () => { nativeRefused.clear(); };
 
+// sent with every answer: nothing is cached, sniffed, framed or given a referrer
+const SECURITY = {'cache-control': 'no-store', 'x-content-type-options': 'nosniff', 'x-frame-options': 'DENY', 'referrer-policy': 'no-referrer'};
 function json(body, status, headers = {}) {
-  return new Response(JSON.stringify(body), {status, headers: {'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...headers}});
+  return new Response(JSON.stringify(body), {status, headers: {'content-type': 'application/json; charset=utf-8', ...SECURITY, ...headers}});
+}
+
+export class TimeoutError extends Error {}
+// Workers AI calls can hang when the model is overloaded; give up after a fixed time instead of holding the request
+export function withTimeout(promise, ms) {
+  let timer;
+  const limit = new Promise((_, no) => { timer = setTimeout(() => no(new TimeoutError(`model did not answer within ${ms} ms`)), ms); });
+  return Promise.race([promise, limit]).finally(() => clearTimeout(timer));
 }
 
 // compares in time that does not depend on where the strings differ
@@ -161,9 +175,9 @@ export function normalize(out, spec, {fromText = true} = {}) {
 }
 
 function fail(e, cors) {
-  const detail = errText(e), quota = isQuota(e);
+  const detail = errText(e), quota = isQuota(e), slow = e instanceof TimeoutError;
   console.error('Workers AI error:', detail);
-  return json({error: quota ? 'quota' : 'upstream_error', detail}, quota ? 429 : 502, cors);
+  return json({error: quota ? 'quota' : slow ? 'timeout' : 'upstream_error', detail}, quota ? 429 : slow ? 504 : 502, cors);
 }
 
 export async function handle(request, env, spec) {
@@ -172,7 +186,7 @@ export async function handle(request, env, spec) {
   const allowed = origin && origins(env).includes(origin);
   const cors = allowed ? {'Access-Control-Allow-Origin': origin, 'Vary': 'Origin'} : {'Vary': 'Origin'};
 
-  if (url.pathname === '/health') return json({ok: true, model: model(env), models: models(env), tools: toolMode(env) === 'auto' && nativeRefused ? 'prompt' : toolMode(env)}, 200, cors);
+  if (url.pathname === '/health') return json({ok: true, model: model(env), models: models(env), tools: toolMode(env) === 'auto' && nativeRefused.has(model(env)) ? 'prompt' : toolMode(env), promptModels: [...nativeRefused]}, 200, cors);
   if (request.method === 'OPTIONS') {
     if (!allowed) return new Response(null, {status: 403});
     return new Response(null, {status: 204, headers: {...cors, 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'content-type, x-access-code', 'Access-Control-Max-Age': '86400'}});
@@ -194,19 +208,20 @@ export async function handle(request, env, spec) {
   if (v.error) return json({error: 'bad_request', message: v.error}, 400, cors);
 
   const tm = toolMode(env), name = pickModel(env, v.model);
-  const mode = v.final ? 'none' : (tm === 'prompt' || (tm === 'auto' && nativeRefused)) ? 'prompt' : 'native';
-  const run = m => env.AI.run(name, modelParams(name, {
+  const mode = v.final ? 'none' : (tm === 'prompt' || (tm === 'auto' && nativeRefused.has(name))) ? 'prompt' : 'native';
+  const ms = Number(env.TIMEOUT_MS) > 0 ? Number(env.TIMEOUT_MS) : LIMITS.timeoutMs;
+  const run = m => withTimeout(env.AI.run(name, modelParams(name, {
     messages: buildMessages(spec.prompt, v, {tools: m === 'prompt' ? spec.tools : null}),
     max_tokens: LIMITS.maxTokens, temperature: 0.2,
     ...(m === 'native' ? {tools: spec.tools} : {}),
-  }));
+  })), ms);
   let out, used = mode;
   try {
     out = await run(mode);
   } catch (e) {
-    if (mode !== 'native' || tm !== 'auto' || isQuota(e)) return fail(e, cors);
+    if (mode !== 'native' || tm !== 'auto' || isQuota(e) || e instanceof TimeoutError) return fail(e, cors);
     console.error('Native tool calling failed, trying prompted tools:', errText(e));
-    try { out = await run('prompt'); used = 'prompt'; nativeRefused = true; } catch (e2) { return fail(e2, cors); }
+    try { out = await run('prompt'); used = 'prompt'; nativeRefused.add(name); } catch (e2) { return fail(e2, cors); }
   }
   const r = normalize(out, spec, {fromText: !v.final});
   return json({text: r.text, calls: v.final ? [] : r.calls, mode: used, model: name}, 200, cors);

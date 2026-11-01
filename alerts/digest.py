@@ -33,7 +33,7 @@ SNAPSHOT = r"""() => {
   const examples = Object.fromEntries(Object.keys(PRESETS).map(k => { const v = {...PRESETS[k]}, p5 = outcomes(v, 'regime').q(.05);
     return [k, {share: v.ebit > 0 ? Math.round(Math.max(0, -p5) / v.ebit * 100) : null, loss: Math.round(Math.max(0, -p5) / 100) * 100}]; }));
   return {asOf: c.asOf, since: c.since, regime: c.regime, euribor: c.euribor, hicp: c.hicp, energy: c.energy, ip: c.ip,
-    minWage: D.minWage, examples, de: words('de'), en: words('en')};
+    minWage: D.minWage, examples, recent: (D.hist.reg || []).filter(Boolean).slice(-3), de: words('de'), en: words('en')};
 }"""
 
 
@@ -41,7 +41,7 @@ def snapshot(page):
     from playwright.sync_api import sync_playwright
     with sync_playwright() as p:
         browser = p.chromium.launch()
-        pg = browser.new_page()
+        pg = browser.new_page(bypass_csp=True)  # the build drives the page with string expressions, which its CSP forbids
         pg.goto(pathlib.Path(page).resolve().as_uri(), wait_until="load")
         snap = pg.evaluate(SNAPSHOT)
         browser.close()
@@ -73,7 +73,9 @@ TEXT = {
         "examples": "**Typische Betriebe: Anteil des Gewinns, den ein schlechtes Jahr (1 von 20) kosten könnte**",
         "wage": "**Schon bekannt:** Der Mindestlohn steigt im {month} von {a} auf {b} pro Stunde.",
         "cta": "[Mandanten-Ranking öffnen]({url}): Die Seite rechnet Ihre gespeicherten Betriebe mit den neuen Daten neu und zeigt, wer Ihre Warnschwelle überschritten hat. Ihre Mandantendaten bleiben in Ihrem Browser.",
-        "subject": "Makro-Risiko {month}", "subjectPhase": "Konjunktur jetzt {regime}",
+        "subject": "Makro-Risiko {month}", "subjectPhase": "Konjunktur jetzt {regime}", "subjectPhaseNew": "Konjunktur vorläufig {regime}",
+        "provisional": " Vorläufig: Das ist der erste Monat in dieser Phase. Erst die nächsten Daten zeigen, ob sie sich hält.",
+        "reversal": " Das kehrt den Wechsel aus der letzten E-Mail um. Beide Wechsel sind wahrscheinlich Rauschen, bis eine Phase zwei Monate hält.",
     },
     "en": {
         "title": "Macro risk: data through {month}",
@@ -84,9 +86,26 @@ TEXT = {
         "examples": "**Typical businesses: share of profit a bad year (1 in 20) could take**",
         "wage": "**Already known:** the minimum wage rises in {month} from {a} to {b} an hour.",
         "cta": "[Open your client ranking]({url}): the page re-ranks the businesses you saved with the new data and shows who crossed your alert level. Your client data stays in your browser.",
-        "subject": "macro risk update {month}", "subjectPhase": "economy now {regime}",
+        "subject": "macro risk update {month}", "subjectPhase": "economy now {regime}", "subjectPhaseNew": "economy provisionally {regime}",
+        "provisional": " Provisional: this is the phase's first month. The next data will show whether it holds.",
+        "reversal": " This reverses the change in the last email. Treat both changes as noise until a phase holds for two months.",
     },
 }
+
+
+def months_held(cur):
+    """Months the current phase has held, counting the data month itself (1 = it changed with this data)."""
+    (y1, m1), (y2, m2) = (map(int, cur[k].split("-")[:2]) for k in ("since", "asOf"))
+    return (y2 - y1) * 12 + (m2 - m1) + 1
+
+
+def phase_note(cur, prev):
+    """'provisional', 'reversal' or None. The compass reads the sign of a 6-month change, so it can flip for a single
+    month and flip back; advisors should not re-plan on one month's reading (same rule as check_alerts.py)."""
+    if not prev or prev["regime"] == cur["regime"] or months_held(cur) != 1:
+        return None
+    r = cur.get("recent") or []
+    return "reversal" if len(r) == 3 and r[0] == cur["regime"] and r[1] == prev["regime"] else "provisional"
 
 
 def money(x, lang):
@@ -97,9 +116,10 @@ def section(lang, cur, prev):
     T, w = TEXT[lang], cur[lang]
     site = CONFIG["site"].rstrip("/") + "/"
     was = lambda k, f: (T["was"].format(x=f(prev[k])) if prev and prev.get(k) is not None and prev[k] != cur[k] else "")
+    note = phase_note(cur, prev)
     lines = [f"# {T['title'].format(month=w['month'])}", "",
              T["phase"].format(regime=w["regimes"][cur["regime"]], was=(T["was"].format(x=w["regimes"][prev["regime"]]) if prev and prev["regime"] != cur["regime"] else ""),
-                               since=w["since"], desc=w["desc"][cur["regime"]]), "", T["numbers"]]
+                               since=w["since"], desc=w["desc"][cur["regime"]]) + (T[note] if note else ""), "", T["numbers"]]
     for k, d, sign in (("euribor", 2, False), ("hicp", 1, True), ("energy", 1, True), ("ip", 1, True)):
         if cur.get(k) is not None:
             f = lambda x, d=d, sign=sign: pct(x, lang, d, sign)
@@ -120,7 +140,8 @@ def section(lang, cur, prev):
 
 def digest(cur, prev):
     phase = prev is not None and prev["regime"] != cur["regime"]
-    de, en = (TEXT[l]["subjectPhase" if phase else "subject"].format(month=cur[l]["month"], regime=cur[l]["regimes"][cur["regime"]]) for l in ("de", "en"))
+    key = ("subjectPhaseNew" if phase_note(cur, prev) else "subjectPhase") if phase else "subject"
+    de, en = (TEXT[l][key].format(month=cur[l]["month"], regime=cur[l]["regimes"][cur["regime"]]) for l in ("de", "en"))
     subject = f"{de} | {en[0].upper() + en[1:]}"
     body = "\n\n".join([
         "**Deutsch** · English below",

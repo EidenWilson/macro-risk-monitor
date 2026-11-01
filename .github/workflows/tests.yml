@@ -1,7 +1,8 @@
 name: Tests
 
-# Runs on every push and pull request: the assistant server's tests and the browser checks of the page
-# (plans, phone layout, the assistant's tools and conversation loop with a fake server and a fake Claude).
+# Runs on every push and pull request: Python unit tests and lint, the assistant server's tests, and the
+# browser checks of the page (plans, phone layout, the assistant's tools and conversation loop with a fake
+# server and a fake Claude, and the Content-Security-Policy).
 on:
   push:
     branches: [main]
@@ -11,9 +12,31 @@ on:
 permissions:
   contents: read
 
+concurrency:                       # a new push cancels the run for the previous one on the same branch
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  unit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements-dev.txt -c constraints.txt
+      - name: Lint
+        run: ruff check macro_config.py pipeline.py build_data.py check_alerts.py validate_data.py tests/unit
+      - name: Unit tests (pipeline, model, data gate, alerts)
+        run: pytest
+      - name: The published data passes the gate
+        run: python validate_data.py docs/data.json --max-age-months 6
+
   server:
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -25,14 +48,16 @@ jobs:
 
   page:
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+          cache: pip
       - name: Install Playwright
         run: |
-          pip install playwright jinja2
+          pip install playwright jinja2 -c constraints.txt
           python -m playwright install --with-deps chromium
       - name: Build the page from the template
         run: python build_page.py

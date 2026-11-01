@@ -111,11 +111,18 @@ def test_pages(browser, base):
                     check(all(i["w"] >= 2 * i["aw"] - 2 for i in imgs), f"{path}: screenshots at twice their size for sharp screens")
             check(not pg.errors, f"{path} at {width}px: no console errors {pg.errors[:2]}")
             pg.close()
+    # Compared with the built tool, not with fixed numbers: the scheduled refresh runs these checks on each month's new
+    # data before publishing, and the regime and the restaurant's bad year change from month to month.
+    tool = page_with(browser, base)
+    want = tool.evaluate("""() => { const v = {...PRESETS.restaurant}, p5 = outcomes(v, 'regime').q(.05);
+      return {regime: withLang('en', () => t(D.current.regime)), ebit: v.ebit, lost: Math.round(Math.max(0, -p5) / 100) * 100, wage: D.minWage.to}; }""")
+    tool.close()
     pg = page_with(browser, base + "advisors/")
     s = pg.inner_text("#why")
-    check("Stagflation" in s and "%" in s and "€14.60" in s, "advisors: the economy now comes from the tool's data")
+    check(want["regime"] in s and "%" in s and f"€{want['wage']:.2f}" in s, f"advisors: the economy now comes from the tool's data ({want['regime']}, €{want['wage']:.2f})")
     rows = pg.inner_text(".hero .ledger").split("\n")
-    check(any("72,000" in r for r in rows) and any("−44,300" in r for r in rows), "advisors: the example restaurant matches the tool")
+    check(any(f"{want['ebit']:,}" in r for r in rows) and any(f"−{want['lost']:,}" in r for r in rows),
+          f"advisors: the example restaurant matches the tool ({want['ebit']:,} profit, −{want['lost']:,} in a bad year)")
     check(pg.evaluate("[...document.querySelectorAll('a[href]')].every(a => a.getAttribute('href') && !a.getAttribute('href').includes('undefined'))"), "advisors: every link has a target")
     pg.close()
     pg = page_with(browser, base + "404.html")

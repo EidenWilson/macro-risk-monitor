@@ -49,7 +49,7 @@ Built by Eiden Wilson Neralaily (data and modelling) and Channappa (finance and 
 | 13 languages | English, German, Spanish, French, Italian, Portuguese, Turkish, Polish, Ukrainian, Russian, Arabic (right to left), Hindi and Chinese. Opens in the browser's language; money, percentages and months follow each language (44.300 €, 44 300 €, €4,43,000, 2026年9月); reads 900.000, 900,000 or Arabic-Indic digits either way | All |
 | Phone layout | Results first; the inputs open as a sheet from the bottom | All |
 
-Prices on the plans dialog (Free, Pro €19 a month, Business €89.99 a month per office for up to 50 clients) are placeholders. This is a prototype, so anyone can switch plans to try them; `?plan=business` (or `#business` in the Claude preview) opens a plan directly.
+Prices on the plans dialog (Free, Pro €19 a month, Business €70 a month per office for up to 50 clients) are placeholders. This is a prototype, so anyone can switch plans to try them; `?plan=business` (or `#business` in the Claude preview) opens a plan directly.
 
 ## How it works
 
@@ -118,11 +118,14 @@ The portfolio test reads any CSV with a name or ISIN and a market value; holding
 
 ## Run it locally
 
+`make help` lists shortcuts (`make install`, `make data`, `make page`, `make test`, `make serve`). By hand:
+
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-dev.txt -c constraints.txt   # the versions the model was tested with
 echo "FRED_API_KEY=your_key" > .env          # free key from fred.stlouisfed.org
-python pipeline.py --db macro.db --start 2000-01
+python pipeline.py --db macro.db --start 2000-01   # add --strict to stop when a critical series failed or is stale
 python build_data.py --db macro.db --out docs/data.json
+python validate_data.py docs/data.json          # the gate the scheduled refresh runs before publishing
 python build_page.py                           # writes docs/index.html (text from i18n/, fonts from assets/, jsPDF from docs/vendor/)
 python site/build_site.py                      # the advisors page, the portfolio stress test, 404 and sitemap (needs jinja2 and Playwright)
 python assets/og_image.py                      # optional: the link-preview picture docs/og.png and the README screenshot
@@ -166,12 +169,24 @@ All text lives in `i18n/`, one file per language; `en.js` is the source and expl
 ## Tests
 
 ```bash
+pytest                                                  # Python unit tests: lags, panel, HMM filter, data gate, alerts (no network)
 cd worker && npm test                                   # assistant server: CORS, limits, access code, all model output formats
 python build_page.py && python tests/test_page.py       # browser: plans, phone layout, tools, assistant loop, all 13 languages
 python site/build_site.py && python tests/test_site.py # browser: bond arithmetic, file reading, scenarios, export, the pages around the tool
 ```
 
 The browser checks need Playwright (`pip install playwright && python -m playwright install chromium`). They check that the assistant's tools reproduce the page's own numbers and that no client name appears in anything sent to the server or to Claude.
+
+## Security
+
+`build_page.py` adds a Content-Security-Policy to the website build: only this build's own inline scripts (by SHA-256
+hash) and files from the site itself may run, and the page may only talk to the assistant server named in
+`assistant/config.json` and post the alert sign-up to Buttondown. An injected script cannot run or send data
+anywhere. `tests/test_page.py` checks that the policy breaks nothing (PDF, assistant, plans) and records no
+violations. `--no-csp` turns it off for debugging.
+
+The series list, publication lags and the minimum wage live in `macro_config.py`, shared by the pipeline and the
+model build. See `IMPROVEMENTS.md` for everything changed in 1.1 and the recommended next steps.
 
 ## Legal pages
 

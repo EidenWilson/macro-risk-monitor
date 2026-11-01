@@ -18,16 +18,22 @@ import os
 import sqlite3
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
 import numpy as np
 import pandas as pd
 import requests
 
+from macro_config import CRITICAL, SERIES
+
 log = logging.getLogger("pipeline")
 
 
-def load_dotenv(path=os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")):
+DOTENV = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+
+
+def load_dotenv(path=DOTENV):
     """Minimal .env loader (KEY=VALUE per line); real env vars take precedence."""
     if not os.path.exists(path):
         return
@@ -41,50 +47,21 @@ def load_dotenv(path=os.path.join(os.path.dirname(os.path.abspath(__file__)), ".
 
 load_dotenv()
 
-# kind: rate  -> feature = 12m change in percentage points
-#       index -> feature = 12m % change
-#       level -> feature = 12m % change
-# lag: months between end of reference period and public release (conservative)
-SERIES = {
-    "EURIBOR_3M":     dict(source="ecb",  key="FM/M.U2.EUR.RT.MM.EURIBOR3MD_.HSTA", kind="rate",  lag=0),
-    "EURUSD":         dict(source="ecb",  key="EXR/M.USD.EUR.SP00.A",               kind="level", lag=0),
-    # HICP dataset replaced ICP on 2026-02-04 (ECOICOP 2); old ICP keys stop at 2025-12
-    "HICP_DE":        dict(source="ecb",  key="HICP/M.DE.N.000000.4D0.INX",         kind="index", lag=1),
-    "HICP_FOOD_DE":   dict(source="ecb",  key="HICP/M.DE.N.010000.4D0.INX",         kind="index", lag=1),
-    "HICP_ENERGY_DE": dict(source="ecb",  key="HICP/M.DE.N.NRGY00.4D0.INX",         kind="index", lag=1),
-    # Germany is not in ECB STS/STBS; Eurostat: industry B-D, seasonally+calendar adj., 2021=100
-    "IP_DE":          dict(source="eurostat", key="sts_inpr_m?geo=DE&nace_r2=B-D&s_adj=SCA&unit=I21&indic_bt=PRD",
-                           kind="index", lag=2),
-    "EU_NATGAS":      dict(source="fred", key="PNGASEUUSDM",                        kind="level", lag=1),
-    "BRENT":          dict(source="fred", key="DCOILBRENTEU",                       kind="level", lag=0),
-    # electricity and gas separately (HICP, ECOICOP 2 codes)
-    "HICP_ELEC_DE":   dict(source="ecb",  key="HICP/M.DE.N.045100.4D0.INX",         kind="index", lag=1),
-    "HICP_GAS_DE":    dict(source="ecb",  key="HICP/M.DE.N.045200.4D0.INX",         kind="index", lag=1),
-    # demand: retail and food-service sales volumes, consumer confidence (Eurostat)
-    "RETAIL_DE":      dict(source="eurostat", key="sts_trtu_m?geo=DE&nace_r2=G47&s_adj=SCA&unit=I21&indic_bt=VOL_SLS", kind="index", lag=2),
-    "FOODSERV_DE":    dict(source="eurostat", key="sts_setu_m?geo=DE&nace_r2=I56&s_adj=SCA&unit=I21&indic_bt=VOL_SLS", kind="index", lag=2),
-    "CONF_DE":        dict(source="eurostat", key="ei_bsco_m?geo=DE&indic=BS-CSMCI&s_adj=SA&unit=BAL", kind="rate", lag=0),
-    # producer prices by sector (Eurostat, NACE C10 food, C24 metals, C17 paper, C22 plastics, C16 wood)
-    "PPI_C10_DE":     dict(source="eurostat", key="sts_inpp_m?geo=DE&nace_r2=C10&s_adj=NSA&unit=I21&indic_bt=PRC_PRR", kind="index", lag=1),
-    "PPI_C24_DE":     dict(source="eurostat", key="sts_inpp_m?geo=DE&nace_r2=C24&s_adj=NSA&unit=I21&indic_bt=PRC_PRR", kind="index", lag=1),
-    "PPI_C17_DE":     dict(source="eurostat", key="sts_inpp_m?geo=DE&nace_r2=C17&s_adj=NSA&unit=I21&indic_bt=PRC_PRR", kind="index", lag=1),
-    "PPI_C22_DE":     dict(source="eurostat", key="sts_inpp_m?geo=DE&nace_r2=C22&s_adj=NSA&unit=I21&indic_bt=PRC_PRR", kind="index", lag=1),
-    "PPI_C16_DE":     dict(source="eurostat", key="sts_inpp_m?geo=DE&nace_r2=C16&s_adj=NSA&unit=I21&indic_bt=PRC_PRR", kind="index", lag=1),
-    # rates for hedge costs: ECB AAA euro area spot curve, US 1-year Treasury
-    "YC_1Y":          dict(source="ecb",  key="YC/B.U2.EUR.4F.G_N_A.SV_C_YM.SR_1Y", kind="rate",  lag=0),
-    "YC_3Y":          dict(source="ecb",  key="YC/B.U2.EUR.4F.G_N_A.SV_C_YM.SR_3Y", kind="rate",  lag=0),
-    "US_1Y":          dict(source="fred", key="DGS1",                               kind="rate",  lag=0),
-}
+# The series list and publication lags live in macro_config.py (shared with build_data.py).
 
 ECB_URL = "https://data-api.ecb.europa.eu/service/data/{key}"
 FRED_URL = "https://api.stlouisfed.org/fred/series/observations"
 
 
 # ---------------------------------------------------------------- HTTP
+SESSION = requests.Session()
+SESSION.headers["User-Agent"] = "macro-risk-monitor/1.1 (+https://github.com/EidenWilson/macro-risk-monitor)"
+
+
 def http_get(url, params=None, retries=4, backoff=2.0, timeout=30):
     for attempt in range(1, retries + 1):
         try:
-            r = requests.get(url, params=params, timeout=timeout)
+            r = SESSION.get(url, params=params, timeout=timeout)
             if r.status_code == 429 or r.status_code >= 500:
                 raise requests.HTTPError(f"HTTP {r.status_code}")
             r.raise_for_status()
@@ -140,7 +117,7 @@ def fetch_eurostat(key, start):
     sep = "&" if "?" in key else "?"
     r = http_get(EUROSTAT_URL.format(key=key) + f"{sep}format=JSON&lang=EN&sinceTimePeriod={start}")
     js = r.json()
-    for dim, size in zip(js["id"], js["size"]):
+    for dim, size in zip(js["id"], js["size"], strict=True):
         if dim != "time" and size != 1:
             raise ValueError(f"filter not unique: {dim} has {size} values")
     t_idx = js["dimension"]["time"]["category"]["index"]   # period -> position
@@ -246,21 +223,43 @@ def validate(panel, months_stale=3):
 
 
 # ---------------------------------------------------------------- main
-def run(db, start):
+def fetch_one(sid, cfg, start):
+    """Fetch one series; returns (sid, series or None, error or None). Runs in a worker thread, never touches the DB."""
+    try:
+        return sid, FETCHERS[cfg["source"]](cfg["key"], start), None
+    except Exception as e:  # keep going; one bad series must not kill the run
+        return sid, None, e
+
+
+def quality_gate(panel, failed, months_stale=3):
+    """Problems serious enough to stop the refresh instead of publishing: a critical series failed or went stale."""
+    problems = [f"{sid}: fetch failed" for sid in failed if sid in CRITICAL]
+    for msg in validate(panel, months_stale):
+        if msg.split(":")[0] in CRITICAL and ("stale" in msg or "no data" in msg or "missing" in msg):
+            problems.append(msg)
+    return problems
+
+
+def run(db, start, strict=False, workers=6):
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
     conn = sqlite3.connect(db)
     conn.executescript(SCHEMA)
-    ok = 0
-    for sid, cfg in SERIES.items():
-        try:
-            s = FETCHERS[cfg["source"]](cfg["key"], start)
+    ok, failed = 0, []
+    # The 21 downloads are independent, so they run side by side (several times faster than one after another);
+    # the database is written from this thread only, in the order of SERIES, so the result is the same.
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        results = list(pool.map(lambda kv: fetch_one(kv[0], kv[1], start), SERIES.items()))
+    for sid, s, err in results:
+        cfg = SERIES[sid]
+        if err is None:
             n, rev = upsert(conn, sid, s, now)
             set_meta(conn, sid, cfg, now, "ok", last_period=s.index.max())
             log.info("%-15s %4d rows, %s to %s, %d revised", sid, n, s.index.min(), s.index.max(), rev)
             ok += 1
-        except Exception as e:  # keep going; one bad series must not kill the run
-            set_meta(conn, sid, cfg, now, "failed", error=str(e)[:500])
-            log.error("%-15s FAILED: %s", sid, e)
+        else:
+            set_meta(conn, sid, cfg, now, "failed", error=str(err)[:500])
+            log.error("%-15s FAILED: %s", sid, err)
+            failed.append(sid)
         conn.commit()
 
     if ok == 0:
@@ -271,6 +270,12 @@ def run(db, start):
         log.warning("validation: %s", msg)
     log.info("panel_monthly: %d rows x %d cols", *panel.shape)
     conn.close()
+    problems = quality_gate(panel, failed)
+    for msg in problems:
+        log.error("quality gate: %s", msg)
+    if strict and problems:
+        log.error("--strict: %d critical problem(s), stopping so the last good page stays online", len(problems))
+        return 2
     return 0
 
 
@@ -278,6 +283,9 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--db", default="macro.db")
     ap.add_argument("--start", default="2000-01")
+    ap.add_argument("--strict", action="store_true",
+                    help="exit with code 2 when a critical series failed or is stale (used by the scheduled refresh)")
+    ap.add_argument("--workers", type=int, default=6, help="parallel downloads")
     args = ap.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
-    sys.exit(run(args.db, args.start))
+    sys.exit(run(args.db, args.start, strict=args.strict, workers=args.workers))

@@ -747,7 +747,7 @@ let state = {preset:'restaurant', scen:Object.keys(D.scenarios)[0], mode:'regime
 try { const s = JSON.parse(localStorage.getItem('mrm3')); if (s) state = Object.assign(state, s); } catch (e) {}
 if (!PRESETS[state.preset]) state.preset = 'restaurant';
 if (!D.scenarios[state.scen]) state.scen = Object.keys(D.scenarios)[0];
-const PLANS = ['free', 'pro', 'business'], PRICES = {free:0, pro:19, business:89.99};   // euros a month
+const PLANS = ['free', 'pro', 'business'], PRICES = {free:0, pro:19, business:70};   // euros a month
 const priceTag = n => nf({...CUR, minimumFractionDigits:Number.isInteger(n) ? 0 : 2, maximumFractionDigits:2}).format(n);   // plan prices keep their cents
 // ?plan=business (website) or #business (Claude preview) opens a plan directly, e.g. for a demo link
 try { const q = new URLSearchParams(location.search).get('plan') || location.hash.slice(1); if (PLANS.includes(q)) state.plan = q; } catch (e) {}
@@ -1869,10 +1869,10 @@ async function initAssistant() {
 }
 
 /* conversation */
-const ERR = {rate_limited:'errLimit', quota:'errQuota', offline:'errOffline', upstream_error:'errOffline', session_expired:'errSession', none:'errNone',
+const ERR = {rate_limited:'errLimit', quota:'errQuota', offline:'errOffline', upstream_error:'errOffline', timeout:'errOffline', session_expired:'errSession', none:'errNone',
   not_granted:'errNoClaude', sampling_disabled:'errNoClaude', capability_disabled:'errNoClaude', not_declared:'errNoClaude', capability_removed:'errNoClaude', tools_unavailable:'errNoClaude',
   empty:'errEmpty', empty_completion:'errEmpty', refused:'errEmpty', origin:'errOrigin', bad_request:'errBad', too_large:'errBad', prompt_too_large:'errBad', invalid_request:'errBad', access_code:'codeAsk'};
-const RETRY = new Set(['rate_limited', 'offline', 'upstream_error', 'empty', 'empty_completion']);
+const RETRY = new Set(['rate_limited', 'offline', 'upstream_error', 'timeout', 'empty', 'empty_completion']);
 const errText = c => t(ERR[c] || 'errOffline');
 function historyTurns() {
   const out = [];

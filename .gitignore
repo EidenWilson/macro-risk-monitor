@@ -7,3 +7,7 @@ previous.json
 alert.md
 worker/node_modules/
 worker/.wrangler/
+.pytest_cache/
+.ruff_cache/
+*.pyc
+macro.db

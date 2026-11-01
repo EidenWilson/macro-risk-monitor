@@ -9,33 +9,45 @@ permissions:
   contents: write
   issues: write
 
+concurrency:                    # never two refreshes at once: the second would push on top of the first
+  group: refresh
+  cancel-in-progress: false
+
 jobs:
   refresh:
     runs-on: ubuntu-24.04            # pinned: ubuntu-latest moves to Ubuntu 26 from October 2026
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements-dev.txt -c constraints.txt
       - name: Install a headless browser (the alert email reads its figures from the built page)
-        run: |
-          pip install playwright
-          python -m playwright install --with-deps chromium
-      - name: Fetch data
+        run: python -m playwright install --with-deps chromium
+      - name: Fetch data (stops if a critical series failed or went stale)
         env:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
-        run: python pipeline.py --db macro.db --start 2000-01
-      - name: Build data and page
+        run: python pipeline.py --db macro.db --start 2000-01 --strict
+      - name: Build data
         run: |
           mkdir -p docs
           cp docs/data.json previous.json 2>/dev/null || true
           python build_data.py --db macro.db --out docs/data.json
+      - name: Check the new data before anything is published
+        run: python validate_data.py docs/data.json
+      - name: Build page and alerts
+        run: |
           python build_page.py
           python check_alerts.py docs/data.json previous.json
       - name: Pages around the tool (their example figures come from the freshly built page)
         run: python site/build_site.py
+      - name: Tests on the new build (the refresh used to publish without running them)
+        run: |
+          pytest
+          python tests/test_page.py
+          python tests/test_site.py
       - name: Monthly alert email (sent only when new data arrived and BUTTONDOWN_API_KEY is set)
         env:
           BUTTONDOWN_API_KEY: ${{ secrets.BUTTONDOWN_API_KEY }}
@@ -46,9 +58,17 @@ jobs:
           git config user.email "actions@users.noreply.github.com"
           git add docs/ alerts/last.json
           git diff --cached --quiet || git commit -m "Data refresh $(date -u +%Y-%m-%d)"
+          git pull --rebase --autostash
           git push
       - name: Open alert issue
         if: hashFiles('alert.md') != ''
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh issue create --title "Macro regime alert $(date -u +%Y-%m-%d)" --body-file alert.md
+      - name: Open an issue when the refresh fails (otherwise the page silently goes stale)
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --title "Data refresh failed $(date -u +%Y-%m-%d)" \
+            --body "The scheduled refresh stopped before publishing, so the live page still shows the last good data. Run log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

@@ -1,0 +1,62 @@
+name: Deploy assistant server
+
+# Deploys the Cloudflare Worker in worker/ whenever it, or the instructions and tool definitions it bundles from
+# assistant/, change on main. Before this, every server change waited for a manual `npx wrangler deploy` from a laptop
+# (the 24 Oct prompt change and the 1 Nov fixes both sat undeployed). Run it by hand from the Actions tab too.
+#
+# Needs two repository secrets (Settings, Secrets and variables, Actions):
+#   CLOUDFLARE_API_TOKEN   a token from the "Edit Cloudflare Workers" template, scoped to this one account
+#   CLOUDFLARE_ACCOUNT_ID  the account ID from the Cloudflare dashboard
+# Without the token the job says so and stops without failing, so pushes stay green.
+on:
+  push:
+    branches: [main]
+    paths: ["worker/**", "assistant/prompt.txt", "assistant/tools.json"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:                      # one deploy at a time; a newer push waits for the running one
+  group: deploy-worker
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Is the Cloudflare token set?
+        id: token
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ]; then echo "set=true" >> "$GITHUB_OUTPUT"; else
+            echo "set=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::CLOUDFLARE_API_TOKEN is not set, so the assistant server was not deployed. Add it under Settings, Secrets and variables, Actions."
+          fi
+      - uses: actions/checkout@v5
+        if: steps.token.outputs.set == 'true'
+      - uses: actions/setup-node@v5
+        if: steps.token.outputs.set == 'true'
+        with:
+          node-version: "22"
+      - name: Server tests first
+        if: steps.token.outputs.set == 'true'
+        working-directory: worker
+        run: node --test
+      - name: Install the locked wrangler version
+        if: steps.token.outputs.set == 'true'
+        working-directory: worker
+        run: npm ci --no-audit --no-fund
+      - name: Deploy
+        if: steps.token.outputs.set == 'true'
+        working-directory: worker
+        run: npx wrangler deploy
+      - name: The live server answers
+        if: steps.token.outputs.set == 'true'
+        run: |
+          sleep 5
+          curl -fsS https://mrm-assistant.eidenwilson.workers.dev/health | tee health.json
+          grep -q '"promptModels"' health.json   # the field the 1 Nov version added: the new code is live

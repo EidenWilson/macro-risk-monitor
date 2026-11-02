@@ -450,6 +450,18 @@ def test_counts(browser, base):
         pg.close()
 
 
+def test_import(browser, base):
+    print("accounts import")
+    pg = page_with(browser, f"{base}?plan=business&lang=en")
+    pg.click("#openUpload"); pg.click("#sampleCsv"); pg.click("#upApply")
+    check(pg.locator("#upModal").is_hidden(), "the sample export applies and the dialog closes")
+    alert = pg.inner_text("#alert")
+    check("Imported from accounts" in alert and "Restaurant" not in alert,
+          f"the alert line names the imported accounts, not the example they replaced ({alert!r})")
+    check(not pg.errors, f"no console errors {pg.errors[:3]}")
+    pg.close()
+
+
 def test_csp(browser, base):
     """The Content-Security-Policy that build_page.py adds must not break anything a visitor does."""
     print("content security policy")
@@ -488,7 +500,7 @@ if __name__ == "__main__":
     base = serve()
     with sync_playwright() as p:
         browser = p.chromium.launch()
-        for t in (test_plans, test_tools, test_server_transport, test_claude_transport, test_languages, test_formats, test_pdf_language, test_alerts, test_counts, test_csp):
+        for t in (test_plans, test_tools, test_server_transport, test_claude_transport, test_languages, test_formats, test_pdf_language, test_alerts, test_counts, test_import, test_csp):
             t(browser, base)
         browser.close()
     print(f"\n{len(failures)} failed" if failures else "\nall checks passed")

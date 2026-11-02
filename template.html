@@ -953,7 +953,7 @@ function hero(v) {
   $('pbLegend').innerHTML = `<table><thead><tr><td></td><th scope="col">€</th>${pos ? `<th scope="col">${pctSign()}</th>` : ''}</tr></thead><tbody>` +
     row(t('ebit'), v.ebit, 100) + row(t('badYear'), -lost, -lostPct, 'neg') + row(t('keep'), left, 100 - lostPct, left < 0 ? 'sum neg' : 'sum') +
     `</tbody></table><p class="ledger-note"><span>${t('typical')} <b>${seur(p50)}</b></span><span>${t('basedOn', num(o.s.length), reg)}</span></p>`;
-  const name = state.client ? state.name : t('presetNames')[state.preset];
+  const name = state.client ? state.name : state.imported ? t('imported') : t('presetNames')[state.preset];
   const alarm = pos && share > state.threshold;
   const al = $('alert'); al.classList.toggle('on', alarm); al.innerHTML = alarm ? `<span class="hl">${t('alertOn', esc(name), pc(share), pc(state.threshold))}</span>` : '';
   const sum = t('barSum', neur(-loss), pos ? pc(share) : '');

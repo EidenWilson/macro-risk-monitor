@@ -96,7 +96,7 @@
         <img src="../assets/shots/clients-en.webp" width="366" height="471" loading="lazy" decoding="async" alt="Saved businesses in the Business plan, ranked by the share of profit a bad year could take: Bakery 77%, Restaurant 62%, Print shop 55%, Metal workshop 49%, Online importer 35%, Food truck 26%.">
         <figcaption>The six examples saved as clients and ranked. Your alert level sets the colour.</figcaption>
       </figure>
-      <ul class="feats"><li><b>All clients, ranked by risk</b><span>One list, sorted by the share of profit a bad year could take, with your alert level marked.</span></li><li><b>Since your last visit</b><span>When new data arrives, see who crossed your alert level and whose risk rose.</span></li><li><b>A monthly alert email</b><span>The economy&#39;s phase, the key rates and how typical businesses moved, in German and English.</span></li><li><b>An AI assistant</b><span>Explains results, runs what-ifs on the model and drafts client notes. Client names never leave the browser.</span></li><li><b>A PDF report</b><span>Two pages for the client meeting or the bank&#39;s credit file.</span></li><li><b>13 languages</b><span>For clients who would rather read Turkish, Polish, Arabic or Ukrainian.</span></li><li><b>Portfolio stress test</b><span>For treasury and fund holdings: yield, duration and five stress scenarios.</span></li><li><b>No installation</b><span>Runs in the browser. No account, no cookies, no tracking.</span></li></ul>
+      <ul class="feats"><li><b>All clients, ranked by risk</b><span>One list, sorted by the share of profit a bad year could take, with your alert level marked.</span></li><li><b>Since your last visit</b><span>When new data arrives, see who crossed your alert level and whose risk rose.</span></li><li><b>A monthly alert email</b><span>The economy&#39;s phase, the key rates and how typical businesses moved, in German and English.</span></li><li><b>An AI assistant</b><span>Explains results, runs what-ifs on the model and drafts client notes. Client names never leave the browser.</span></li><li><b>A PDF report</b><span>Two pages for the client meeting or the bank&#39;s credit file.</span></li><li><b>13 languages</b><span>For clients who would rather read Turkish, Polish, Arabic or Ukrainian.</span></li><li><b>Portfolio stress test</b><span>For treasury and fund holdings: yield, duration and five stress scenarios.</span></li><li><b>No installation</b><span>Runs in the browser. No account, no cookies, no tracking: visits are only counted, anonymously.</span></li></ul>
     </div>
   </div>
 </section>
@@ -163,5 +163,10 @@
     <a href="https://github.com/EidenWilson/macro-risk-monitor">Code and method on GitHub</a>
   </nav>
 </div></footer>
-</body>
+<script>/* anonymous visit count, live site only, not with Do Not Track or Global Privacy Control; no cookies, no IDs (worker/src/counter.js) */
+(function () { try {
+  if (location.hostname !== 'eidenwilson.github.io' && !window.MRM_COUNT_ANYWHERE) return;
+  if (!navigator.sendBeacon || navigator.doNotTrack === '1' || window.doNotTrack === '1' || navigator.globalPrivacyControl === true) return;
+  navigator.sendBeacon('https://mrm-assistant.eidenwilson.workers.dev/hit', JSON.stringify({page: 'advisors', event: 'view', lang: 'en'}));
+} catch (e) {} })();</script></body>
 </html>

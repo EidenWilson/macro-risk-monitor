@@ -26,6 +26,8 @@ from text import ADVISORS, COMMON, NOT_FOUND, PORTFOLIO, PORTFOLIO_JS  # noqa: E
 SITE = "https://eidenwilson.github.io/macro-risk-monitor/"
 BASE = "/macro-risk-monitor/"
 CONFIG = json.loads((HERE / "config.json").read_text(encoding="utf-8")) if (HERE / "config.json").exists() else {}
+# the assistant server also takes the anonymous visit counts (worker/src/counter.js)
+COUNT_URL = json.loads((HERE.parent / "assistant" / "config.json").read_text(encoding="utf-8")).get("url", "").rstrip("/")
 LANGS = ["en", "de"]
 TOOL_LANGS = ["en", "ar", "de", "es", "fr", "hi", "it", "pl", "pt", "ru", "tr", "uk", "zh"]
 ICON = ("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='%23ffffff' stroke='%231f2a3a' stroke-width='2.5'/>"
@@ -197,7 +199,7 @@ def main():
             ctx = dict(lang=lang, key=key, path=path, root=root, site=SITE, v=v, icon=ICON, legal=legal, other=True,
                        c=COMMON[lang], alternates=[("en", f"{key}/"), ("de", f"{key}/de/")],
                        tool=root + ("?lang=de" if lang == "de" else ""), tool_business=root + ("?plan=business&lang=de" if lang == "de" else "?plan=business"),
-                       here_en=root + f"{key}/", here_de=root + f"{key}/de/", contact=CONFIG.get("contact_email", ""))
+                       here_en=root + f"{key}/", here_de=root + f"{key}/de/", contact=CONFIG.get("contact_email", ""), count_url=COUNT_URL)
             if key == "advisors":
                 T = ADVISORS[lang]
                 ctx.update(t=T, s=figures(snap, lang), shots=shots[lang], title=T["title"], desc=T["desc"], jsonld=jsonld_advisors(lang, T))

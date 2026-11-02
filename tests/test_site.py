@@ -3,6 +3,7 @@ export) and the page for tax advisors and banks, in English and German, on a des
 
     python build_page.py && python site/build_site.py && python tests/test_site.py
 """
+import json
 import pathlib
 import re
 import sys
@@ -124,6 +125,15 @@ def test_pages(browser, base):
     check(any(f"{want['ebit']:,}" in r for r in rows) and any(f"−{want['lost']:,}" in r for r in rows),
           f"advisors: the example restaurant matches the tool ({want['ebit']:,} profit, −{want['lost']:,} in a bad year)")
     check(pg.evaluate("[...document.querySelectorAll('a[href]')].every(a => a.getAttribute('href') && !a.getAttribute('href').includes('undefined'))"), "advisors: every link has a target")
+    pg.close()
+    spy = "window.__beacons = []; navigator.sendBeacon = (u, d) => { window.__beacons.push([u, String(d)]); return true; };"
+    for path, key, lang in (("advisors/", "advisors", "en"), ("portfolio/de/", "portfolio", "de")):
+        pg = page_with(browser, base + path, init=spy + "window.MRM_COUNT_ANYWHERE = true;")
+        b = pg.evaluate("window.__beacons")
+        check(len(b) == 1 and b[0][0].endswith("/hit") and json.loads(b[0][1]) == {"page": key, "event": "view", "lang": lang}, f"{path}: one anonymous view count {b}")
+        pg.close()
+    pg = page_with(browser, base + "advisors/", init=spy)
+    check(pg.evaluate("window.__beacons.length") == 0, "advisors: nothing is counted off the live site")
     pg.close()
     pg = page_with(browser, base + "404.html")
     check("not in the books" in pg.inner_text("h1"), "404 page renders")

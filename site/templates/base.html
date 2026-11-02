@@ -48,6 +48,12 @@
     {% if legal %}<a href="{{ root }}impressum.html">{{ c.imprint }}</a><a href="{{ root }}datenschutz.html">{{ c.privacy }}</a>{% endif %}
   </nav>
 </div></footer>
+{% if count_url %}<script>/* anonymous visit count, live site only, not with Do Not Track or Global Privacy Control; no cookies, no IDs (worker/src/counter.js) */
+(function () { try {
+  if (location.hostname !== 'eidenwilson.github.io' && !window.MRM_COUNT_ANYWHERE) return;
+  if (!navigator.sendBeacon || navigator.doNotTrack === '1' || window.doNotTrack === '1' || navigator.globalPrivacyControl === true) return;
+  navigator.sendBeacon('{{ count_url }}/hit', JSON.stringify({page: '{{ key }}', event: 'view', lang: '{{ lang }}'}));
+} catch (e) {} })();</script>{% endif %}
 {% block scripts %}{% endblock %}
 </body>
 </html>

@@ -426,6 +426,30 @@ def test_alerts(browser, base):
     pg.close()
 
 
+BEACONS = "window.__beacons = []; navigator.sendBeacon = (u, d) => { window.__beacons.push([u, String(d)]); return true; };"
+
+
+def test_counts(browser, base):
+    print("anonymous usage counts")
+    pg = page_with(browser, f"{base}?plan=business&lang=de", init=SEED + BEACONS + "window.MRM_COUNT_ANYWHERE = true;")
+    b = pg.evaluate("window.__beacons")
+    check(len(b) == 1 and b[0][0].endswith("/hit") and json.loads(b[0][1]) == {"page": "tool", "event": "view", "plan": "business", "lang": "de"},
+          f"one beacon for the page view, with page, plan and language only {b}")
+    pg.locator("#presets button").nth(1).click()                       # an example fills the form from code: not counted
+    pg.fill("#rev", "950000"); pg.fill("#ebit", "80000")
+    sent = pg.evaluate("window.__beacons")
+    check([json.loads(d)["event"] for _, d in sent] == ["view", "own"], f"typing own figures is counted once, examples are not {sent}")
+    check(not any("950" in d or "80000" in d for _, d in sent), "no figures in any beacon")
+    pg.close()
+    for name, extra in (("off the live site (tests, local copies)", ""),
+                        ("with Global Privacy Control", "window.MRM_COUNT_ANYWHERE = true; Object.defineProperty(navigator, 'globalPrivacyControl', {value: true});"),
+                        ("with Do Not Track", "window.MRM_COUNT_ANYWHERE = true; Object.defineProperty(navigator, 'doNotTrack', {value: '1'});")):
+        pg = page_with(browser, f"{base}?lang=en", init=BEACONS + extra)
+        pg.fill("#rev", "950000")
+        check(pg.evaluate("window.__beacons.length") == 0, f"nothing is counted {name}")
+        pg.close()
+
+
 def test_csp(browser, base):
     """The Content-Security-Policy that build_page.py adds must not break anything a visitor does."""
     print("content security policy")
@@ -464,7 +488,7 @@ if __name__ == "__main__":
     base = serve()
     with sync_playwright() as p:
         browser = p.chromium.launch()
-        for t in (test_plans, test_tools, test_server_transport, test_claude_transport, test_languages, test_formats, test_pdf_language, test_alerts, test_csp):
+        for t in (test_plans, test_tools, test_server_transport, test_claude_transport, test_languages, test_formats, test_pdf_language, test_alerts, test_counts, test_csp):
             t(browser, base)
         browser.close()
     print(f"\n{len(failures)} failed" if failures else "\nall checks passed")

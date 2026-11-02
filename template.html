@@ -920,7 +920,7 @@ function renderPresets() {
   $('presets').innerHTML = Object.keys(PRESETS).map(k => `<button type="button" class="pill" data-p="${k}" aria-pressed="${!state.client && !state.imported && k === state.preset}">${t('presetNames')[k]}</button>`).join('');
 }
 $('presets').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; state.preset = b.dataset.p; state.client = null; state.imported = false; V = {...PRESETS[state.preset]}; renderPresets(); fillForm(); update(); renderClients(); });
-$('form').addEventListener('input', () => { readForm(); scheduleUpdate(); });
+$('form').addEventListener('input', () => { readForm(); scheduleUpdate(); count('own'); });
 $('threshold').addEventListener('input', () => { readForm(); scheduleUpdate(); renderClients(); });
 MONEY.forEach(k => $(k).addEventListener('blur', () => $(k).value = Math.round(V[k]).toLocaleString(loc())));
 $('form').addEventListener('submit', e => e.preventDefault());
@@ -1393,7 +1393,7 @@ function openClient(id) {
   const c = clients.find(x => x.id === id); if (!c) return;
   V = {...PRESETS.restaurant, ...c.values}; state.client = c.id; state.name = c.name; state.imported = false; fillForm(); renderPresets(); renderClients(); update();
 }
-$('saveClient').onclick = () => { const n = $('clientName').value.trim() || state.name || t('presetNames')[state.preset]; saveClient(n); $('clientName').value = ''; };
+$('saveClient').onclick = () => { const n = $('clientName').value.trim() || state.name || t('presetNames')[state.preset]; saveClient(n); $('clientName').value = ''; count('client'); };
 
 /* ---------------- accounts import (SKR03 / SKR04) ---------------- */
 const SKR = {
@@ -1461,7 +1461,7 @@ $('file').onchange = e => { if (e.target.files[0]) readFile(e.target.files[0]); 
 ['dragover', 'dragenter'].forEach(ev => $('drop').addEventListener(ev, e => { e.preventDefault(); $('drop').classList.add('over'); }));
 ['dragleave', 'drop'].forEach(ev => $('drop').addEventListener(ev, e => { e.preventDefault(); $('drop').classList.remove('over'); }));
 $('drop').addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) readFile(f); });
-$('upApply').onclick = () => { if (!pending) return; Object.entries(pending).forEach(([k, x]) => { if (x > 0 || k === 'ebit') V[k] = Math.round(x); }); state.imported = true; state.client = null; $('upModal').hidden = true; fillForm(); renderPresets(); update(); };
+$('upApply').onclick = () => { if (!pending) return; Object.entries(pending).forEach(([k, x]) => { if (x > 0 || k === 'ebit') V[k] = Math.round(x); }); state.imported = true; state.client = null; $('upModal').hidden = true; fillForm(); renderPresets(); update(); count('datev'); };
 $('tplCsv').onclick = async () => { const data = TEMPLATE_CSV + SAMPLE_CSV.split('\n').slice(1).join('\n'); const dl = await window.claude?.use?.('downloads');
   if (dl) { try { await dl.save({filename:'susa-template.csv', data}); } catch (e) {} return; }
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], {type:'text/csv'})); a.download = 'susa-template.csv'; a.click(); };
@@ -1536,6 +1536,7 @@ async function makePdf() {
     const fname = `macro-risk-report-${(name || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '') || 'business'}.pdf`;
     if (dl) await dl.save({filename:fname, data:blob}); else doc.save(fname);   // plain web hosting: normal browser download
     toast(lang === LANG ? t('pdfSaved') : t('pdfInEnglish'));
+    count('pdf', false);
   } catch (e) { if (e && e.code === 'declined') return; toast(t('pdfFail')); }
 }
 $('pdfBtn').onclick = makePdf;
@@ -1885,6 +1886,7 @@ function historyTurns() {
 async function ask(q) {
   q = String(q || '').trim();
   if (!q || chat.busy || !can('business')) return;
+  count('ask', false);
   const u = {role:'user', text:q, sent:pseudo(q)}, a = {role:'assistant', text:'', acts:[], pending:true};
   chat.turns.push(u, a); chat.busy = true; chat.apply = null; chat.ctl = new AbortController();
   $('chatInput').value = ''; grow(); renderChat();
@@ -2127,12 +2129,29 @@ function update() {
 }
 let frame = 0;
 function scheduleUpdate() { if (!frame) frame = requestAnimationFrame(() => { frame = 0; update(); }); }   // one redraw per frame while dragging
+/* ---------------- anonymous usage counts ----------------
+   Only on the live site, and not when the browser asks not to be tracked (Do Not Track, Global Privacy Control):
+   a beacon to our own assistant server for the page view and when a feature is used (own figures, PDF, DATEV import,
+   client saved, question). The server adds one to that day's total per page, event, plan and language
+   (worker/src/counter.js). No cookies, no IDs, no figures; nothing is kept about the visitor. */
+const COUNT_HOSTS = ['eidenwilson.github.io'], counted = new Set();
+function count(event, once = true) {
+  try {
+    if (!window.MRM_ASSISTANT_URL || !navigator.sendBeacon) return;                       // the Claude preview counts nothing
+    if (!COUNT_HOSTS.includes(location.hostname) && !window.MRM_COUNT_ANYWHERE) return;   // nor do tests and local copies
+    if (navigator.doNotTrack === '1' || window.doNotTrack === '1' || navigator.globalPrivacyControl === true) return;
+    if (once && counted.has(event)) return;
+    counted.add(event);
+    navigator.sendBeacon(String(window.MRM_ASSISTANT_URL).replace(/\/+$/, '') + '/hit', JSON.stringify({page:'tool', event, plan:state.plan, lang:LANG}));
+  } catch (e) {}
+}
 LANG = pickLang();
 if (window.MRM_ALERTS_FORM) { $('subscribe').action = window.MRM_ALERTS_FORM; $('subscribe').hidden = false; }   // set in alerts/config.json
 LAST.bt = {n:0, x:0, rate:0, pval:1, pass:true, ranked:[]};
 applyLang();
 initStore();
 initAssistant();
+count('view');
 const redraw = () => { compass(); timeline(); regimeCard(); update(); };
 let lastW = innerWidth, rz = 0;
 addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (Math.abs(innerWidth - lastW) > 24) { lastW = innerWidth; for (const k in CW) delete CW[k]; redraw(); } }, 150); });

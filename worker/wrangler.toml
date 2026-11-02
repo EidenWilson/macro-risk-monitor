@@ -29,5 +29,15 @@ name = "RATE_LIMITER"
 namespace_id = "7341"
 simple = { limit = 12, period = 60 }
 
+# Anonymous usage counts: daily totals only (page, event, plan, language), no IDs or IP addresses; see src/counter.js.
+# SQLite-backed Durable Objects are included in the Workers Free plan.
+[[durable_objects.bindings]]
+name = "COUNTER"
+class_name = "Counter"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Counter"]
+
 # Optional: require an access code you hand out, so only invited advisors can use the assistant.
 #   npx wrangler secret put ACCESS_CODE

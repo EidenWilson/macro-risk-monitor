@@ -3,11 +3,14 @@
 // The page runs the tools itself (they need the in-browser risk model and the client data, which never
 // leave the browser). This server adds the fixed instructions and tool definitions, calls Workers AI,
 // and returns either text or tool calls in one shape, whatever format the chosen model answers in.
-// It keeps nothing: no logs of questions, no storage. Only model errors are logged, for `wrangler tail`.
+// It keeps no questions and nothing about visitors: no logs, no IDs. The only storage is anonymous daily usage totals
+// (src/counter.js). Only model errors are logged, for `wrangler tail`.
 //
 // Tool calling has two modes. "native" passes the tools to the model; "prompt" lists them in the instructions
 // and reads the one-line JSON the model replies with, which works with any chat model. TOOL_MODE "auto" (the
 // default) tries native first and, once a model has refused tools but answered without them, uses prompt.
+
+import {hitKey, today} from './counter.js';
 
 export const LIMITS = {
   bodyChars: 64 * 1024,   // whole request
@@ -29,6 +32,7 @@ const model = env => (env.MODEL || DEFAULT_MODEL).trim();
 export const models = env => [...new Set([model(env), ...String(env.MODELS || '').split(',').map(s => s.trim()).filter(Boolean)])];
 const pickModel = (env, asked) => typeof asked === 'string' && models(env).includes(asked.trim()) ? asked.trim() : model(env);
 const origins = env => String(env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim().replace(/\/$/, '')).filter(Boolean);
+const counterStub = env => env.COUNTER.get(env.COUNTER.idFromName('totals'));   // one object holds all totals
 const toolMode = env => (env.TOOL_MODE === 'native' || env.TOOL_MODE === 'prompt') ? env.TOOL_MODE : 'auto';
 // Per isolate and PER MODEL: the models that answered without tools but refused them. (This used to be one flag
 // for the whole isolate, so one model refusing native tools switched every other model to prompt mode too.)
@@ -190,6 +194,25 @@ export async function handle(request, env, spec) {
   if (request.method === 'OPTIONS') {
     if (!allowed) return new Response(null, {status: 403});
     return new Response(null, {status: 204, headers: {...cors, 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'content-type, x-access-code', 'Access-Control-Max-Age': '86400'}});
+  }
+  // anonymous usage counts (src/counter.js): the page's beacons add to daily totals; /stats shows them
+  if (url.pathname === '/stats' && request.method === 'GET') {
+    if (!env.COUNTER) return json({error: 'not_configured'}, 404, cors);
+    const r = await counterStub(env).fetch('https://counter/stats' + url.search);
+    return json(await r.json(), 200, cors);
+  }
+  if (url.pathname === '/hit') {
+    if (request.method !== 'POST') return json({error: 'method'}, 405, cors);
+    if (!allowed) return json({error: 'origin'}, 403, cors);
+    const done = new Response(null, {status: 204, headers: {...SECURITY, ...cors}});   // the page never reads the answer
+    if (!env.COUNTER) return done;
+    if (env.RATE_LIMITER) {
+      const {success} = await env.RATE_LIMITER.limit({key: 'hit:' + (request.headers.get('CF-Connecting-IP') || 'unknown')});
+      if (!success) return done;
+    }
+    const key = hitKey(await request.text(), today());
+    if (key) await counterStub(env).fetch('https://counter/add', {method: 'POST', body: key});
+    return done;
   }
   if (url.pathname !== '/chat') return json({error: 'not_found'}, 404, cors);
   if (request.method !== 'POST') return json({error: 'method'}, 405, cors);

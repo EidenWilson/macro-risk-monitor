@@ -36,7 +36,7 @@ jobs:
             echo "set=false" >> "$GITHUB_OUTPUT"
             echo "::warning::CLOUDFLARE_API_TOKEN is not set, so the assistant server was not deployed. Add it under Settings, Secrets and variables, Actions."
           fi
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         if: steps.token.outputs.set == 'true'
       - uses: actions/setup-node@v5
         if: steps.token.outputs.set == 'true'

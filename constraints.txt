@@ -1,13 +1,13 @@
 # Exact versions the model was last tested with. CI installs with "-c constraints.txt" so a new release of
 # pandas, NumPy or hmmlearn cannot silently change the regimes, the HMM states or the bad-year figures on a
 # scheduled refresh. Dependabot proposes updates as pull requests, where the tests run first.
-pandas==3.0.5
-numpy==2.5.3
+pandas==3.1.0
+numpy==2.5.4
 requests==2.34.2
 hmmlearn==0.3.3
 scipy==1.18.1
 scikit-learn==1.9.1
 jinja2==3.1.6
-pytest==9.1.1
+pytest==9.2.0
 ruff==0.17.3
-playwright==1.63.0
+playwright==1.64.1

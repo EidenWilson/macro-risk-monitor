@@ -1,0 +1,77 @@
+# Temporary: records two real answers from the live assistant for the demo video, then commits them to this branch.
+# The branch is deleted afterwards. Visits are not counted (the /hit beacon is blocked).
+name: Demo capture
+
+on:
+  push:
+    branches: [demo-capture]
+
+permissions:
+  contents: write
+
+jobs:
+  capture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install Playwright
+        run: |
+          pip install playwright -c constraints.txt
+          python -m playwright install --with-deps chromium
+      - name: Ask the live assistant
+        run: |
+          mkdir -p capture
+          cat > /tmp/capture.py <<'PY'
+          import asyncio, json
+          from playwright.async_api import async_playwright
+          URL = "https://eidenwilson.github.io/macro-risk-monitor/?plan=business&lang=en"
+          QS = ["What if energy prices rise 30%?", "Is fixing the loan rate worth it?"]
+          async def main():
+              out = {"url": URL, "runs": []}
+              async with async_playwright() as p:
+                  br = await p.chromium.launch()
+                  ctx = await br.new_context(viewport={"width": 1280, "height": 720}, device_scale_factor=1.5, locale="en-US", bypass_csp=True)
+                  await ctx.route("**/hit", lambda r: r.abort())
+                  pg = await ctx.new_page()
+                  calls = []
+                  async def keep(resp):
+                      if resp.url.endswith("/chat") and resp.request.method == "POST":
+                          try:
+                              body = await resp.text()
+                          except Exception as e:
+                              body = "ERR " + str(e)
+                          calls.append({"status": resp.status, "request": resp.request.post_data, "response": body})
+                  pg.on("response", lambda r: asyncio.ensure_future(keep(r)))
+                  await pg.goto(URL, wait_until="networkidle")
+                  await pg.click("#askBtn")
+                  for i, q in enumerate(QS):
+                      calls.clear()
+                      await pg.click("#chatNew")
+                      await pg.fill("#chatInput", q)
+                      await pg.press("#chatInput", "Enter")
+                      done = pg.locator("#chatLog .msg.a .body:not(.thinking), #chatLog .msg.a .err").last
+                      await done.wait_for(timeout=120000)
+                      await pg.wait_for_timeout(1500)
+                      await pg.screenshot(path=f"capture/answer{i + 1}.png")
+                      out["runs"].append({"question": q, "calls": list(calls),
+                                          "answer": await pg.locator("#chatLog .msg.a").last.inner_text(),
+                                          "status": await pg.locator("#chatStatus").inner_text()})
+                      await pg.wait_for_timeout(8000)
+                  await br.close()
+              json.dump(out, open("capture/assistant.json", "w"), indent=1, ensure_ascii=False)
+              for r in out["runs"]:
+                  print(r["question"], "->", r["status"], "|", r["answer"][:300].replace("\n", " "))
+          asyncio.run(main())
+          PY
+          python /tmp/capture.py
+      - name: Commit the capture to this branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add capture
+          git commit -q -m "Assistant capture for the demo video" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>" -m "Claude-Session: https://claude.ai/code/session_01Mi4uBzNv6hqYaXHKVBA1Xx"
+          git push -q origin HEAD:demo-capture

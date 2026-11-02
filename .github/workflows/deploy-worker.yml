@@ -38,7 +38,7 @@ jobs:
           fi
       - uses: actions/checkout@v7
         if: steps.token.outputs.set == 'true'
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         if: steps.token.outputs.set == 'true'
         with:
           node-version: "22"

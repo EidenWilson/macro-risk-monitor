@@ -20,8 +20,8 @@ body{{margin:0;width:1200px;height:630px;font-family:"Sofia Sans SC",sans-serif;
 .main{{display:grid;grid-template-columns:1fr 390px;gap:56px;align-items:center}}
 h1{{margin:0;font-size:60px;line-height:1.04;font-weight:650;max-width:15ch}}
 .bar{{position:relative;height:20px;margin-top:30px;box-shadow:inset 0 0 0 1.5px #1f2a3a;width:560px}}
-.keep{{position:absolute;inset:0 auto 0 0;width:38%;background:#1f2a3a}}
-.lose{{position:absolute;top:0;bottom:0;left:38%;right:0;background:repeating-linear-gradient(135deg,#b3261e 0 3px,transparent 3px 8px);box-shadow:inset 0 0 0 1.5px #b3261e}}
+.keep{{position:absolute;inset:0 auto 0 0;width:42%;background:#1f2a3a}}
+.lose{{position:absolute;top:0;bottom:0;left:42%;right:0;background:repeating-linear-gradient(135deg,#b3261e 0 3px,transparent 3px 8px);box-shadow:inset 0 0 0 1.5px #b3261e}}
 table{{border-collapse:collapse;width:100%;font-size:25px}}
 th,td{{padding:9px 0;white-space:nowrap}}
 thead th{{font-size:19px;font-weight:600;color:#566170;text-align:right;padding-bottom:6px;border-bottom:2.5px solid #1f2a3a}}
@@ -34,12 +34,12 @@ td{{text-align:right;font-weight:600;padding-left:24px}}
 .foot span{{white-space:nowrap}} .url{{font-weight:700;color:#1f2a3a}}
 </style>
 <div class="brand"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10.4" fill="none" stroke="#1f2a3a" stroke-width="1.8"/><path d="M12 1.6v20.8M1.6 12h20.8" stroke="#1f2a3a" stroke-width="1.15"/><circle cx="16.8" cy="7.2" r="3.1" fill="#b3261e"/></svg>Macro Risk Monitor</div>
-<div class="main"><div><h1>In a bad year, the economy could take €44,300 out of a €72,000 profit.</h1>
+<div class="main"><div><h1>In a bad year, the economy could take €41,700 out of a €72,000 profit.</h1>
 <div class="bar"><div class="keep"></div><div class="lose"></div></div></div>
 <table><thead><tr><td></td><th>€</th><th>%</th></tr></thead><tbody>
 <tr><th>Annual profit</th><td>72,000</td><td>100</td></tr>
-<tr class="neg"><th>Bad year (1 in 20)</th><td>−44,300</td><td>−62</td></tr>
-<tr class="sum"><th>Left in a bad year</th><td>27,700</td><td>38</td></tr></tbody></table></div>
+<tr class="neg"><th>Bad year (1 in 20)</th><td>−41,700</td><td>−58</td></tr>
+<tr class="sum"><th>Left in a bad year</th><td>30,300</td><td>42</td></tr></tbody></table></div>
 <div class="foot"><span>Risk check for small businesses in Germany</span><span class="url">eidenwilson.github.io/macro-risk-monitor</span></div>"""
 
 with sync_playwright() as p:

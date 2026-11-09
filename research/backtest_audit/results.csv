@@ -1,0 +1,7 @@
+business,n,misses,rate,kupiec_p,overlap_adjusted_p,se_pp,full_pool_misses,full_pool_rate,full_pool_kupiec_p,full_pool_adjusted_p,full_pool_quantile_score,full_pool_dm_p,full_pool_mean_bad_year,mean_bad_year
+restaurant,213,12,5.6,0.677,0.855,3.5,12,5.6,0.677,0.871,0.986,0.738,-59.5,-60.6
+bakery,213,16,7.5,0.116,0.638,5.3,16,7.5,0.116,0.624,1.05,0.698,-49.5,-45.7
+foodtruck,213,3,1.4,0.005,0.0,1.0,3,1.4,0.005,0.0,1.029,0.215,-33.5,-33.1
+importer,213,22,10.3,0.002,0.263,4.8,18,8.5,0.035,0.408,0.842,0.133,-43.1,-40.9
+metal,213,15,7.0,0.196,0.662,4.7,10,4.7,0.836,0.918,0.605,0.271,-54.0,-48.6
+print,213,34,16.0,0.0,0.07,6.0,19,8.9,0.017,0.372,0.77,0.344,-60.1,-42.0

@@ -1,5 +1,7 @@
 # Challenger: LightGBM against the historical simulation
 
+**Note (9 November 2026).** This study scored the page model as it was then, drawing only on months from today's phase. The page has since switched to all past months (6.1% beaten across the six; see the [backtest audit](../backtest_audit/)), and `extract.py` pins the same-phase pool so these results still reproduce. The Kupiec column below is the unadjusted test; once it allows for overlapping windows, the page model passes for all six examples and LightGBM with 38 inputs for three.
+
 **Question.** Does a machine-learning model forecast the 1-in-20 bad year better than the page's filtered historical simulation?
 
 **Answer: no.** Over the same 213 months (January 2008 to September 2025) and the six example businesses, LightGBM's bad year was beaten in 20.6% of months against a 5% target, and its quantile score was about 30% worse. The page model stays.

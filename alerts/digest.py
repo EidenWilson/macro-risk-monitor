@@ -30,10 +30,10 @@ SNAPSHOT = r"""() => {
   const c = D.current, regimes = ['Recovery', 'Overheating', 'Stagflation', 'Contraction'];
   const words = l => withLang(l, () => ({regimes: Object.fromEntries(regimes.map(r => [r, t(r)])), desc: Object.fromEntries(regimes.map(r => [r, t('d' + r)])),
     presets: t('presetNames'), month: monthLong(ym(c.asOf)), since: monthLong(ym(c.since)), wageMonth: monthLong(ym(D.minWage.effective))}));
-  const examples = Object.fromEntries(Object.keys(PRESETS).map(k => { const v = {...PRESETS[k]}, p5 = outcomes(v, 'regime').q(.05);
+  const examples = Object.fromEntries(Object.keys(PRESETS).map(k => { const v = {...PRESETS[k]}, p5 = outcomes(v, POOL).q(.05);
     return [k, {share: v.ebit > 0 ? Math.round(Math.max(0, -p5) / v.ebit * 100) : null, loss: Math.round(Math.max(0, -p5) / 100) * 100}]; }));
   return {asOf: c.asOf, since: c.since, regime: c.regime, euribor: c.euribor, hicp: c.hicp, energy: c.energy, ip: c.ip,
-    minWage: D.minWage, examples, recent: (D.hist.reg || []).filter(Boolean).slice(-3), de: words('de'), en: words('en')};
+    minWage: D.minWage, examples, pool: POOL, recent: (D.hist.reg || []).filter(Boolean).slice(-3), de: words('de'), en: words('en')};
 }"""
 
 
@@ -72,6 +72,7 @@ TEXT = {
         "euribor": "Euribor 3M", "hicp": "Inflation zum Vorjahr", "energy": "Energiepreise zum Vorjahr", "ip": "Industrieproduktion zum Vorjahr",
         "examples": "**Typische Betriebe: Anteil des Gewinns, den ein schlechtes Jahr (1 von 20) kosten könnte**",
         "wage": "**Schon bekannt:** Der Mindestlohn steigt im {month} von {a} auf {b} pro Stunde.",
+        "method": "**Neue Methode:** Seit November 2026 rechnet das schlechte Jahr mit allen früheren Monaten seit 2000 statt nur mit denen der aktuellen Konjunkturphase. Die Zahlen oben sind schon so gerechnet; die Änderung ist kein Konjunktursignal.",
         "cta": "[Mandanten-Ranking öffnen]({url}): Die Seite rechnet Ihre gespeicherten Betriebe mit den neuen Daten neu und zeigt, wer Ihre Warnschwelle überschritten hat. Ihre Mandantendaten bleiben in Ihrem Browser.",
         "subject": "Makro-Risiko {month}", "subjectPhase": "Konjunktur jetzt {regime}", "subjectPhaseNew": "Konjunktur vorläufig {regime}",
         "provisional": " Vorläufig: Das ist der erste Monat in dieser Phase. Erst die nächsten Daten zeigen, ob sie sich hält.",
@@ -85,6 +86,7 @@ TEXT = {
         "euribor": "Euribor 3M", "hicp": "Inflation, year on year", "energy": "Energy prices, year on year", "ip": "Industrial output, year on year",
         "examples": "**Typical businesses: share of profit a bad year (1 in 20) could take**",
         "wage": "**Already known:** the minimum wage rises in {month} from {a} to {b} an hour.",
+        "method": "**Method change:** since November 2026 the bad year draws on every past month since 2000, not only those in the current phase. The figures above already use it; the change is not a signal about the economy.",
         "cta": "[Open your client ranking]({url}): the page re-ranks the businesses you saved with the new data and shows who crossed your alert level. Your client data stays in your browser.",
         "subject": "macro risk update {month}", "subjectPhase": "economy now {regime}", "subjectPhaseNew": "economy provisionally {regime}",
         "provisional": " Provisional: this is the phase's first month. The next data will show whether it holds.",
@@ -131,6 +133,8 @@ def section(lang, cur, prev):
             continue
         before = T["was"].format(x=pct(p["share"], lang, 0)) if p and p.get("share") is not None and p["share"] != e["share"] else ""
         lines.append(f"- {name}: {pct(e['share'], lang, 0)}{before}")
+    if prev and cur.get("pool") == "all" and prev.get("pool") != "all":   # once, in the first email after the switch
+        lines += ["", T["method"]]
     mw = cur["minWage"]
     if mw["effective"] > cur["asOf"]:
         lines += ["", T["wage"].format(month=w["wageMonth"], a=money(mw["from"], lang), b=money(mw["to"], lang))]

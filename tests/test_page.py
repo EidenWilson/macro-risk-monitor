@@ -388,11 +388,11 @@ def alert_roles(shares, thr):
 def test_alerts(browser, base):
     print("since the last visit, and the alert email sign-up")
     pg = page_with(browser, f"{base}?plan=business&lang=de", init=SEED)
-    now = pg.evaluate("() => ({shares: Object.fromEntries(clients.map(c => [c.id, clientShare(c)])), thr: state.threshold, regime: D.current.regime})")
+    now = pg.evaluate("() => ({shares: Object.fromEntries(clients.map(c => [c.id, clientShare(c)])), thr: state.threshold, regime: D.current.regime, pool: POOL})")
     pg.close()
     seen_shares, role = alert_roles(now["shares"], now["thr"])
     names = {c["id"]: c["name"] for c in CLIENTS}
-    last_visit = {"asOf": "2000-01", "regime": next(r for r in REGIMES if r != now["regime"]), "clients": seen_shares}
+    last_visit = {"asOf": "2000-01", "regime": next(r for r in REGIMES if r != now["regime"]), "pool": now["pool"], "clients": seen_shares}
     seen = "(() => { try { localStorage.setItem('mrm3-seen', JSON.stringify(%s)); } catch (e) {} })();" % json.dumps(last_visit)
     pg = page_with(browser, f"{base}?plan=business&lang=de#clients", init=SEED + seen)
     pg.wait_for_function("!document.getElementById('changes').hidden", timeout=5000)
@@ -462,6 +462,33 @@ def test_import(browser, base):
     pg.close()
 
 
+def test_pool(browser, base):
+    print("default pool and the backtest test (9 Nov 2026)")
+    pg = page_with(browser, f"{base}?plan=pro&lang=en")
+    v = pg.evaluate("""() => ({mode: state.mode, first: document.querySelector('#mode .tab').dataset.m,
+      pressed: document.querySelector('#mode .tab[aria-pressed=true]').dataset.m, note: document.querySelector('.ledger-note').innerText,
+      n: D.samples.length, adj: kupiec(213, 22).pval, raw: kupiec(213, 22, .05, 1).pval,
+      same: Math.abs(backtest({...PRESETS.restaurant}).length - 213) <= 24})""")
+    check(v["mode"] == "all" and v["first"] == "all" and v["pressed"] == "all", f"all past months is the default and the first tab ({v['mode']})")
+    check(f"from {v['n']} past months" in v["note"], f"the ledger note names the whole pool ({v['note']!r})")
+    check(v["raw"] < .01 < v["adj"], f"the test allows for overlapping windows (22 of 213: {v['raw']:.3f} unadjusted, {v['adj']:.3f} adjusted)")
+    pg.close()
+    old = "localStorage.setItem('mrm3', JSON.stringify({preset: 'bakery', mode: 'regime'}));"
+    pg = page_with(browser, f"{base}?lang=en", init=old)
+    v = pg.evaluate("() => ({mode: state.mode, preset: state.preset})")
+    check(v == {"mode": "all", "preset": "bakery"}, f"a visit saved before the change moves to the new default and keeps the rest ({v})")
+    pg.evaluate("() => document.querySelector('#mode .tab[data-m=regime]').click()")   # the tabs sit in a folded section
+    v = pg.evaluate("() => ({mode: state.mode, saved: JSON.parse(localStorage.getItem('mrm3')).mode})")
+    check(v == {"mode": "regime", "saved": "regime"}, f"choosing the phase tab still sticks ({v})")
+    pg.close()
+    chosen = "localStorage.setItem('mrm3', JSON.stringify({preset: 'bakery', mode: 'regime', pool: 'all'}));"
+    pg = page_with(browser, f"{base}?lang=en", init=chosen)
+    check(pg.evaluate("() => state.mode") == "regime", "and survives the next visit")
+    check(not pg.errors, f"no console errors {pg.errors[:3]}")
+    pg.close()
+
+
+
 def test_csp(browser, base):
     """The Content-Security-Policy that build_page.py adds must not break anything a visitor does."""
     print("content security policy")
@@ -500,7 +527,7 @@ if __name__ == "__main__":
     base = serve()
     with sync_playwright() as p:
         browser = p.chromium.launch()
-        for t in (test_plans, test_tools, test_server_transport, test_claude_transport, test_languages, test_formats, test_pdf_language, test_alerts, test_counts, test_import, test_csp):
+        for t in (test_plans, test_tools, test_server_transport, test_claude_transport, test_languages, test_formats, test_pdf_language, test_alerts, test_counts, test_import, test_pool, test_csp):
             t(browser, base)
         browser.close()
     print(f"\n{len(failures)} failed" if failures else "\nall checks passed")

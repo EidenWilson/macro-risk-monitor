@@ -176,7 +176,7 @@ dsNote: m => m === 'hmm' ? 'Each past month is weighted by how likely the statis
 good: 'Good year (1 in 20)',
 ofProfit: 'of profit',
 btTitle: 'Does the model hold up?',
-btNote: n => `For every month since 2008 the model forecast a 1-in-20 loss for your business using only data available at the time, then the actual next 12 months played out. A sound model is beaten in about 5% of months. Windows overlap, so the ${n} checks are not independent.`,
+btNote: n => `For every month since 2008 the model forecast a 1-in-20 loss for your business using only data available at the time, then the actual next 12 months played out. A sound model is beaten in about 5% of months. Windows overlap, so the ${n} checks count as about ${Math.round(n / 12)} independent years, and the test allows for that.`,
 covidNote: 'Sales moves during the Covid rules (March 2020 to March 2022) are left out, because they came from closures rather than the economy. The 2020 lockdown scenario shows them separately.',
 btPred: 'Forecast bad year (1 in 20)',
 btReal: 'What actually happened',

@@ -32,7 +32,7 @@ KEY = {"importer": "fx", "print": "ppi_paper"}
 JS = r"""(key) => {
   const S = D.samples, out = {};
   for (const k of Object.keys(PRESETS)) {
-    const v = {...PRESETS[k]}, vh = hedged(v), bt = backtest(v), full = [], ext = [];
+    const v = {...PRESETS[k]}, vh = hedged(v), bt = backtest(v, 'regime'), full = [], ext = [];
     for (const [i] of BT_POOLS) {
       const at = S[i], target = volAt(at), ctx = {e0: at[3], infl0: at[4]};
       const elig = []; for (let j = 0; j < S.length && MI[j] <= MI[i] - 12; j++) elig.push(j);

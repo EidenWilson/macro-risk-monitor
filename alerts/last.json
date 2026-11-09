@@ -13,28 +13,28 @@
  },
  "examples": {
   "restaurant": {
-   "share": 62,
-   "loss": 44300
+   "share": 58,
+   "loss": 41700
   },
   "bakery": {
-   "share": 77,
-   "loss": 35500
+   "share": 60,
+   "loss": 27400
   },
   "foodtruck": {
-   "share": 26,
-   "loss": 9900
+   "share": 37,
+   "loss": 13900
   },
   "importer": {
-   "share": 35,
-   "loss": 38300
+   "share": 44,
+   "loss": 48400
   },
   "metal": {
-   "share": 49,
-   "loss": 102300
+   "share": 63,
+   "loss": 131800
   },
   "print": {
-   "share": 55,
-   "loss": 51900
+   "share": 71,
+   "loss": 67100
   }
  },
  "de": {

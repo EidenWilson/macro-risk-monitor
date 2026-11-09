@@ -171,7 +171,7 @@ dsNote: m => m === 'hmm' ? 'Her geçmiş ay, istatistiksel modele göre bugüne 
 good: 'İyi yıl (20’de 1)',
 ofProfit: 'kârın',
 btTitle: 'Model ayakta kalıyor mu?',
-btNote: n => `2008’den beri her ay için model, yalnızca o zaman eldeki verilerle işletmeniz için 20’de 1 kaybı tahmin etti; ardından gerçekleşen 12 ay uygulandı. Sağlam bir model ayların yaklaşık %5’inde aşılır. Pencereler çakıştığı için ${n} kontrol birbirinden bağımsız değildir.`,
+btNote: n => `2008’den beri her ay için model, yalnızca o zaman eldeki verilerle işletmeniz için 20’de 1 kaybı tahmin etti; ardından gerçekleşen 12 ay uygulandı. Sağlam bir model ayların yaklaşık %5’inde aşılır. Pencereler çakıştığı için ${n} kontrol yaklaşık ${Math.round(n / 12)} bağımsız yıl sayılır; test bunu hesaba katar.`,
 covidNote: 'Covid kuralları sırasındaki (Mart 2020 – Mart 2022) satış hareketleri hariç tutulur; çünkü konjonktürden değil kapanmalardan kaynaklandılar. 2020 kapanması senaryosu bunları ayrıca gösterir.',
 btPred: 'Tahmin edilen kötü yıl (20’de 1)',
 btReal: 'Gerçekte olan',

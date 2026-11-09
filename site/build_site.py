@@ -35,7 +35,7 @@ ICON = ("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0
 
 SNAPSHOT = r"""() => {
   const c = D.current, v = {...PRESETS.restaurant}, bt = backtest(v), n = bt.length, x = bt.filter(b => b.breach).length;
-  const ex = Object.keys(PRESETS).map(key => { const p = {...PRESETS[key]}, p5 = outcomes(p, 'regime').q(.05); return {key, ebit: p.ebit, loss: Math.max(0, -p5)}; });
+  const ex = Object.keys(PRESETS).map(key => { const p = {...PRESETS[key]}, p5 = outcomes(p, POOL).q(.05); return {key, ebit: p.ebit, loss: Math.max(0, -p5)}; });
   const words = l => withLang(l, () => ({regime: t(c.regime), presets: t('presetNames'), month: monthLong(ym(c.asOf)),
     since: monthLong(ym(c.since)), wageMonth: monthLong(ym(D.minWage.effective))}));
   return {asOf: c.asOf, euribor: c.euribor, energy: c.energy, minWage: D.minWage, bt: {n, x, p: kupiec(n, x).pval}, ex, en: words('en'), de: words('de')};

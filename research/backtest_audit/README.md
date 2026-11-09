@@ -1,5 +1,7 @@
 # Backtest audit: the importer, the print shop, and the test itself
 
+**Outcome (9 November 2026).** The page now draws on all past months (section 3) and scales the Kupiec test for the overlap (its statistic divided by 12, which gives p-values close to the Newey-West ones in section 1). All six examples pass that test. `audit.py` pins the same-phase pool, so it still reproduces the figures below.
+
 **Question.** The online importer (10.3% of months beaten) and the print shop (16.0%) fail the backtest. Why, and what would fix it?
 
 ## 1. The test overstates the failures

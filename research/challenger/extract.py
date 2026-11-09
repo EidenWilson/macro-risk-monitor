@@ -15,7 +15,7 @@ JS = r"""() => {
   for (const k of Object.keys(PRESETS)) {
     const v = {...PRESETS[k]}, vh = hedged(v);
     const real = S.map(s => -projTotal(vh, rawMoves(s), {e0: s[3], infl0: s[4]}));
-    const bt = backtest(v), strict = [], idx = [], VM0 = {...VMED};
+    const bt = backtest(v, 'regime'), strict = [], idx = [], VM0 = {...VMED};
     for (const [i] of BT_POOLS) {
       for (const f of D.factors) { const a = S.slice(0, i + 1).map(s => s[VOFF + F[f]]).filter(x => x).sort((x, y) => x - y); VMED[f] = a.length ? a[Math.floor(a.length / 2)] : null; }
       const at = S[i], target = volAt(at), ctx = {e0: at[3], infl0: at[4]};

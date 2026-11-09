@@ -115,7 +115,7 @@ def test_pages(browser, base):
     # Compared with the built tool, not with fixed numbers: the scheduled refresh runs these checks on each month's new
     # data before publishing, and the regime and the restaurant's bad year change from month to month.
     tool = page_with(browser, base)
-    want = tool.evaluate("""() => { const v = {...PRESETS.restaurant}, p5 = outcomes(v, 'regime').q(.05);
+    want = tool.evaluate("""() => { const v = {...PRESETS.restaurant}, p5 = outcomes(v, POOL).q(.05);
       return {regime: withLang('en', () => t(D.current.regime)), ebit: v.ebit, lost: Math.round(Math.max(0, -p5) / 100) * 100, wage: D.minWage.to}; }""")
     tool.close()
     pg = page_with(browser, base + "advisors/")

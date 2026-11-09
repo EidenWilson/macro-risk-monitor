@@ -256,6 +256,16 @@ def test_email_calls_a_flip_back_noise():
     assert "reverses" in body and "Rauschen" in body and "provisionally" in subject
 
 
+def test_email_explains_the_method_change_once():
+    new, old = _snap("Stagflation", "2026-05", ["Stagflation"] * 3), _snap("Stagflation", "2026-05", ["Stagflation"] * 3)
+    new["pool"] = "all"
+    _, body = digest.digest(new, old)                                 # the last email was on the same-phase pool
+    assert "Neue Methode" in body and "Method change" in body
+    old["pool"] = "all"
+    _, body = digest.digest(new, old)
+    assert "Neue Methode" not in body and "Method change" not in body
+
+
 # ------------------------------------------------------------------ no commit without new data
 def test_rebuild_with_the_same_data_keeps_the_file(raw_csv, tmp_path):
     out = tmp_path / "data.json"

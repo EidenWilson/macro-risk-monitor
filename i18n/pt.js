@@ -171,7 +171,7 @@ dsNote: m => m === 'hmm' ? 'Cada mês passado é ponderado pela semelhança com 
 good: 'Ano bom (1 em 20)',
 ofProfit: 'do lucro',
 btTitle: 'O modelo se sustenta?',
-btNote: n => `Para cada mês desde 2008, o modelo previu uma perda 1 em 20 para sua empresa usando só os dados disponíveis na época; depois, os 12 meses reais seguintes foram aplicados. Um modelo sólido é superado em cerca de 5% dos meses. As janelas se sobrepõem, então as ${n} verificações não são independentes.`,
+btNote: n => `Para cada mês desde 2008, o modelo previu uma perda 1 em 20 para sua empresa usando só os dados disponíveis na época; depois, os 12 meses reais seguintes foram aplicados. Um modelo sólido é superado em cerca de 5% dos meses. As janelas se sobrepõem, então as ${n} verificações equivalem a cerca de ${Math.round(n / 12)} anos independentes, e o teste leva isso em conta.`,
 covidNote: 'Ficam de fora as variações de vendas durante as regras da covid (de março de 2020 a março de 2022), porque vieram dos fechamentos e não da conjuntura. O cenário Lockdown 2020 as mostra à parte.',
 btPred: 'Ano ruim previsto (1 em 20)',
 btReal: 'O que realmente aconteceu',

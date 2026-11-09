@@ -15,7 +15,7 @@ Built by Eiden Wilson Neralaily (data and modelling) and Channappa (finance and 
 ## Highlights
 
 - **End-to-end data pipeline.** 21 series from the ECB, Eurostat and FRED, each shifted by its publication lag, stored in SQLite and checked for new releases every day by GitHub Actions, which keeps every value as first published and every later revision (`data/vintages.csv`) and opens an issue when the economic regime changes.
-- **Risk model.** Filtered historical simulation over 280+ past 12-month windows, conditional on the current regime, with a 4-state hidden Markov model as a second opinion and an out-of-sample backtest since 2008 (Kupiec test).
+- **Risk model.** Filtered historical simulation over 280+ past 12-month windows, with the current regime and a 4-state hidden Markov model as alternative views, and an out-of-sample backtest since 2008 (Kupiec test adjusted for overlapping windows).
 - **Product.** Answer first, Free, Pro and Business plans, DATEV import (SKR03 and SKR04), a PDF report, 13 languages (Arabic right to left), a phone layout, no cookies, and no third-party requests outside the Business assistant.
 - **AI assistant (Business).** An open model (Gemma 4) on Cloudflare Workers AI, on the free plan. It never computes numbers itself: it calls tools that run the page's own risk model. Client names never leave the browser, and a routing step plus a check of every euro amount keep it from inventing figures.
 - **Portfolio stress test.** Load a fund report's or a bank's holdings list (CSV, German or English formats): yields solved from prices and coupon dates, duration, convexity and the value of a basis point, then five stated scenarios and one of your own, split into rates, spreads, inflation, equities and gold, holding by holding. In the browser, nothing uploaded.
@@ -38,7 +38,7 @@ Built by Eiden Wilson Neralaily (data and modelling) and Channappa (finance and 
 | Cash runway | Month-by-month bank balance in a flat, typical and bad year, against the credit line | Pro |
 | Contract calendar | When each exposure becomes live: loan resets, energy contract end, Indexmiete adjustment, minimum wage rise | Pro |
 | Protection value | Net value of fixing the loan rate, fixing energy, passing on costs, hedging USD, after the cost of each | Pro |
-| Backtest | Out-of-sample check of the bad-year forecast since 2008 with a Kupiec test, and which shocks the misses came from | Pro |
+| Backtest | Out-of-sample check of the bad-year forecast since 2008 with a Kupiec test adjusted for overlapping windows, and which shocks the misses came from | Pro |
 | Statistical second opinion | A 4-state hidden Markov model on growth and inflation levels with filtered probabilities | Pro |
 | DATEV import | Reads a Summen- und Saldenliste (SKR03 or SKR04) in the browser and fills the exposures | Pro |
 | Report | One-page PDF for a bank or tax advisor meeting | Pro |
@@ -92,22 +92,22 @@ FRED ────────────┘                        │
 
 **Covid.** From March 2020 to March 2022, Covid rules closed or restricted restaurants and shops. Those sales swings came from public-health orders, not the economy, so retail and food-service windows that touch this period are left out of the risk range and the backtest, and their volatility excludes it. The 2020 lockdown is a separate stress scenario instead (before government support such as Kurzarbeit). Other scenarios that overlap the rules, such as the 2022 energy shock, measure sales over the first 12 months after the rules ended (April 2022 to April 2023).
 
-**Risk model.** For each past month, the actual moves of rates, prices, FX and demand over the following 12 months are applied to the business, building up linearly through the year and respecting contract timing. Moves are scaled by today's volatility relative to volatility at the time (filtered historical simulation), with the past volatility floored at its median so calm periods such as zero rates do not inflate the scale. The bad year is the 5th percentile of that distribution, conditional on the current regime.
+**Risk model.** For each past month, the actual moves of rates, prices, FX and demand over the following 12 months are applied to the business, building up linearly through the year and respecting contract timing. Moves are scaled by today's volatility relative to volatility at the time (filtered historical simulation), with the past volatility floored at its median so calm periods such as zero rates do not inflate the scale. The bad year is the 5th percentile of that distribution over every past month since 2000. Until 9 November 2026 the page drew only on months from today's phase of the economy; that view is still a tab, but an audit found the full pool more robust (fewer misses for three of the six examples, no more for the others, and a 12% better quantile score, though the gain is not statistically significant): [`research/backtest_audit/`](research/backtest_audit/).
 
-**Validation.** Since 2008, for every month the model forecast a 1-in-20 loss using only data available then and compared it with what happened (213 checks per business, target 5% of months worse than forecast):
+**Validation.** Since 2008, for every month the model forecast a 1-in-20 loss using only data available then and compared it with what happened (213 checks per business, target 5% of months worse than forecast). Neighbouring checks share 11 of their 12 months, so the 213 checks hold only about 18 independent years; the Kupiec test is scaled for that (its statistic divided by 12), which gives about the same p-values as a Newey-West test over the overlap.
 
-| Example business | Worse than forecast | Kupiec test | Where the misses came from |
-|---|---|---|---|
-| Restaurant | 5.6% | passes (p = 0.68) | 9 of 12 in the 2021–23 energy and inflation shock |
-| Bakery | 7.5% | passes (p = 0.12) | all 16 in the 2021–23 shock |
-| Metal workshop | 7.0% | passes (p = 0.20) | 13 of 15 in the 2021–23 shock |
-| Food truck | 1.4% | fails on the cautious side (p = 0.005) | the bad year is overstated |
-| Online importer | 10.3% | fails (p = 0.002) | 2021–23 shock (11), 2014–15 dollar surge (7), 2008–09 (3) |
-| Print shop | 16.0% | fails (p < 0.001) | 2021–23 paper prices (13), 2008–09 (8), 2020 (5) |
+| Example business | Worse than forecast | Kupiec test, adjusted for overlap | Unadjusted | Where the misses came from |
+|---|---|---|---|---|
+| Restaurant | 5.6% | passes (p = 0.90) | 0.68 | 10 of 12 in the 2021–23 energy and inflation shock |
+| Bakery | 7.5% | passes (p = 0.65) | 0.12 | 15 of 16 in the 2021–23 shock |
+| Metal workshop | 4.7% | passes (p = 0.95) | 0.84 | 2021–23 shock (7), 2020 Covid slump (3) |
+| Food truck | 1.4% | passes (p = 0.42) | 0.005 | the bad year is cautious |
+| Online importer | 8.5% | passes (p = 0.54) | 0.035 | 2021–23 shock (9), 2014–15 dollar surge (6), 2008–09 (2) |
+| Print shop | 8.9% | passes (p = 0.49) | 0.018 | 2008–09 (8), 2021–23 paper prices (7), 2020 (3) |
 
-The model learns from history, so it misses shocks bigger than anything it had seen; the page says which shock each business's misses came from and, when it fails, how to read the bad year instead (for the print shop, roughly 1 in 6 rather than 1 in 20). Volatility scaling cut the restaurant's miss rate from about 21%, and taking Covid closures out of the history from 8.5%.
+With about 18 independent years the test can catch a badly wrong model but cannot tell 5% from 9%, so the miss rates matter more than the pass. The model learns from history, so it misses shocks bigger than anything it had seen; the page says which shock each business's misses came from and, above 7.5%, how to read the bad year instead (for the print shop, roughly 1 in 11 rather than 1 in 20). Volatility scaling cut the restaurant's miss rate from about 21%, and taking Covid closures out of the history from 8.5%.
 
-**Challenger.** A LightGBM quantile model, refitted every month on what was known at the time (38 inputs: phase, Euribor, inflation, and the trailing volatility and last published move of all 16 factors), did worse: across the six examples its bad year was beaten in 20.6% of months against 7.9% for this model, every version fails the Kupiec test, and its quantile score is about 30% worse. With about 18 independent years and three or four real shocks there are too few bad years to learn a tail from. Code, setup and results: [`research/challenger/`](research/challenger/).
+**Challenger.** A LightGBM quantile model, refitted every month on what was known at the time (38 inputs: phase, Euribor, inflation, and the trailing volatility and last published move of all 16 factors), did worse: across the six examples its bad year was beaten in 20.6% of months against 7.9% for this model (same-phase pool, as the page was then; 6.1% with all months), it fails the Kupiec test for all six examples (three of six once the test allows for overlapping windows), and its quantile score is about 30% worse. With about 18 independent years and three or four real shocks there are too few bad years to learn a tail from. Code, setup and results: [`research/challenger/`](research/challenger/).
 
 **Privacy and speed.** The page sets no cookies, loads nothing from third parties (the font is embedded and jsPDF is served from `docs/vendor/`), processes DATEV files and builds the PDF in the browser, and only writes to the browser's local storage once someone uses it (with a button to delete it). The exceptions are on the Business plan: when someone asks the assistant a question, the question and the page's computed figures (never client names or ledger lines) go to the assistant server and the model behind it; and when someone subscribes to the alert email, their email address (and nothing else) goes to Buttondown. Usage is counted anonymously: on the live site only, and not when the browser sends Do Not Track or Global Privacy Control, the page sends a beacon to the same assistant server for a page view and when a feature is used (own figures, PDF, DATEV import, client saved, question). The server keeps only daily totals per page, event, plan and language, in a Durable Object (`worker/src/counter.js`): no cookies, IDs, IP addresses or figures. The totals are at [`/stats`](https://mrm-assistant.eidenwilson.workers.dev/stats) (add `?days=30` for a shorter window). The privacy page needs a paragraph on all of this before the assistant goes live. The backtest runs only when its section is opened.
 
@@ -205,7 +205,7 @@ Sofia Sans Semi Condensed font: SIL Open Font License 1.1 (`assets/fonts/OFL.txt
 ## Limits
 
 - History starts in 2000, so the model has seen only a handful of big shocks; it underestimates anything larger than 2022.
-- Overlapping 12-month windows mean the backtest's observations are not independent.
+- Overlapping 12-month windows leave the backtest only about 18 independent years; the overlap adjustment to the Kupiec test is approximate.
 - Hedge costs are editable assumptions; the loan fixing cost uses the ECB 1-year rate when available.
 - The assistant explains the model's figures; how well it phrases them depends on the model behind it, so advisors should check an answer before passing it to a client.
 - Plans are not enforced: there are no accounts or payments yet. Only the assistant server is protected (origin check, rate limit, optional access code).

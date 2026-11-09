@@ -171,7 +171,7 @@ dsNote: m => m === 'hmm' ? 'Ogni mese passato è ponderato in base a quanto, sec
 good: 'Anno positivo (1 su 20)',
 ofProfit: 'dell’utile',
 btTitle: 'Il modello regge?',
-btNote: n => `Per ogni mese dal 2008 il modello ha previsto una perdita 1 su 20 per la sua azienda usando solo i dati disponibili allora; poi si sono applicati i 12 mesi reali successivi. Un modello solido viene superato in circa il 5% dei mesi. Le finestre si sovrappongono, quindi le ${n} verifiche non sono indipendenti.`,
+btNote: n => `Per ogni mese dal 2008 il modello ha previsto una perdita 1 su 20 per la sua azienda usando solo i dati disponibili allora; poi si sono applicati i 12 mesi reali successivi. Un modello solido viene superato in circa il 5% dei mesi. Le finestre si sovrappongono, quindi le ${n} verifiche valgono circa ${Math.round(n / 12)} anni indipendenti, e il test ne tiene conto.`,
 covidNote: 'Sono escluse le variazioni delle vendite durante le regole anti-Covid (da marzo 2020 a marzo 2022), perché dovute alle chiusure e non alla congiuntura. Lo scenario Lockdown 2020 le mostra a parte.',
 btPred: 'Anno negativo previsto (1 su 20)',
 btReal: 'Cosa è successo davvero',

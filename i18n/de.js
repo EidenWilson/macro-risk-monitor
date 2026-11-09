@@ -171,7 +171,7 @@ dsNote: m => m === 'hmm' ? 'Jeder frühere Monat wird danach gewichtet, wie ähn
 good: 'Gutes Jahr (1 von 20)',
 ofProfit: 'des Gewinns',
 btTitle: 'Hält das Modell, was es verspricht?',
-btNote: n => `Für jeden Monat seit 2008 hat das Modell nur mit damals verfügbaren Daten einen 1-von-20-Verlust für Ihren Betrieb geschätzt; dann wurden die tatsächlichen 12 Monate danach durchgespielt. Ein solides Modell wird in etwa 5 % der Monate übertroffen. Die Zeitfenster überlappen, die ${n} Prüfungen sind also nicht unabhängig.`,
+btNote: n => `Für jeden Monat seit 2008 hat das Modell nur mit damals verfügbaren Daten einen 1-von-20-Verlust für Ihren Betrieb geschätzt; dann wurden die tatsächlichen 12 Monate danach durchgespielt. Ein solides Modell wird in etwa 5 % der Monate übertroffen. Die Zeitfenster überlappen, die ${n} Prüfungen zählen also wie etwa ${Math.round(n / 12)} unabhängige Jahre; der Test berücksichtigt das.`,
 covidNote: 'Umsatzbewegungen während der Corona-Regeln (März 2020 bis März 2022) sind ausgenommen, weil sie aus Schließungen kamen und nicht aus der Konjunktur. Das Szenario Lockdown 2020 zeigt sie getrennt.',
 btPred: 'Geschätztes schlechtes Jahr (1 von 20)',
 btReal: 'Tatsächliches Ergebnis',

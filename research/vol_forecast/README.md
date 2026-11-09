@@ -1,5 +1,7 @@
 # Volatility forecast for the scaling step
 
+**Note (9 November 2026).** Run against the page model as it was then, drawing only on months from today's phase (the script builds that pool itself, so the results reproduce). The page has since switched to all past months; see the [backtest audit](../backtest_audit/).
+
 **Question.** The page scales every past 12-month move by today's volatility over the volatility back then, and "today's volatility" is simply the last 12 months. Volatility reverts to its long-run level and tends to rise after large moves, and, unlike the 5% tail the [LightGBM challenger](../challenger/) failed to learn, every month is a training example. Does a real forecast of next year's volatility give a better bad year?
 
 **Answer: no.** A LightGBM forecast is slightly more accurate on average, but used in the page's model it makes the bad year milder and beaten more often. The trailing rule stays.

@@ -143,6 +143,20 @@ def test_end_to_end_build_produces_valid_data(raw_csv, tmp_path):
     assert in_covid and all(row[i] is None for row in in_covid)
 
 
+
+def test_headline_inflation_ahead_of_its_parts_waits_for_them(raw, tmp_path):
+    """The daily refresh of 9 Nov 2026: October headline inflation was out, October food prices were not."""
+    early = raw.copy()
+    last = early.dropna(subset=["HICP_DE"]).index.max()
+    early.loc[last, "HICP_FOOD_DE"] = np.nan
+    csv = tmp_path / "raw.csv"
+    early.to_csv(csv)
+    out = tmp_path / "data.json"
+    build_data.main(csv=str(csv), out=str(out))
+    D = json.loads(out.read_text())
+    assert D["current"]["asOf"] < last and D["current"]["food"] is not None
+    assert validate_data.check(D, today=date(2026, 10, 1)) == []
+
 # ------------------------------------------------------------------ data gate
 def _good():
     return json.loads((pytest.importorskip("pathlib").Path(build_data.__file__).parent / "docs" / "data.json").read_text())

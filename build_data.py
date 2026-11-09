@@ -185,8 +185,10 @@ def main(db=None, csv=None, out="data.json"):
     if msg:
         print("warning:", msg)
     r = load_raw(db, csv)
-    # last complete month = latest month where both Euribor and headline HICP exist
-    asof = r.dropna(subset=["EURIBOR_3M", "HICP_DE"]).index.max()
+    # last complete month = latest month where Euribor, the dollar rate and headline, energy and food inflation all
+    # exist. Headline inflation can come out a week or two before its parts: on 9 Nov 2026 October was in for the
+    # headline but not for food, and the data check stopped the page from showing October with no food prices.
+    asof = r.dropna(subset=[c for c in ("EURIBOR_3M", "EURUSD", "HICP_DE", "HICP_ENERGY_DE", "HICP_FOOD_DE") if c in r]).index.max()
     r = r.loc[:asof]
     k = pd.DataFrame({c: r[c].shift(LAG.get(c, 0)) for c in r.columns})
     reg, gd, idf = classify(k)

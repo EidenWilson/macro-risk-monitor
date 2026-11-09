@@ -2,8 +2,15 @@ name: Refresh data and site
 
 on:
   schedule:
-    - cron: "17 6 3,18 * *"     # 06:17 UTC on the 3rd and 18th of each month (after ECB / Eurostat releases)
-  workflow_dispatch: {}
+    - cron: "17 6 * * *"        # every day at 06:17 UTC (GitHub may start it hours late). The sources publish on
+                                # different days; a day without new data stops after the data check and commits
+                                # nothing, except new entries in the data log (data/vintages.csv)
+  workflow_dispatch:
+    inputs:
+      rebuild:
+        description: Rebuild, test and publish the pages even if no new data arrived
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -17,6 +24,8 @@ jobs:
   refresh:
     runs-on: ubuntu-24.04            # pinned: ubuntu-latest moves to Ubuntu 26 from October 2026
     timeout-minutes: 45
+    env:
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -24,12 +33,12 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements-dev.txt -c constraints.txt
-      - name: Install a headless browser (the alert email reads its figures from the built page)
-        run: python -m playwright install --with-deps chromium
       - name: Fetch data (stops if a critical series failed or went stale)
         env:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
         run: python pipeline.py --db macro.db --start 2000-01 --strict
+      - name: Keep a copy of the data (new and revised values go to data/vintages.csv and the run summary)
+        run: python vintage.py --db macro.db --log data/vintages.csv --summary "$GITHUB_STEP_SUMMARY"
       - name: Build data
         run: |
           mkdir -p docs
@@ -37,18 +46,34 @@ jobs:
           python build_data.py --db macro.db --out docs/data.json
       - name: Check the new data before anything is published
         run: python validate_data.py docs/data.json
+      - name: New data for the page?
+        id: new
+        run: |
+          if cmp -s docs/data.json previous.json && [ "${{ inputs.rebuild }}" != "true" ]; then
+            echo "page=false" >> "$GITHUB_OUTPUT"
+            echo "No new data for the page today: nothing rebuilt." | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "page=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Install a headless browser (the alert email reads its figures from the built page)
+        if: steps.new.outputs.page == 'true'
+        run: python -m playwright install --with-deps chromium
       - name: Build page and alerts
+        if: steps.new.outputs.page == 'true'
         run: |
           python build_page.py
           python check_alerts.py docs/data.json previous.json
       - name: Pages around the tool (their example figures come from the freshly built page)
+        if: steps.new.outputs.page == 'true'
         run: python site/build_site.py
       - name: Tests on the new build (the refresh used to publish without running them)
+        if: steps.new.outputs.page == 'true'
         run: |
           pytest
           python tests/test_page.py
           python tests/test_site.py
       - name: Monthly alert email (sent only when new data arrived and BUTTONDOWN_API_KEY is set)
+        if: steps.new.outputs.page == 'true'
         env:
           BUTTONDOWN_API_KEY: ${{ secrets.BUTTONDOWN_API_KEY }}
         run: python alerts/digest.py
@@ -56,7 +81,7 @@ jobs:
         run: |
           git config user.name "macro-risk-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add docs/ alerts/last.json
+          git add docs/ alerts/last.json data/vintages.csv
           git diff --cached --quiet || git commit -m "Data refresh $(date -u +%Y-%m-%d)"
           git pull --rebase --autostash
           git push
@@ -65,10 +90,23 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh issue create --title "Macro regime alert $(date -u +%Y-%m-%d)" --body-file alert.md
+      - name: Close the refresh-failed issue once a refresh works again
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for n in $(gh issue list --state open --search 'in:title "Data refresh failed"' --json number --jq '.[].number'); do
+            gh issue close "$n" --comment "The refresh works again: $RUN_URL"
+          done
       - name: Open an issue when the refresh fails (otherwise the page silently goes stale)
         if: failure()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh issue create --title "Data refresh failed $(date -u +%Y-%m-%d)" \
-            --body "The scheduled refresh stopped before publishing, so the live page still shows the last good data. Run log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          n=$(gh issue list --state open --search 'in:title "Data refresh failed"' --json number --jq '.[0].number // empty')
+          if [ -n "$n" ]; then
+            gh issue comment "$n" --body "Failed again on $(date -u +%Y-%m-%d): $RUN_URL"
+          else
+            gh issue create --title "Data refresh failed $(date -u +%Y-%m-%d)" \
+              --body "The refresh stopped before publishing, so the live page still shows the last good data. It runs every day and closes this issue by itself once a run works again. Run log: $RUN_URL"
+          fi

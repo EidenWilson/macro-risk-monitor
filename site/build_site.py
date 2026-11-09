@@ -218,8 +218,12 @@ def main():
                                                c=COMMON["en"], alternates=[("en", "")], tool=BASE, t=T, de=NOT_FOUND["de"], title=T["title"],
                                                desc=T["p"], jsonld="{}")
     (DOCS / "404.html").write_text(page.replace('<link rel="canonical" href="https://eidenwilson.github.io/macro-risk-monitor/404.html">', ""), encoding="utf-8")
-    # sitemap: the tool in each of its languages, and the pages above
-    today = dt.date.today().isoformat()
+    # sitemap: the tool in each of its languages, and the pages above. lastmod is the day the data last changed, not
+    # the build day, so the daily refresh leaves the sitemap (and the repo) alone on days without new data
+    try:
+        today = json.loads((DOCS / "data.json").read_text(encoding="utf-8"))["meta"]["generatedAt"][:10]
+    except (OSError, ValueError, KeyError, TypeError):
+        today = dt.date.today().isoformat()
     alt = "".join(f'<xhtml:link rel="alternate" hreflang="{l}" href="{SITE}{"" if l == "en" else "?lang=" + l}"/>' for l in TOOL_LANGS)
     urls = [f'<url><loc>{SITE}</loc><lastmod>{today}</lastmod>{alt}</url>']
     for key in ("advisors", "portfolio"):

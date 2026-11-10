@@ -75,7 +75,7 @@ def screenshots():
             page = ctx.new_page()
             page.goto((DOCS / "index.html").resolve().as_uri() + f"?plan=business&lang={lang}", wait_until="load")
             page.evaluate("document.fonts.ready")
-            page.add_style_tag(content="#toast,.chat-fab,#askBtn{visibility:hidden!important} *{transition:none!important;animation:none!important}")
+            page.add_style_tag(content="#toast,.chat-fab,#askBtn{visibility:hidden!important} .sources{display:none!important} *{transition:none!important;animation:none!important}")
             cdp = ctx.new_cdp_session(page)
 
             def shoot(name):

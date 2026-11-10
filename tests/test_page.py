@@ -489,6 +489,30 @@ def test_pool(browser, base):
 
 
 
+def test_sources(browser, base):
+    print("where the numbers come from, under the four answers (10 Nov 2026)")
+    pg = page_with(browser, f"{base}?lang=en")
+    v = pg.evaluate("""() => { const box = document.querySelector('section.sources'), tiles = $('tiles'), ex = document.querySelector('.presets');
+      return {after: !!(tiles.compareDocumentPosition(box) & Node.DOCUMENT_POSITION_FOLLOWING), before: !!(box.compareDocumentPosition(ex) & Node.DOCUMENT_POSITION_FOLLOWING),
+        text: $('srcText').textContent, month: month(D.current.asOf), rel: !!$('srcRel').offsetParent, adv: !!$('lnkAdvisors').offsetParent,
+        inBox: box.contains($('lnkAdvisors')) && box.contains($('lnkPortfolio')) && box.contains($('foot1')) && box.contains($('foot2')),
+        folded: !document.querySelector('.src-more').open, foot: document.querySelector('footer').innerText}; }""")
+    check(v["after"] and v["before"], "the box sits between the four answers and the examples")
+    check(v["month"] in v["text"] and "21 public data series" in v["text"], f"it names the sources and the data month ({v['text'][:70]!r})")
+    check(v["inBox"] and v["adv"] and v["folded"], "the page links and the full sources and method are in it, the full text folded")
+    check(not v["rel"], "the reliability link is hidden on Free, where that section is")
+    check("Not financial advice" in v["foot"] and "Data:" not in v["foot"] and "For tax advisors" not in v["foot"], "the footer keeps the disclaimer and the delete link only")
+    pg.close()
+    pg = page_with(browser, f"{base}?plan=pro&lang=de")
+    check(pg.evaluate("() => $('lnkAdvisors').href").endswith("/advisors/de/"), "the advisors link opens the German page in German")
+    pg.evaluate("() => $('srcRel').click()")
+    pg.wait_for_timeout(300)
+    v = pg.evaluate("() => ({open: !$('relBody').hidden, top: document.querySelector('section.rel').getBoundingClientRect().top})")
+    check(v["open"] and 0 <= v["top"] < 120, f"on Pro the reliability link opens that section and scrolls to it ({v})")
+    check(not pg.errors, f"no console errors {pg.errors[:3]}")
+    pg.close()
+
+
 def test_csp(browser, base):
     """The Content-Security-Policy that build_page.py adds must not break anything a visitor does."""
     print("content security policy")
@@ -527,7 +551,7 @@ if __name__ == "__main__":
     base = serve()
     with sync_playwright() as p:
         browser = p.chromium.launch()
-        for t in (test_plans, test_tools, test_server_transport, test_claude_transport, test_languages, test_formats, test_pdf_language, test_alerts, test_counts, test_import, test_pool, test_csp):
+        for t in (test_plans, test_tools, test_server_transport, test_claude_transport, test_languages, test_formats, test_pdf_language, test_alerts, test_counts, test_import, test_pool, test_sources, test_csp):
             t(browser, base)
         browser.close()
     print(f"\n{len(failures)} failed" if failures else "\nall checks passed")

@@ -175,6 +175,10 @@ def jsonld_portfolio(lang, T):
                        "offers": {"@type": "Offer", "price": "0", "priceCurrency": "EUR"}}, ensure_ascii=False).replace("</", "<\\/")
 
 
+# the demo film's subtitles (scripts that film it write this file; the videos are in docs/assets/video/)
+DEMO = json.loads((HERE / "data" / "demo-subtitles.json").read_text(encoding="utf-8"))
+
+
 def main():
     snap = snapshot()
     shots = screenshots()
@@ -202,6 +206,7 @@ def main():
                        here_en=root + f"{key}/", here_de=root + f"{key}/de/", contact=CONFIG.get("contact_email", ""), count_url=COUNT_URL)
             if key == "advisors":
                 T = ADVISORS[lang]
+                ctx["demo"] = [{"t": f"{int(c['start']) // 60}:{int(c['start']) % 60:02d}", "text": c[lang]} for c in DEMO]
                 ctx.update(t=T, s=figures(snap, lang), shots=shots[lang], title=T["title"], desc=T["desc"], jsonld=jsonld_advisors(lang, T))
             else:
                 T = PORTFOLIO[lang]

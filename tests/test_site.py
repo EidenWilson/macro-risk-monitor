@@ -110,6 +110,17 @@ def test_pages(browser, base):
                     check(len(imgs) == 3 and all(i["w"] > 0 and len(i["alt"]) > 40 and i["aw"] and i["ah"] and i["src"].endswith(f"-{lang}.webp") for i in imgs),
                           f"{path}: three screenshots of the tool in its language, loaded, with alt text and size")
                     check(all(i["w"] >= 2 * i["aw"] - 2 for i in imgs), f"{path}: screenshots at twice their size for sharp screens")
+                    v = pg.evaluate("""() => { const v = document.querySelector('#demo video'), s = v && v.querySelector('source');
+                        return v && {src: s.getAttribute('src'), poster: v.getAttribute('poster'), muted: v.muted, label: v.getAttribute('aria-label') || '',
+                          lines: [...document.querySelectorAll('#demo .transcript li')].map(l => l.textContent.trim()),
+                          cta: document.querySelector('.hero .actions a[href="#demo"]') !== null}; }""")
+                    files = [(base + path + v["src"]) if v else "", (base + path + v["poster"]) if v else ""]
+                    sizes = [pg.request.get(f).body().__len__() if f else 0 for f in files]
+                    check(v and v["src"].endswith(f"demo-{lang}.mp4") and v["poster"].endswith(f"demo-{lang}.jpg") and v["muted"] and v["cta"] and len(v["label"]) > 40,
+                          f"{path}: the 60-second demo in its language, linked from the hero ({v and v['src']})")
+                    check(sizes[0] > 1_000_000 and sizes[1] > 20_000, f"{path}: the video and its poster are there ({sizes})")
+                    check(v and len(v["lines"]) == 10 and all(len(l) > 20 for l in v["lines"]) and (lang == "en") == ("One answer first" in v["lines"][0]),
+                          f"{path}: the subtitles as text, in the page's language ({v and v['lines'][:1]})")
             check(not pg.errors, f"{path} at {width}px: no console errors {pg.errors[:2]}")
             pg.close()
     # Compared with the built tool, not with fixed numbers: the scheduled refresh runs these checks on each month's new

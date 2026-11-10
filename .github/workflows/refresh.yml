@@ -66,6 +66,9 @@ jobs:
       - name: Pages around the tool (their example figures come from the freshly built page)
         if: steps.new.outputs.page == 'true'
         run: python site/build_site.py
+      - name: Link preview and README screenshot (the example restaurant's figures, from the new build)
+        if: steps.new.outputs.page == 'true'
+        run: python assets/og_image.py
       - name: Tests on the new build (the refresh used to publish without running them)
         if: steps.new.outputs.page == 'true'
         run: |
@@ -81,7 +84,7 @@ jobs:
         run: |
           git config user.name "macro-risk-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add docs/ alerts/last.json data/vintages.csv
+          git add docs/ alerts/last.json data/vintages.csv assets/screenshot.png
           git diff --cached --quiet || git commit -m "Data refresh $(date -u +%Y-%m-%d)"
           git pull --rebase --autostash
           git push

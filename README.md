@@ -4,7 +4,9 @@
 
 **Live:** [the risk check](https://eidenwilson.github.io/macro-risk-monitor/), [the Business plan with the AI assistant](https://eidenwilson.github.io/macro-risk-monitor/?plan=business), [the page for tax advisors and banks](https://eidenwilson.github.io/macro-risk-monitor/advisors/) and [the portfolio stress test](https://eidenwilson.github.io/macro-risk-monitor/portfolio/)
 
-![The page for the example restaurant: in a bad year the economy could take €44,300 of its €72,000 profit, with the biggest risks, the cash outlook and the economy below](assets/screenshot.png)
+![The page for the example restaurant: in a bad year the economy could take €44,200 of its €72,000 profit, with the biggest risks, the cash outlook and the economy below](assets/screenshot.png)
+
+**60-second demo** (silent, with subtitles): [English](https://eidenwilson.github.io/macro-risk-monitor/assets/video/demo-en.mp4) · [Deutsch](https://eidenwilson.github.io/macro-risk-monitor/assets/video/demo-de.mp4), also on [the advisors page](https://eidenwilson.github.io/macro-risk-monitor/advisors/#demo) with the subtitles as text.
 
 A risk tool for German small and mid-sized businesses (Mittelstand). It turns live macro data into one question an owner can act on: **how much of next year's profit could the economy take, and what is protection worth?**
 

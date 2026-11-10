@@ -5,7 +5,7 @@
     <div>
       <h1>{{ t.h1 }}</h1>
       <p class="lead">{{ t.lead }}</p>
-      <div class="actions"><a class="btn primary" href="{{ tool_business }}">{{ t.cta }}</a><a href="#how">{{ t.cta2 }}</a></div>
+      <div class="actions"><a class="btn primary" href="{{ tool_business }}">{{ t.cta }}</a><a href="#demo">{{ t.cta2 }}</a></div>
     </div>
     <div>
       <figure class="exhibit" style="margin:0">
@@ -25,6 +25,21 @@
         <ul class="rank">{% for e in s.ranked %}<li><span>{{ e.name }}</span><i style="width:{{ e.w }}%"{% if e.over %} class="over"{% endif %}></i><b{% if e.over %} class="over-b"{% endif %}>{{ e.share }}</b></li>{% endfor %}</ul>
       </figure>
     </div>
+  </div>
+</section>
+
+<section class="sec" id="demo" aria-labelledby="h-demo">
+  <div class="wrap">
+    <div class="head"><h2 id="h-demo">{{ t.demo_h }}</h2><p>{{ t.demo_p }}</p></div>
+    <figure class="video">
+      <video controls muted playsinline preload="none" width="1920" height="1080" poster="{{ root }}assets/video/demo-{{ lang }}.jpg" aria-label="{{ t.demo_label }}">
+        <source src="{{ root }}assets/video/demo-{{ lang }}.mp4" type="video/mp4">
+      </video>
+      <figcaption>{{ t.demo_cap }}</figcaption>
+    </figure>
+    <details class="transcript"><summary>{{ t.demo_text }}</summary>
+      <ol>{% for c in demo %}<li><span class="t">{{ c.t }}</span> {{ c.text }}</li>{% endfor %}</ol>
+    </details>
   </div>
 </section>
 

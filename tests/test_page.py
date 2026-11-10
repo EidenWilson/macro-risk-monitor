@@ -6,7 +6,7 @@
 No network access is needed: the assistant server and Claude are replaced by fakes, so these checks cover the
 page's side of the conversation (tool loop, privacy, apply and undo, errors), not the quality of a model's answers.
 """
-import functools, http.server, itertools, json, pathlib, sys, threading
+import functools, http.server, itertools, json, math, pathlib, sys, threading
 from playwright.sync_api import sync_playwright
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent / "docs"
@@ -548,6 +548,144 @@ def test_pdf_charts(browser, base):
     pg.close()
 
 
+def est_2026(x):
+    """§ 32a (1) EStG 2026, written again here so the page's version is checked against a second one."""
+    x = math.floor(max(0, x))
+    if x <= 12348:
+        tax = 0
+    elif x <= 17799:
+        y = (x - 12348) / 10000
+        tax = (914.51 * y + 1400) * y
+    elif x <= 69878:
+        z = (x - 17799) / 10000
+        tax = (173.10 * z + 2397) * z + 1034.87
+    elif x <= 277825:
+        tax = 0.42 * x - 11135.63
+    else:
+        tax = 0.45 * x - 19470.38
+    return math.floor(tax)
+
+
+def tax_ref(v, loss, euribor):
+    """The after-tax figures from the rules: income tax with splitting, solidarity surcharge (exemption limit and
+    11.9% phase-in), trade tax (€24,500 allowance for people, add-backs above €200,000, 3.5%, Hebesatz) with the
+    § 35 EStG credit (4 x the base amount, capped by the trade tax and by the income tax on business income),
+    corporation tax 15% plus 5.5% surcharge, and a loss carried back to two normal years."""
+    rate = max(0.0, euribor) if v.get("floor", True) else euribor
+    interest = max(0.0, v["loan"] * (rate + v["spread"]) / 100)
+    joint, form = bool(v["joint"]) and v["taxForm"] != "gmbh", v["taxForm"]
+    partner = v["partner"] if joint else 0
+
+    def trade(profit, allowance):
+        added = 0.25 * max(0.0, interest + 0.5 * v["rent"] - 200000)
+        base = max(0, math.floor(max(0.0, profit + added) / 100) * 100 - allowance)
+        return 0.035 * base, 0.035 * base * v["hebesatz"] / 100
+
+    def year(biz, carry=0.0):
+        if form == "gmbh":
+            kst = 0.15 * max(0.0, biz - carry)
+            return kst * 1.055 + trade(biz, 0)[1], biz, max(0.0, biz)
+        income = biz + partner
+        zve = max(0.0, income - carry - v["ded"])
+        est = 2 * est_2026(math.floor(zve / 2)) if joint else est_2026(zve)
+        gew = 0.0
+        if form == "trade":
+            mess, gew = trade(biz, 24500)
+            share = max(0.0, biz) / (max(0.0, biz) + partner) if biz > 0 else 0.0
+            est -= min(4 * mess, gew, est * share)
+        limit = 40700 if joint else 20350
+        soli = 0.0 if est <= limit else min(0.055 * est, 0.119 * (est - limit))
+        return est + soli + gew, income, zve
+
+    biz0 = v["ebit"] - interest
+    normal, _, zve0 = year(biz0)
+    bad, income1, _ = year(biz0 - loss)
+    cushion = max(0.0, normal - bad)
+    lost, back, cap = max(0.0, -income1), 0.0, 2e6 if joint else 1e6
+    floor = 0 if form == "gmbh" else (2 if joint else 1) * 12348
+    for _ in range(2):
+        c = min(lost, max(0.0, zve0 - floor), cap)
+        if c <= 0:
+            break
+        back += normal - year(biz0, c)[0]
+        lost -= c
+        cap -= c
+    return {"normal": normal, "bad": bad, "cushion": cushion, "back": back}
+
+
+def test_tax(browser, base):
+    print("the bad year after tax (10 Nov 2026)")
+    pg = page_with(browser, f"{base}?plan=pro&lang=en")
+    anchors = pg.evaluate("""() => ({e30: estBase(30000), e75: estBase(75000), e90: estBase(90000), split60: estOf(60000, true), soli90: soliOf(26664, false),
+      gew60: tradeTax({rent:0, hebesatz:400}, 60000, 0, 24500), gmbh100: taxYear({taxForm:'gmbh', rent:0, hebesatz:400}, 100000, 0).total})""")
+    check(anchors["e30"] == 4217 and anchors["e75"] == 20364 and anchors["e90"] == 26664 and anchors["split60"] == 8434,
+          f"income tax 2026 matches published examples (30,000: 4,217; 75,000: 20,364; 90,000: 26,664; couple on 60,000: 8,434) {anchors}")
+    check(abs(anchors["soli90"] - 751.37) < 0.01, f"solidarity surcharge in its phase-in zone: 751.37 on 26,664 ({anchors['soli90']:.2f})")
+    check(abs(anchors["gew60"]["mess"] - 1242.5) < 0.01 and abs(anchors["gew60"]["tax"] - 4970) < 0.01, f"trade tax on 60,000 at 400%: base 1,242.50, tax 4,970 {anchors['gew60']}")
+    check(abs(anchors["gmbh100"] - 29825) < 0.01, f"a GmbH on 100,000 at 400% pays 29,825 (15% + 5.5% surcharge + 14% trade tax): {anchors['gmbh100']:.2f}")
+    euribor = pg.evaluate("D.current.euribor")
+    cases = [
+        ("restaurant", {}, None),
+        ("restaurant", {"taxForm": "free", "loan": 0, "ebit": 45000}, 20000),
+        ("restaurant", {"taxForm": "free", "loan": 0, "ebit": 45000}, 60000),
+        ("restaurant", {"taxForm": "free", "loan": 0, "ebit": 45000, "joint": True, "partner": 50000}, 60000),
+        ("restaurant", {"taxForm": "trade", "ebit": 120000, "joint": True, "partner": 30000, "ded": 9000, "hebesatz": 410}, 50000),
+        ("restaurant", {"taxForm": "trade", "ebit": 400000, "hebesatz": 470}, 90000),
+        ("restaurant", {"taxForm": "free", "loan": 0, "ebit": 100000}, 30000),
+        ("restaurant", {"taxForm": "trade", "ebit": 60000, "joint": True, "partner": 0}, 90000),
+        ("metal", {}, None),
+        ("metal", {"ebit": 120000}, 250000),
+        ("print", {"rent": 900000}, 40000),
+    ]
+    worst = 0.0
+    for preset, extra, loss in cases:
+        got = pg.evaluate("""([p, extra, loss]) => { const v = {...PRESETS[p], ...extra}, l = loss ?? Math.max(0, -headline(v).p5), x = afterTax(v, l);
+          return {v, loss: l, normal: x.n.total, bad: x.b.total, cushion: x.cushion, back: x.back}; }""", [preset, extra, loss])
+        want = tax_ref(got["v"], got["loss"], euribor)
+        diff = max(abs(got[k] - want[k]) for k in ("normal", "bad", "cushion", "back"))
+        worst = max(worst, diff)
+        check(diff < 1, f"{preset} {extra or 'as is'}: page and the rules agree to the euro (tax {got['normal']:.0f} to {got['bad']:.0f}, back {got['back']:.0f}; off by {diff:.2f})")
+    v = pg.evaluate("""() => { const x = LAST.tax, lost = rnd(x.loss), lower = rnd(x.cushion), back = rnd(x.back);
+      const rows = [...$('taxLedger').querySelectorAll('tbody td')].map(td => parseNum(td.textContent));
+      return {shown: !!$('taxLede').offsetParent, lede: $('taxLede').textContent, want: plain(t('taxLede', eurX(lost - lower - back), eurX(lost))),
+        rows, sum: lost - lower - back, levers: $('taxLevers').innerText, freed: eur(x.freed), heb: !$('hebesatz').closest('.field').hidden, joint: !$('joint').closest('label').hidden}; }""")
+    check(v["shown"] and v["lede"] == v["want"], f"the card leads with the bad year after tax ({v['lede']!r})")
+    check(v["rows"][0] + v["rows"][1] + (v["rows"][2] if len(v["rows"]) == 4 else 0) == v["rows"][-1] and v["rows"][-1] == -v["sum"], f"the statement adds up {v['rows']}")
+    check(v["freed"] in v["levers"] and "§ 37 (3) EStG" in v["levers"], "lowering the tax prepayments is the first lever, with its amount")
+    check(v["heb"] and v["joint"], "a sole trader sees the trade tax rate and the joint filing switch")
+    pg.select_option("#taxForm", "gmbh")
+    pg.wait_for_function("() => frame === 0 && LAST.tax.gmbh")
+    v = pg.evaluate("""() => ({form: V.taxForm, joint: $('joint').closest('label').hidden, ded: $('ded').closest('.field').hidden, note: $('taxNote2').textContent,
+      rows: [...$('taxTable').querySelectorAll('tbody td:first-child')].map(td => td.textContent)})""")
+    check(v["form"] == "gmbh" and v["joint"] and v["ded"] and "Corporation tax" in v["rows"] and "Income tax" not in v["rows"] and v["note"].startswith("Taxes the company pays"),
+          f"a GmbH shows company taxes only, without the household fields {v['rows']}")
+    pg.select_option("#taxForm", "free")
+    pg.wait_for_function("() => frame === 0 && !LAST.tax.gmbh")
+    before = pg.evaluate("LAST.tax.cushion")
+    pg.check("#joint")
+    pg.wait_for_function("() => frame === 0")
+    check(pg.evaluate("!$('partnerF').hidden"), "filing jointly shows the partner's income")
+    pg.fill("#partner", "60000")
+    pg.wait_for_function("() => frame === 0")
+    v = pg.evaluate("() => ({joint: V.joint, partner: V.partner, cushion: LAST.tax.cushion, heb: $('hebesatz').closest('.field').hidden, saved: JSON.parse(localStorage.getItem('mrm3')).values.partner})")
+    check(v["joint"] and v["partner"] == 60000 and v["heb"] and abs(v["cushion"] - before) > 50 and v["saved"] == 60000,
+          f"a freelancer has no trade tax rate; a partner's income changes the result and is saved ({before:.0f} to {v['cushion']:.0f})")
+    rep = pg.evaluate("""() => { const f = withLang('en', () => reportContent({...V})).ops, c = withLang('en', () => chartContent({...V}, false)).ops;
+      return {f: f.some(o => o[0] === 'h' && o[1] === 'After tax'), c: c.some(o => o[0] === 'h' && o[1] === 'After tax'), ctx: !!assistantContext().after_tax,
+        fact: assistantContext().key_facts.some(x => x.startsWith('After tax'))}; }""")
+    check(rep["f"] and rep["c"], "both PDF reports have an After tax section")
+    check(rep["ctx"] and rep["fact"], "the assistant gets the after-tax figures")
+    check(not pg.errors, f"no console errors {pg.errors[:3]}")
+    pg.close()
+    pg = page_with(browser, f"{base}?plan=pro&lang=de", width=390)
+    v = pg.evaluate("() => ({title: $('h-tax').textContent, opts: [...$('taxForm').options].map(o => o.textContent), wide: document.documentElement.scrollWidth})")
+    check(v["title"] == "Nach Steuern" and v["opts"][0].startswith("Freiberufler") and v["wide"] <= 390, f"German, on a phone: {v}")
+    pg.close()
+    pg = page_with(browser, f"{base}?lang=en")
+    check(not pg.locator("#h-tax").is_visible(), "Free: the after-tax card is a Pro feature")
+    pg.close()
+
+
 def test_csp(browser, base):
     """The Content-Security-Policy that build_page.py adds must not break anything a visitor does."""
     print("content security policy")
@@ -591,7 +729,7 @@ if __name__ == "__main__":
     base = serve()
     with sync_playwright() as p:
         browser = p.chromium.launch()
-        for t in (test_plans, test_tools, test_server_transport, test_claude_transport, test_languages, test_formats, test_pdf_language, test_alerts, test_counts, test_import, test_pool, test_sources, test_pdf_charts, test_csp):
+        for t in (test_plans, test_tools, test_server_transport, test_claude_transport, test_languages, test_formats, test_pdf_language, test_alerts, test_counts, test_import, test_pool, test_sources, test_pdf_charts, test_tax, test_csp):
             t(browser, base)
         browser.close()
     print(f"\n{len(failures)} failed" if failures else "\nall checks passed")

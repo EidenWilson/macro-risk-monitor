@@ -250,6 +250,30 @@ tr:last-child td{border-bottom:0}
 .hedge-row small{display:block;color:var(--muted);font-size:14px;margin-inline-start:24px}
 .verdict{font-weight:700;font-size:14px;white-space:nowrap}
 .v-good{color:var(--ink)} .v-meh{color:var(--muted)} .v-bad{color:var(--loss)}
+/* after tax: the household's own tax figures on the form tint, then the bad year as a statement and the two cash levers */
+.taxin{background:var(--sunk);padding:14px 18px 4px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 28px;margin-bottom:20px}
+.taxin [hidden]{display:none!important}
+.taxin .field>.small{grid-column:1/-1;margin:0}
+@media (max-width:640px){.taxin{grid-template-columns:minmax(0,1fr);padding:12px 14px 2px}}
+.taxlede{font-size:19px;font-weight:700;line-height:1.3;margin:0 0 14px;max-width:44ch;text-wrap:balance}
+.taxlede .num{white-space:nowrap}
+.taxout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:20px 40px;align-items:start}
+.taxout[hidden]{display:none}
+.taxout .ledger{order:0;margin-top:0}   /* the hero's phone rules for its own ledger do not apply here */
+@media (max-width:760px){.taxout{grid-template-columns:minmax(0,1fr)}}
+.levers{display:flex;flex-direction:column;gap:14px}
+.lever{border-top:1px solid var(--line);padding-top:10px}
+.lever:first-child{border-top:0;padding-top:0}
+.lever h3{font-size:14.5px;font-weight:600;color:var(--muted);margin:0}
+.lever b{display:block;font-size:23px;font-weight:700;line-height:1.25}
+.lever p{margin:3px 0 0;font-size:14.5px;line-height:1.45}
+.taxnote2{margin:14px 0 0}
+.taxhow{margin-top:14px}
+.taxhow table{font-size:14.5px;max-width:560px;color:var(--ink)}
+.taxhow td{padding:6px 8px}
+.taxhow tr.sum td{font-weight:700;border-top:1px solid var(--ink)}
+.taxhow p{margin:8px 0 0}
+.taxfoot{margin:12px 0 0;max-width:80ch}
 
 .dist{display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:20px;align-items:center}
 @media (max-width:720px){.dist{grid-template-columns:minmax(0,1fr)}}
@@ -575,6 +599,26 @@ svg.chart{width:100%;height:auto}
       <div class="callout" id="hedgeCallout"></div>
     </section>
 
+    <section class="card tax" aria-labelledby="h-tax" data-need="pro">
+      <h2 id="h-tax" data-t="taxTitle">After tax</h2>
+      <p class="note" data-t="taxNote">A smaller profit also means less tax. Here is the bad year once tax is counted, under the general German rules for 2026.</p>
+      <div class="taxin" id="taxIn" role="group" aria-labelledby="h-tax">
+        <div class="field"><label for="taxForm" data-t="taxFormL">Legal form</label><select id="taxForm"></select></div>
+        <div class="field" data-tax="trade gmbh"><label for="hebesatz" data-t="taxHeb">Trade tax rate in your town (Hebesatz)</label><div class="range"><input type="range" id="hebesatz" min="200" max="600" step="5"><output id="hebesatzO"></output></div></div>
+        <label class="toggle" data-tax="free trade"><input type="checkbox" id="joint"> <span data-t="taxJoint">Married, filing jointly</span></label>
+        <div class="field" data-tax="free trade" id="partnerF"><label for="partner" data-t="taxPartner">Partner's taxable income</label><div class="money"><span>€</span><input id="partner" inputmode="numeric"></div></div>
+        <div class="field" data-tax="free trade"><label for="ded" data-t="taxDed">Personal deductions</label><div class="money"><span>€</span><input id="ded" inputmode="numeric"></div><p class="small" data-t="taxDedHint">Health and pension insurance and other amounts you deduct each year.</p></div>
+      </div>
+      <p class="taxlede" id="taxLede"></p>
+      <div class="taxout" id="taxOut">
+        <div class="ledger" id="taxLedger"></div>
+        <div class="levers" id="taxLevers"></div>
+      </div>
+      <p class="small taxnote2" id="taxNote2" hidden></p>
+      <details class="src-more taxhow"><summary data-t="taxHow">How this is worked out</summary><div class="scroll"><table id="taxTable"></table></div><p id="taxInt"></p></details>
+      <p class="small taxfoot" data-t="taxFoot">General rules for 2026: the income tax tariff, the solidarity surcharge, and trade tax with its credit against income tax. No church tax and no special cases. Not tax advice: check with your Steuerberater before you act.</p>
+    </section>
+
     <section class="card" aria-labelledby="h-reg">
       <div class="regime">
         <div class="scroll"><svg class="compass" id="compass" viewBox="0 0 300 300" role="img" aria-label="Regime compass" data-tl="svgCompass"></svg></div>
@@ -749,19 +793,20 @@ function toast(msg) { const el = $('toast'); el.textContent = msg; el.hidden = f
 
 /* ---------------- presets ---------------- */
 const BASE = {margin:65, beta:1, demandIdx:'foodserv', loanReset:0, floor:true, elecShare:60, fixedEnd:6, inputIdx:'food', indexed:true, rentMonth:6, mwShare:20, payMonth:4,
-  cash:30000, credit:20000, surplus:2000, fixPremium:0.4, energyPremium:8, fwdCost:0};
+  cash:30000, credit:20000, surplus:2000, fixPremium:0.4, energyPremium:8, fwdCost:0,
+  taxForm:'trade', joint:false, partner:0, ded:0, hebesatz:410};   // trade tax: the 2025 average of all German towns (Destatis)
 const PRESETS = {
-  restaurant:{rev:900000, ebit:72000, margin:65, beta:1.2, demandIdx:'foodserv', loan:250000, spread:2.5, energy:48000, elecShare:60, fixed:50, fixedEnd:5, food:270000, pass:50, inputIdx:'food', rent:84000, indexed:true, rentMonth:4, payroll:330000, mwShare:40, payMonth:4, usd:20000, fuel:6000, cash:35000, credit:25000, surplus:2500},
+  restaurant:{rev:900000, ebit:72000, margin:65, beta:1.2, demandIdx:'foodserv', loan:250000, spread:2.5, energy:48000, elecShare:60, fixed:50, fixedEnd:5, food:270000, pass:50, inputIdx:'food', rent:84000, indexed:true, rentMonth:4, payroll:330000, mwShare:40, payMonth:4, usd:20000, fuel:6000, cash:35000, credit:25000, surplus:2500, hebesatz:490},   // Munich
   bakery:{rev:620000, ebit:46000, margin:60, beta:0.6, demandIdx:'retail', loan:180000, spread:2.8, energy:64000, elecShare:70, fixed:30, fixedEnd:3, food:190000, pass:40, inputIdx:'food', rent:48000, indexed:true, rentMonth:7, payroll:230000, mwShare:50, payMonth:1, usd:0, fuel:9000, cash:22000, credit:20000, surplus:1500},
   foodtruck:{rev:210000, ebit:38000, margin:65, beta:1.2, demandIdx:'foodserv', loan:45000, spread:3.5, energy:7000, elecShare:30, fixed:0, fixedEnd:0, food:70000, pass:60, inputIdx:'food', rent:6000, indexed:false, rentMonth:12, payroll:50000, mwShare:80, payMonth:1, usd:0, fuel:12000, cash:8000, credit:5000, surplus:900},
-  importer:{rev:1400000, ebit:110000, margin:35, beta:0.8, demandIdx:'retail', loan:300000, spread:2.2, energy:9000, elecShare:100, fixed:100, fixedEnd:12, food:0, pass:0, inputIdx:'cpi', rent:36000, indexed:true, rentMonth:10, payroll:260000, mwShare:10, payMonth:4, usd:520000, fuel:38000, cash:60000, credit:50000, surplus:4000},
-  metal:{rev:3200000, ebit:210000, margin:45, beta:0.5, demandIdx:'ip', loan:900000, spread:2.0, energy:180000, elecShare:80, fixed:60, fixedEnd:6, food:1100000, pass:50, inputIdx:'ppi_metal', rent:120000, indexed:false, rentMonth:12, payroll:1050000, mwShare:5, payMonth:5, usd:60000, fuel:25000, cash:150000, credit:200000, surplus:9000},
-  print:{rev:1500000, ebit:95000, margin:50, beta:0.6, demandIdx:'ip', loan:400000, spread:2.4, energy:70000, elecShare:85, fixed:40, fixedEnd:4, food:420000, pass:40, inputIdx:'ppi_paper', rent:60000, indexed:true, rentMonth:3, payroll:560000, mwShare:10, payMonth:7, usd:0, fuel:15000, cash:70000, credit:80000, surplus:4500}
+  importer:{rev:1400000, ebit:110000, margin:35, beta:0.8, demandIdx:'retail', loan:300000, spread:2.2, energy:9000, elecShare:100, fixed:100, fixedEnd:12, food:0, pass:0, inputIdx:'cpi', rent:36000, indexed:true, rentMonth:10, payroll:260000, mwShare:10, payMonth:4, usd:520000, fuel:38000, cash:60000, credit:50000, surplus:4000, taxForm:'gmbh'},
+  metal:{rev:3200000, ebit:210000, margin:45, beta:0.5, demandIdx:'ip', loan:900000, spread:2.0, energy:180000, elecShare:80, fixed:60, fixedEnd:6, food:1100000, pass:50, inputIdx:'ppi_metal', rent:120000, indexed:false, rentMonth:12, payroll:1050000, mwShare:5, payMonth:5, usd:60000, fuel:25000, cash:150000, credit:200000, surplus:9000, taxForm:'gmbh'},
+  print:{rev:1500000, ebit:95000, margin:50, beta:0.6, demandIdx:'ip', loan:400000, spread:2.4, energy:70000, elecShare:85, fixed:40, fixedEnd:4, food:420000, pass:40, inputIdx:'ppi_paper', rent:60000, indexed:true, rentMonth:3, payroll:560000, mwShare:10, payMonth:7, usd:0, fuel:15000, cash:70000, credit:80000, surplus:4500, taxForm:'gmbh'}
 };
 Object.keys(PRESETS).forEach(k => PRESETS[k] = {...BASE, ...PRESETS[k]});
-const MONEY = ['rev','ebit','loan','energy','food','rent','payroll','usd','fuel','cash','credit','surplus'];
-const RANGES = {margin:v=>pc(+v), beta:v=>num(+v, 1)+'×', spread:v=>pc(+v, 1), loanReset:v=>t('months',+v), elecShare:v=>pc(+v), fixed:v=>pc(+v), fixedEnd:v=>t('months',+v), pass:v=>pc(+v), rentMonth:v=>t('inMonth',+v), mwShare:v=>pc(+v), payMonth:v=>t('inMonth',+v), fixPremium:v=>pc(+v, 2), energyPremium:v=>pc(+v), fwdCost:v=>pc(+v, 1), threshold:v=>pc(+v)};
-const SELECTS = ['demandIdx','inputIdx'], CHECKS = ['floor','indexed'];
+const MONEY = ['rev','ebit','loan','energy','food','rent','payroll','usd','fuel','cash','credit','surplus','partner','ded'];
+const RANGES = {margin:v=>pc(+v), beta:v=>num(+v, 1)+'×', spread:v=>pc(+v, 1), loanReset:v=>t('months',+v), elecShare:v=>pc(+v), fixed:v=>pc(+v), fixedEnd:v=>t('months',+v), pass:v=>pc(+v), rentMonth:v=>t('inMonth',+v), mwShare:v=>pc(+v), payMonth:v=>t('inMonth',+v), fixPremium:v=>pc(+v, 2), energyPremium:v=>pc(+v), fwdCost:v=>pc(+v, 1), hebesatz:v=>pc(+v), threshold:v=>pc(+v)};
+const SELECTS = ['demandIdx','inputIdx','taxForm'], CHECKS = ['floor','indexed','joint'];
 
 /* hedge cost defaults from market data where available */
 if (D.current.yc1 != null) BASE.fixPremium = Math.max(0, +(D.current.yc1 - D.current.euribor + 0.3).toFixed(2));
@@ -901,6 +946,7 @@ function fillSelects() {
   const dem = Object.entries(t('demandOpts')).filter(([k]) => k === 'none' || has(k));
   $('demandIdx').innerHTML = dem.map(([k, l]) => `<option value="${k}">${l}</option>`).join('');
   $('inputIdx').innerHTML = Object.entries(t('inputOpts')).map(([k, l]) => `<option value="${k}">${l}${has(k) || k === 'cpi' ? '' : ' *'}</option>`).join('');
+  $('taxForm').innerHTML = Object.entries(t('taxForms')).map(([k, l]) => `<option value="${k}">${l}</option>`).join('');
 }
 function fillForm() {
   MONEY.forEach(k => $(k).value = num(Math.round(V[k] || 0)));
@@ -950,6 +996,7 @@ function renderPresets() {
 }
 $('presets').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; state.preset = b.dataset.p; state.client = null; state.imported = false; V = {...PRESETS[state.preset]}; renderPresets(); fillForm(); update(); renderClients(); });
 $('form').addEventListener('input', () => { readForm(); scheduleUpdate(); count('own'); });
+$('taxIn').addEventListener('input', () => { readForm(); scheduleUpdate(); count('own'); });   // the tax figures sit in their own card
 $('threshold').addEventListener('input', () => { readForm(); scheduleUpdate(); renderClients(); });
 MONEY.forEach(k => $(k).addEventListener('blur', () => $(k).value = Math.round(V[k]).toLocaleString(loc())));
 $('form').addEventListener('submit', e => e.preventDefault());
@@ -1239,6 +1286,92 @@ function hedgeCard(v) {
   return rows;
 }
 $('hedgeTable').addEventListener('change', e => { const k = e.target.dataset.h; if (!k) return; state.hedges[k] = e.target.checked; update(); });
+
+/* ---------------- after tax ----------------
+   What the bad year costs once tax is counted, under the general German rules for 2026: the income tax tariff
+   (§ 32a EStG, splitting for couples filing jointly), the solidarity surcharge with its exemption limit and phase-in
+   (SolzG §§ 3, 4), trade tax with the €24,500 allowance and its credit against income tax (§ 35 EStG), and for a GmbH
+   corporation tax at 15% (§ 23 KStG) with the surcharge and trade tax. Loan interest at today's rate is deductible;
+   trade tax adds back a quarter of interest and half of the rent above €200,000 (§ 8 GewStG). A tax loss goes back
+   to the two years before (§ 10d EStG). No church tax and no special cases: the card says so and points to a
+   Steuerberater. tests/test_page.py checks the figures against a separate Python version of these rules and
+   against published examples. */
+function estBase(x) {                                                   // § 32a (1) EStG 2026, for taxable income x
+  x = Math.floor(Math.max(0, x));
+  const y = (x - 12348) / 1e4, z = (x - 17799) / 1e4;
+  return Math.floor(x <= 12348 ? 0 : x <= 17799 ? (914.51 * y + 1400) * y : x <= 69878 ? (173.10 * z + 2397) * z + 1034.87 : x <= 277825 ? .42 * x - 11135.63 : .45 * x - 19470.38);
+}
+const estOf = (x, joint) => joint ? 2 * estBase(Math.floor(Math.max(0, x) / 2)) : estBase(x);   // § 32a (5): twice the tax on half
+const soliOf = (e, joint) => { const f = joint ? 40700 : 20350; return e <= f ? 0 : Math.min(.055 * e, .119 * (e - f)); };
+function tradeTax(v, profit, interest, allowance) {                     // §§ 7, 8, 11, 16 GewStG
+  const add = .25 * Math.max(0, interest + .5 * (v.rent || 0) - 200000);
+  const base = Math.max(0, Math.floor(Math.max(0, profit + add) / 100) * 100 - allowance), mess = base * .035;
+  return {mess, tax:mess * v.hebesatz / 100};
+}
+// one year's tax on a business profit after interest. carry: a later year's loss set against this year
+function taxYear(v, biz, interest, carry = 0) {
+  if (v.taxForm === 'gmbh') {
+    const zve = Math.max(0, biz - carry), kst = .15 * zve, soli = .055 * kst, gew = tradeTax(v, biz, interest, 0).tax;   // trade tax has no carryback
+    return {zve, kst, soli, gew, total:kst + soli + gew, gde:biz};
+  }
+  const joint = !!v.joint, partner = joint ? Math.max(0, v.partner || 0) : 0, gde = biz + partner;   // a business loss first offsets the partner's income
+  const zve = Math.max(0, gde - carry - Math.max(0, v.ded || 0)), est0 = estOf(zve, joint);
+  let gew = 0, credit = 0;
+  if (v.taxForm === 'trade') {
+    const g = tradeTax(v, biz, interest, 24500), pos = Math.max(0, biz);
+    gew = g.tax; credit = Math.min(4 * g.mess, gew, pos > 0 ? est0 * pos / (pos + partner) : 0);   // § 35 (1) EStG and its two caps
+  }
+  const est = est0 - credit, soli = soliOf(est, joint);
+  return {zve, est0, credit, est, soli, gew, total:est + soli + gew, gde};
+}
+function afterTax(v, loss) {
+  const r = v.floor ? Math.max(0, D.current.euribor) : D.current.euribor, interest = Math.max(0, (v.loan || 0) * (r + v.spread) / 100);
+  const gmbh = v.taxForm === 'gmbh', biz0 = v.ebit - interest, biz1 = biz0 - loss;
+  const n = taxYear(v, biz0, interest), b = taxYear(v, biz1, interest), cushion = Math.max(0, n.total - b.total);
+  // prepayments cover the tax on the business: a partner's wage tax is withheld by their employer, so it is not in them
+  const withheld = gmbh || !v.joint ? 0 : taxYear(v, 0, 0).total;
+  const freed = clamp(n.total - withheld - Math.max(0, b.total - withheld), 0, cushion);
+  // a tax loss goes back to the two years before, taken as normal years, as far as it still lowers their tax; at most
+  // €1 million in all (€2 million filing jointly). What is left is carried forward
+  const lossAmt = Math.max(0, -b.gde), floorZ = gmbh ? 0 : (v.joint ? 2 : 1) * 12348;
+  let back = 0, left = lossAmt, cap = !gmbh && v.joint ? 2e6 : 1e6;
+  for (let y = 0; y < 2 && left > 0; y++) {
+    const c = Math.min(left, Math.max(0, n.zve - floorZ), cap); if (c <= 0) break;
+    back += n.total - taxYear(v, biz0, interest, c).total; left -= c; cap -= c;
+  }
+  return {gmbh, rate:r, interest, biz0, biz1, n, b, loss, cushion, freed, later:cushion - freed, lossAmt, back, after:loss - cushion - back};
+}
+// the bad year after tax in one sentence, for the card, the reports and the assistant's language
+const taxSentence = x => { const lost = rnd(x.loss), lower = rnd(x.cushion), back = rnd(x.back);
+  return lost <= 0 ? t('taxNone') : lower + back <= 0 ? t('taxZero') : t('taxLede', eurX(lost - lower - back), eurX(lost)); };
+const taxWho = v => t('taxForms')[v.taxForm] + (v.taxForm !== 'gmbh' && v.joint ? ' · ' + t('taxJoint') : '');
+function taxCard(v, p5) {
+  const x = afterTax(v, Math.max(0, -p5)), joint = !x.gmbh && !!v.joint;
+  document.querySelectorAll('#taxIn [data-tax]').forEach(el => { el.hidden = !el.dataset.tax.split(' ').includes(v.taxForm); });
+  $('partnerF').hidden = x.gmbh || !joint;
+  // the statement: rounded like the headline, so the column adds up
+  const lost = rnd(x.loss), lower = rnd(x.cushion), back = rnd(x.back), after = lost - lower - back;
+  $('taxLede').innerHTML = taxSentence(x);
+  $('taxOut').hidden = lost <= 0;
+  const row = (label, val, cls) => `<tr class="${cls}"><th scope="row">${label}</th><td>${num(val)}</td></tr>`;
+  $('taxLedger').innerHTML = `<table><thead><tr><td></td><th scope="col">€</th></tr></thead><tbody>` + row(t('taxBefore'), -lost, 'neg') + row(t('taxLower'), lower, '') +
+    (back ? row(t('taxBack'), back, '') : '') + row(t('taxAfter'), -after, after > 0 ? 'sum neg' : 'sum') + '</tbody></table>';
+  const lev = (title, big, text) => `<div class="lever"><h3>${title}</h3><b>${big}</b><p>${text}</p></div>`;
+  $('taxLevers').innerHTML =
+    (rnd(x.freed) > 0 ? lev(t('taxPrepT'), eur(x.freed), t('taxPrep', eur(x.freed), eur(x.freed / 4), v.taxForm !== 'free') + (rnd(x.later) > 0 ? ' ' + t('taxPrepRest', eur(x.later)) : '')) : lev(t('taxPrepT'), '–', t('taxPrepNone'))) +
+    (rnd(x.lossAmt) <= 0 ? lev(t('taxCarryT'), '–', t('taxCarryNo', eur(x.b.zve))) : back > 0 ? lev(t('taxCarryT'), eur(x.back), t('taxCarry', eur(x.lossAmt), eur(x.back))) : lev(t('taxCarryT'), '–', t('taxCarryFwd', eur(x.lossAmt))));
+  const note = x.gmbh ? t('taxCompany') : joint && x.biz1 < 0 && (v.partner || 0) > 0 ? t('taxJointNote') : '';
+  $('taxNote2').hidden = !note; $('taxNote2').textContent = note;
+  // how it is worked out: normal year against bad year, line by line
+  const R = t('taxRows'), C = t('taxCols'), n = x.n, b = x.b;
+  const lines = [['profit', x.biz0, x.biz1], ...(joint ? [['partner', v.partner || 0, v.partner || 0]] : []), ...(!x.gmbh && v.ded > 0 ? [['ded', -v.ded, -v.ded]] : []), ['zve', n.zve, b.zve],
+    ...(x.gmbh ? [['kst', n.kst, b.kst]] : [['est', n.est0, b.est0]]), ...(v.taxForm === 'trade' ? [['credit', -n.credit, -b.credit]] : []), ['soli', n.soli, b.soli],
+    ...(v.taxForm !== 'free' ? [['gew', n.gew, b.gew]] : []), ['total', n.total, b.total]];
+  $('taxTable').innerHTML = `<thead><tr><th></th>${C.map(c => `<th class="n">${c}</th>`).join('')}</tr></thead><tbody>` +
+    lines.map(([k, a, c]) => `<tr${k === 'total' ? ' class="sum"' : ''}><td>${x.gmbh && k === 'zve' ? R.zveCo : R[k]}</td><td class="n">${neur(a)}</td><td class="n">${neur(c)}</td><td class="n">${rnd(c) === rnd(a) ? '–' : seur(c - a)}</td></tr>`).join('') + '</tbody>';
+  $('taxInt').textContent = v.loan > 0 ? t('taxInt', eur(x.interest), pc(x.rate, 2), pc(v.spread, 1)) : '';
+  return x;
+}
 
 /* ---------------- distribution ---------------- */
 function distribution(v) {
@@ -1580,6 +1713,13 @@ function reportContent(v) {
   ops.push(['img', {...svgFor(clone), title:t('scen')[state.scen] || state.scen}]);
   head(R.hedges);
   LAST.hedges.forEach(r => row(t('hedges')[r.h.k][0], r.save > 1 ? `${t('hSave')} ${eur(r.save)}  ·  ${t('hNet')} ${r.net === null ? '-' : seur(r.net)}  ·  ${t(r.vk)}` : t('noEffect')));
+  const tx = LAST.tax;
+  if (tx && rnd(tx.loss) > 0) {
+    const lost = rnd(tx.loss), lower = rnd(tx.cushion), back = rnd(tx.back);
+    gap(); head(t('taxTitle')); para(plain(taxSentence(tx))); row(t('taxFormL'), taxWho(v));
+    row(t('taxBefore'), neur(-lost)); row(t('taxLower'), seur(lower)); if (back) row(t('taxBack'), seur(back)); row(t('taxAfter'), neur(-(lost - lower - back)));
+    row(t('taxPrepT'), rnd(tx.freed) > 0 ? eur(tx.freed) : '-'); para(t('taxFoot'), 8.5, [90, 100, 110]);
+  }
   const b = LAST.bt, why = btWords(b).why;
   gap(); head(t('btTitle')); para(`${t('btRate')}: ${pc(b.rate, 1)} (${b.x}/${b.n}). ${t('btExpect')}: ${pc(5)}. ${t('btTest')}: ${btVerdict(b)}.`); if (b.x && why) para(why, 9, [80, 90, 100]);
   gap(); head(R.method); para(`${t('foot1', month(D.current.asOf))} ${t('foot2')} ${t('foot3')}`, 8.5, [90, 100, 110]);
@@ -1602,6 +1742,13 @@ function chartContent(v, snap = true) {
   ops.push(['h', `${t('wfTitle')}: ${t('scen')[state.scen] || state.scen}`], ['img', sh.wf]);
   const hs = (LAST.hedges || []).filter(r => r.save > 1);
   if (hs.length) ops.push(['h', R.hedges], ['bars', hs.map(r => ({label:t('hedges')[r.h.k][0], value:r.save, text:`${t('hSave')} ${eur(r.save)}  ·  ${t('hNet')} ${r.net === null ? '-' : seur(r.net)}`}))]);
+  const tx = LAST.tax;
+  if (tx && rnd(tx.loss) > 0) {
+    const lost = rnd(tx.loss), lower = rnd(tx.cushion), back = rnd(tx.back), after = lost - lower - back;
+    ops.push(['h', t('taxTitle')], ['p', `${plain(taxSentence(tx))} (${taxWho(v)})`, 10],
+      ['bars', [{label:t('taxBefore'), value:-lost, text:neur(-lost)}, {label:t('taxLower'), value:lower, text:seur(lower)}, ...(back ? [{label:t('taxBack'), value:back, text:seur(back)}] : []), {label:t('taxAfter'), value:-after, text:neur(-after)}]],
+      ['p', `${t('taxPrepT')}: ${rnd(tx.freed) > 0 ? eur(tx.freed) : '-'}. ${t('taxFoot')}`, 8.5, muted]);
+  }
   const b = sh.btRes || LAST.bt;
   ops.push(['h', t('btTitle')], ['img', sh.bt], ['legend', sh.btLegend || []]);
   if (b) ops.push(['p', `${t('btRate')}: ${pc(b.rate, 1)} (${b.x}/${b.n}). ${t('btExpect')}: ${pc(5)}. ${t('btTest')}: ${btVerdict(b)}.`, 9, muted]);
@@ -1901,6 +2048,9 @@ function assistantContext() {
     `Already locked in for next year: ${E(c.known)} (minimum wage rise and indexed rent).`,
     !b ? 'No protection action saves more than it costs right now.' : b.kind === 'net' ? `Best protection after its cost: ${T.en.hedges[b.r.h.k][0].toLowerCase()}, which saves ${E(b.r.save)} in a bad year and ${E(b.r.net)} net of its cost.` :
       `${T.en.hedges[b.r.h.k][0]} saves ${E(b.r.save)} in a bad year; customers carry the cost.`];
+  const tx = LAST.tax, gm = v.taxForm === 'gmbh';
+  if (tx && h.p5 < 0) key_facts.push(`After tax (${withLang('en', () => taxWho(v))}): the bad year costs about ${E(tx.after)} instead of ${E(tx.loss)}, because ${gm ? "the company's" : 'the'} tax falls by ${E(tx.cushion)}` +
+    `${r100(tx.back) > 0 ? ` and ${E(tx.back)} comes back from the two years before (loss carryback)` : ''}. Lowering the quarterly tax prepayments would keep ${E(tx.freed)} a year in the account. General 2026 rules, not tax advice.`);
   const ctx = {
     key_facts, page_language:meta().en, data_through:cur.asOf, business,
     risk:{this_year_profit:r100(v.ebit), bad_year_profit_change:r100(h.p5), profit_in_bad_year:r100(v.ebit + h.p5), typical_year_profit_change:r100(h.p50), profit_in_typical_year:r100(v.ebit + h.p50),
@@ -1917,6 +2067,10 @@ function assistantContext() {
     protection:(LAST.hedges || []).map(r => ({action:T.en.hedges[r.h.k][0], bad_year_saving:r100(r.save), yearly_cost:r.cost === null ? 'carried by customers' : r100(r.cost), net_value:r.net === null ? null : r100(r.net), verdict:T.en[r.vk]})),
     saved_clients:clients.length
   };
+  if (tx) ctx.after_tax = {legal_form:T.en.taxForms[v.taxForm], filing_jointly:!gm && !!v.joint, partner_taxable_income:!gm && v.joint ? v.partner : null, personal_deductions:gm ? null : v.ded,
+    trade_tax_rate_pct:v.taxForm === 'free' ? null : v.hebesatz, loan_interest_per_year:r100(tx.interest), tax_in_normal_year:r100(tx.n.total), tax_in_bad_year:r100(tx.b.total),
+    tax_falls_by:r100(tx.cushion), refund_from_loss_carryback:r100(tx.back), bad_year_after_tax:r100(tx.after), lower_prepayments_by_per_year:r100(tx.freed),
+    rules:'General German rules for 2026: income tax tariff with splitting for couples filing jointly, solidarity surcharge, trade tax with its § 35 EStG credit, corporation tax for a GmbH, loss carryback to two years. No church tax. Not tax advice.'};
   if (LAST.bt && LAST.bt.n) ctx.track_record = {months_worse_than_forecast_pct:+LAST.bt.rate.toFixed(1), expected_pct:5, kupiec_test:LAST.bt.pval > .05 ? 'passes' : 'fails', p_value:+LAST.bt.pval.toFixed(3), where_misses_came_from:withLang('en', () => btWords(LAST.bt).top)};
   return ctx;
 }
@@ -2286,6 +2440,7 @@ function update() {
   const v = {...V};
   LAST.hero = hero(v);
   LAST.cash = cashCard(v); calendar(v); waterfall(v); LAST.hedges = hedgeCard(v); distribution(v);
+  LAST.tax = taxCard(v, LAST.hero.p5);
   LAST.drivers = tailDrivers(v);
   renderTiles(LAST.hero);
   if (chat.open) chatHeader();

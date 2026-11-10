@@ -47,7 +47,7 @@ table,output,.money input,.drv b,.callout b,.fact b,.stat b,.crow .risk,svg text
 .btn{font-size:15px;font-weight:600;line-height:1.25;padding:6px 13px;border-radius:3px;border:1px solid var(--muted);background:var(--bg);color:var(--ink);cursor:pointer;white-space:nowrap}
 .btn:hover:not(:disabled){border-color:var(--ink);background:var(--sunk)}
 .btn.primary{background:var(--ink);border-color:var(--ink);color:var(--bg)}
-.btn.primary:hover:not(:disabled){opacity:.85}
+.btn.primary:hover:not(:disabled),.btn.primary[aria-expanded=true]{background:var(--ink);opacity:.85}   /* keeps its ink: the plain .btn hover tint made its white text vanish */
 .btn:disabled{cursor:default;opacity:.55}
 /* language menu: a native select (keyboard, screen readers and phone pickers for free) laid over a small button */
 .langpick{position:relative;display:inline-flex;align-items:center;gap:5px;padding:6px 10px;border-radius:3px;border:1px solid var(--muted);background:var(--bg);color:var(--ink);font-size:14px;font-weight:700;white-space:nowrap;cursor:pointer}
@@ -143,6 +143,13 @@ html[data-plan=business] .tier{background:var(--ink);color:var(--bg)}
 .src-more[open] summary{margin-bottom:6px}
 .src-more p{margin:0 0 6px;max-width:100ch;line-height:1.45}
 .rel{scroll-margin-top:72px}
+/* the report menu under "Download report": figures or charts */
+.dl{position:relative;display:inline-flex}
+.dlmenu{position:absolute;top:calc(100% + 6px);inset-inline-end:0;z-index:20;display:flex;flex-direction:column;min-width:250px;background:var(--bg);border:1px solid var(--ink);padding:4px 0}
+.dlmenu[hidden]{display:none}
+.dlmenu button{all:unset;box-sizing:border-box;display:block;padding:10px 14px;font-size:15px;color:var(--ink);cursor:pointer;white-space:nowrap}
+.dlmenu button:hover,.dlmenu button:focus-visible{background:var(--sunk)}
+.dlmenu button:focus-visible{outline:2px solid var(--ink);outline-offset:-2px}
 @media (max-width:1040px){
   .tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
   .tile{border-inline-start:0;border-top:1px solid var(--line);padding-inline:0}
@@ -430,7 +437,7 @@ svg.chart{width:100%;height:auto}
     <span class="chip" id="asof"></span>
     <button type="button" class="btn planbtn" id="planBtn" aria-haspopup="dialog"><span class="tier" id="planTier">Free</span><span class="long" data-t="plansBtn">Plans</span></button>
     <button type="button" class="btn" id="openUpload" data-t="uploadBtn" data-need="pro">Import accounts</button>
-    <button type="button" class="btn primary" id="pdfBtn" data-need="pro"><span class="long" data-t="pdfBtn">Download report</span><span class="short"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14"/></svg><span class="sr" data-t="pdfShort">Report</span></span></button>
+    <span class="dl" data-need="pro"><button type="button" class="btn primary" id="pdfBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="pdfMenu"><span class="long" data-t="pdfBtn">Download report</span><span class="short"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14"/></svg><span class="sr" data-t="pdfShort">Report</span></span></button><span class="dlmenu" id="pdfMenu" role="menu" hidden><button type="button" role="menuitem" id="pdfFig" data-t="pdfFigures">Report with figures (PDF)</button><button type="button" role="menuitem" id="pdfCht" data-t="pdfCharts">Report with charts (PDF)</button></span></span>
     <label class="langpick" translate="no"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span id="langCode" aria-hidden="true">EN</span><select id="langSel" aria-label="Language"></select></label>
   </div>
 </div></header>
@@ -1509,13 +1516,58 @@ function loadJsPDF() {
 const PDF_OK = /^[ -~\u00a0-\u00ff€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ]$/;
 const pdfChar = c => { if (PDF_OK.test(c)) return c; const b = c.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); return {'ł':'l', 'Ł':'L', 'đ':'d', 'Đ':'D', 'ı':'i'}[c] || (PDF_OK.test(b) ? b : '?'); };
 const pdfText = x => [...String(x).replace(/[−‒]/g, '-').replace(/→/g, '->').replace(/←/g, '<-').replace(/[\u2007\u2009\u202f]/g, ' ').replace(/[\u200b-\u200f\u061c\u2066-\u2069]/g, '')].map(pdfChar).join('');
+const plain = h => h.replace(/<[^>]+>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+const reportName = () => state.client ? state.name : (state.imported ? t('imported') : t('presetNames')[state.preset]);
+const reportByline = name => `${t('report').business}: ${name}   ·   ${t('report').prepared}: ${new Date().toLocaleDateString(loc())}   ·   ${t('dataThrough', month(D.current.asOf))}`;
+// any CSS colour as [r, g, b], for the PDF
+const rgbOf = c => { const x = document.createElement('canvas').getContext('2d'); x.fillStyle = '#000'; x.fillStyle = c; const h = x.fillStyle;
+  return h.startsWith('#') ? [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)) : (h.match(/[\d.]+/g) || [0, 0, 0]).slice(0, 3).map(Number); };
+// a chart as the page draws it, as an SVG file at twice its size in the PDF's font, ready to rasterise
+function svgFor(el) {
+  const {width:w, height:h} = el.viewBox.baseVal, c = el.cloneNode(true);
+  c.setAttribute('xmlns', 'http://www.w3.org/2000/svg'); c.setAttribute('width', w * 2); c.setAttribute('height', h * 2); c.removeAttribute('class');
+  c.insertAdjacentHTML('afterbegin', `<rect width="${w}" height="${h}" fill="#ffffff"/>`);
+  const svg = new XMLSerializer().serializeToString(c).replace(/font-family:[^;"]*;?/g, '')
+    .replace(/(<svg[^>]*>)/, `$1<style>text{font-family:Arial,Helvetica,sans-serif;font-size:12px;fill:${css('--muted')}}</style>`);
+  return {svg, w, h};
+}
+async function raster(im) {
+  const img = new Image(); await new Promise((ok, no) => { img.onload = ok; img.onerror = no; img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(im.svg); });
+  const cv = document.createElement('canvas'); cv.width = im.w * 2; cv.height = im.h * 2;
+  const cx = cv.getContext('2d'); cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, cv.width, cv.height); cx.drawImage(img, 0, 0, cv.width, cv.height);
+  return cv.toDataURL('image/jpeg', .9);
+}
+// a chart legend from the page (coloured swatch + words; a lone bold word heads a group)
+function legendOf(el) {
+  return [...el.children].map(sp => {
+    if (sp.style.flexBasis === '100%') return {br:true};
+    const i = sp.querySelector('i'), text = sp.textContent.trim(); if (!text) return null;
+    if (!i) return {text, bold:true};
+    const st = i.getAttribute('style') || '', m = /var\((--[\w-]+)\)/.exec(st), op = parseFloat(i.style.opacity || '1');
+    return {text, color:rgbOf(m ? css(m[1]) : i.style.backgroundColor).map(c => Math.round(255 - (255 - c) * op)), round:st.includes('border-radius')};
+  }).filter(Boolean);
+}
+// The charts the page draws, taken at desktop width whatever the screen, in the language being written. The page is
+// redrawn as it was afterwards (restorePage), all before the browser paints, so nothing on screen moves.
+const SNAP = {cashChart:760, hist:760, bt:760, tl:760};   // one width, so every chart's text comes out the same size
+function snapCharts(v) {
+  const keep = {...CW}, out = {};
+  Object.keys(CW).forEach(k => delete CW[k]); Object.assign(CW, SNAP);
+  try {
+    cashCard(v); distribution(v); out.btRes = backtestCard(v); timeline();
+    for (const id of Object.keys(SNAP)) out[id] = svgFor($(id));
+    const wf = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); waterfall(v, wf, 760); out.wf = svgFor(wf);
+    out.cashLegend = legendOf($('cashLegend')); out.btLegend = legendOf($('btLegend')); out.tlLegend = legendOf($('tlleg'));
+  } finally { Object.keys(CW).forEach(k => delete CW[k]); Object.assign(CW, keep); }
+  return out;
+}
+const restorePage = () => { update(); if (!$('relBody').hidden) timeline(); };
 // everything the report says, as a list of steps, in the current language (makePdf picks the language)
 function reportContent(v) {
-  const R = t('report'), name = state.client ? state.name : (state.imported ? t('imported') : t('presetNames')[state.preset]), ops = [];
-  const plain = h => h.replace(/<[^>]+>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+  const R = t('report'), name = reportName(), ops = [];
   const head = x => ops.push(['h', x]), para = (x, size, color) => ops.push(['p', x, size, color]), row = (a, b) => ops.push(['row', a, b]), gap = () => ops.push(['gap']);
   ops.push(['title', t('pdfTitle')]);
-  para(`${R.business}: ${name}   ·   ${R.prepared}: ${new Date().toLocaleDateString(loc())}   ·   ${t('dataThrough', month(D.current.asOf))}`, 9, [90, 100, 110]); gap();
+  para(reportByline(name), 9, [90, 100, 110]); gap();
   head(R.summary); para(plain(headline(v).lede), 12);
   if (LAST.drivers && LAST.drivers.length && LAST.hero.p5 < 0) row(t('tRisk'), LAST.drivers.slice(0, 3).map(d => `${t('drvNames')[d.k]} ${pc(d.share * 100)}`).join('  ·  '));
   const cc = LAST.cash; row(t('lowest'), neur(cc.lowest)); row(t('runsOut'), cc.outIdx > 0 ? monthLong(addM(D.current.asOf, cc.outIdx)) : t('never'));
@@ -1525,49 +1577,131 @@ function reportContent(v) {
   gap(); head(R.scenarios);
   Object.keys(D.scenarios).forEach(k => { const sc = D.scenarios[k], m = Object.fromEntries(D.factors.map(f => [f, sc.moves[f] ?? 0])); const pr = project(hedged(v), m); row(`${t('scen')[k] || k} (${month(sc.from)} - ${month(sc.to)})`, seur(-pr.total - hedgeCost(v))); });
   const clone = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); waterfall(v, clone, 760);   // desktop layout on any screen
-  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg'); clone.setAttribute('width', 1520); clone.setAttribute('height', 620);
-  clone.insertAdjacentHTML('afterbegin', `<rect width="100%" height="100%" fill="#ffffff"/>`);
-  const svg = new XMLSerializer().serializeToString(clone).replace(/font-family:[^;"]*/g, '').replace(/(<svg[^>]*>)/, '$1<style>text{font-family:Arial,Helvetica,sans-serif;font-size:11px;fill:#5d6a87}</style>');
-  ops.push(['chart', t('scen')[state.scen] || state.scen]);
+  ops.push(['img', {...svgFor(clone), title:t('scen')[state.scen] || state.scen}]);
   head(R.hedges);
   LAST.hedges.forEach(r => row(t('hedges')[r.h.k][0], r.save > 1 ? `${t('hSave')} ${eur(r.save)}  ·  ${t('hNet')} ${r.net === null ? '-' : seur(r.net)}  ·  ${t(r.vk)}` : t('noEffect')));
   const b = LAST.bt, why = btWords(b).why;
   gap(); head(t('btTitle')); para(`${t('btRate')}: ${pc(b.rate, 1)} (${b.x}/${b.n}). ${t('btExpect')}: ${pc(5)}. ${t('btTest')}: ${btVerdict(b)}.`); if (b.x && why) para(why, 9, [80, 90, 100]);
   gap(); head(R.method); para(`${t('foot1', month(D.current.asOf))} ${t('foot2')} ${t('foot3')}`, 8.5, [90, 100, 110]);
-  return {ops, svg, name};
+  return {ops, name};
 }
-async function makePdf() {
+// The same answers as charts: those the page draws come from the page (snapCharts); the simple ones (the profit
+// statement, biggest risks, the five past shocks, protection) are drawn in the PDF itself. snap=false: words only (tests)
+function chartContent(v, snap = true) {
+  const R = t('report'), name = reportName(), ops = [], muted = [90, 100, 110];
+  const {o, p5, p50, loss, pos, lede} = headline(v), sh = snap ? snapCharts(v) : {};
+  ops.push(['title', t('pdfChartsTitle')], ['p', reportByline(name), 9, muted], ['gap'], ['p', plain(lede), 12]);
+  if (pos) ops.push(['statement', {ebit:v.ebit, lost:rnd(loss), labels:[t('ebit'), t('badYear'), t('keep')]}]);
+  const dr = tailDrivers(v).filter(d => d.share >= .005);
+  if (dr.length && p5 < 0) ops.push(['h', t('tRisk')], ['bars', dr.map(d => ({label:t('drvNames')[d.k], value:d.share, text:pc(d.share * 100), loss:true}))]);
+  ops.push(['h', t('distTitle')], ['img', sh.hist], ['p', `${t('badYear')} ${seur(p5)}   ·   ${t('typYear')} ${seur(p50)}   ·   ${t('good')} ${seur(o.q(.95))}`, 9, muted]);
+  ops.push(['h', t('cashTitle')], ['img', sh.cashChart], ['legend', sh.cashLegend || []]);
+  const sc = Object.keys(D.scenarios).map(k => { const s = D.scenarios[k], m = Object.fromEntries(D.factors.map(f => [f, s.moves[f] ?? 0])), x = -project(hedged(v), m).total - hedgeCost(v);
+    return {label:`${t('scen')[k] || k} (${month(s.from)} - ${month(s.to)})`, value:x, text:seur(x)}; });
+  ops.push(['h', R.scenarios], ['bars', sc]);
+  ops.push(['h', `${t('wfTitle')}: ${t('scen')[state.scen] || state.scen}`], ['img', sh.wf]);
+  const hs = (LAST.hedges || []).filter(r => r.save > 1);
+  if (hs.length) ops.push(['h', R.hedges], ['bars', hs.map(r => ({label:t('hedges')[r.h.k][0], value:r.save, text:`${t('hSave')} ${eur(r.save)}  ·  ${t('hNet')} ${r.net === null ? '-' : seur(r.net)}`}))]);
+  const b = sh.btRes || LAST.bt;
+  ops.push(['h', t('btTitle')], ['img', sh.bt], ['legend', sh.btLegend || []]);
+  if (b) ops.push(['p', `${t('btRate')}: ${pc(b.rate, 1)} (${b.x}/${b.n}). ${t('btExpect')}: ${pc(5)}. ${t('btTest')}: ${btVerdict(b)}.`, 9, muted]);
+  ops.push(['h', t('tlTitle')], ['img', sh.tl], ['legend', sh.tlLegend || []]);
+  ops.push(['gap'], ['h', R.method], ['p', `${t('foot1', month(D.current.asOf))} ${t('foot2')} ${t('foot3')}`, 8.5, muted]);
+  return {ops, name};
+}
+async function makePdf(kind = 'figures') {
   const dl = await window.claude?.use?.('downloads');
   try {
     const {jsPDF} = await loadJsPDF();
-    if (btDirty) runBacktest();
-    const lang = meta().pdf ? LANG : 'en', {ops, svg, name} = withLang(lang, () => reportContent({...V}));
-    let chart = null;
-    try {   // chart snapshot
-      const img = new Image(); await new Promise((ok, no) => { img.onload = ok; img.onerror = no; img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg); });
-      const cv = document.createElement('canvas'); cv.width = 1520; cv.height = 620; const cx = cv.getContext('2d'); cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, 1520, 620); cx.drawImage(img, 0, 0);
-      chart = cv.toDataURL('image/jpeg', .85);
-    } catch (e) {}
+    const charts = kind === 'charts', lang = meta().pdf ? LANG : 'en';
+    if (!charts && btDirty) runBacktest();
+    let rep;
+    try { rep = withLang(lang, () => charts ? chartContent({...V}) : reportContent({...V})); } finally { if (charts) restorePage(); }
+    const {ops, name} = rep;
+    for (const op of ops) if (op[0] === 'img' && op[1]) { try { op[1].data = await raster(op[1]); } catch (e) { op[1].data = null; } }
     const doc = new jsPDF({unit:'mm', format:'a4', compress:true});
-    let y = 18; const L = 16, W = 178;
-    const txt = (s, size = 10, bold = false, color = [20, 30, 40]) => { doc.setFont('helvetica', bold ? 'bold' : 'normal'); doc.setFontSize(size); doc.setTextColor(...color); const lines = doc.splitTextToSize(pdfText(s), W); if (y + lines.length * size * .45 > 285) { doc.addPage(); y = 18; } doc.text(lines, L, y); y += lines.length * size * .45 + 2; };
+    let y = 18; const L = 16, W = 178, IW = charts ? 162 : W, BOT = 285, INK = [31, 42, 58], MUTED = rgbOf(css('--muted')), LOSS = rgbOf(css('--loss'));
+    const room = h => { if (y + h > BOT) { doc.addPage(); y = 18; } };
+    const txt = (s, size = 10, bold = false, color = [20, 30, 40]) => { doc.setFont('helvetica', bold ? 'bold' : 'normal'); doc.setFontSize(size); doc.setTextColor(...color); const lines = doc.splitTextToSize(pdfText(s), W); if (y + lines.length * size * .45 > BOT) { doc.addPage(); y = 18; } doc.text(lines, L, y); y += lines.length * size * .45 + 2; };
     const row = (a, b) => { doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(60, 70, 80); doc.text(pdfText(a), L, y); doc.setTextColor(20, 30, 40); doc.setFont('helvetica', 'bold'); doc.text(pdfText(b), L + W, y, {align:'right'}); y += 6; if (y > 280) { doc.addPage(); y = 18; } };
-    for (const [k, a, b, c] of ops) {
+    // bars: label | bar (length by size, red for a loss) | value
+    const BLW = 64, barLines = it => { doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); return doc.splitTextToSize(pdfText(it.label), BLW - 3).slice(0, 2); };
+    const bars = items => {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5);
+      const tw = Math.max(...items.map(i => doc.getTextWidth(pdfText(i.text)))) + 3, bw = W - BLW - tw - 3, mx = Math.max(...items.map(i => Math.abs(i.value)), 1e-9);
+      for (const it of items) {
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5);
+        const lines = barLines(it), rh = Math.max(7, lines.length * 4.1 + 3), red = it.loss || it.value < 0;
+        room(rh); doc.setTextColor(...INK); doc.text(lines, L, y + 4.4);
+        doc.setFillColor(...(red ? LOSS : INK)); doc.rect(L + BLW, y + 1.6, Math.max(.6, Math.abs(it.value) / mx * bw), 4, 'F');
+        doc.setFont('helvetica', 'bold'); doc.setTextColor(...(it.value < 0 ? LOSS : INK)); doc.text(pdfText(it.text), L + W, y + 4.4, {align:'right'});
+        y += rh;
+      }
+      y += 3;
+    };
+    // the profit statement as one bar: what is left (ink) and the bad year (red)
+    const statement = ({ebit, lost, labels}) => {
+      room(31); const left = ebit - lost, lp = Math.round(lost / ebit * 100), kw = Math.max(0, Math.min(1, left / ebit)) * W;
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(...MUTED); doc.text(pdfText(`${labels[0]}: ${eurN(ebit)}`), L, y + 3); y += 5.5;
+      if (kw > 0) { doc.setFillColor(...INK); doc.rect(L, y, kw, 8, 'F'); }
+      if (kw < W) { doc.setFillColor(...LOSS); doc.rect(L + kw, y, W - kw, 8, 'F'); }
+      y += 13; doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
+      doc.setTextColor(...INK); doc.text(pdfText(`${labels[2]}: ${neur(left)} (${pc(100 - lp)})`), L, y);
+      doc.setTextColor(...LOSS); doc.text(pdfText(`${labels[1]}: ${seur(-lost)} (${pc(lp)})`), L + W, y, {align:'right'}); y += 8;
+    };
+    const legend = items => {
+      if (!items.length) return;
+      doc.setFontSize(8.5); let x = L; room(6);
+      for (const it of items) {
+        if (it.br) { if (x > L) { y += 5; x = L; } continue; }
+        doc.setFont('helvetica', it.bold ? 'bold' : 'normal');
+        const tw = doc.getTextWidth(pdfText(it.text));
+        if (x + (it.color ? 4.5 : 0) + tw > L + W) { y += 5; x = L; room(5); }
+        if (it.color) { doc.setFillColor(...it.color); if (it.round) doc.circle(x + 1.5, y + 1.6, 1.3, 'F'); else doc.rect(x, y + .2, 3, 3, 'F'); x += 4.5; }
+        doc.setTextColor(...(it.bold ? INK : MUTED)); doc.text(pdfText(it.text), x, y + 2.9); x += tw + 5;
+      }
+      y += 8;
+    };
+    // how much room a step takes, so a heading and its whole section stay on one page when they fit
+    const tall = op => { if (!op) return 0; const [k, a, b] = op;
+      if (k === 'p') { doc.setFont('helvetica', 'normal'); doc.setFontSize(b || 10); return doc.splitTextToSize(pdfText(a), W).length * (b || 10) * .45 + 2; }
+      if (k === 'img') return a && a.data ? IW * a.h / a.w + 5 : 0;
+      if (k === 'bars') return a.reduce((t, it) => t + Math.max(7, barLines(it).length * 4.1 + 3), 3);
+      if (k === 'legend') return a.length ? (1 + a.filter(x => x.br).length) * 5 + 3 : 0;
+      return k === 'statement' ? 31 : k === 'row' ? 6 : 2; };
+    const section = i => { let h = 0; for (let j = i + 1; j < ops.length && !['h', 'gap', 'title'].includes(ops[j][0]); j++) h += tall(ops[j]); return h; };
+    ops.forEach(([k, a, b, c], i) => {
       if (k === 'title') txt(a, 20, true);
-      else if (k === 'h') txt(a, 13, true);
+      else if (k === 'h') { room((charts ? 12 : 8) + Math.min(charts ? section(i) : tall(ops[i + 1]), 150)); if (charts) y += 4; txt(a, 13, true); }   // a heading stays with what follows
       else if (k === 'p') txt(a, b || 10, false, c);
       else if (k === 'row') row(a, b);
       else if (k === 'gap') y += 2;
-      else if (k === 'chart' && chart) { if (y + 75 > 285) { doc.addPage(); y = 18; } txt(a, 10, true); doc.addImage(chart, 'JPEG', L, y, W, W * 620 / 1520, undefined, 'FAST'); y += W * 620 / 1520 + 4; }
-    }
+      else if (k === 'bars') bars(a);
+      else if (k === 'statement') statement(a);
+      else if (k === 'legend') legend(a);
+      else if (k === 'img' && a && a.data) { const h = IW * a.h / a.w; room(h + (a.title ? 7 : 2)); if (a.title) txt(a.title, 10, true); doc.addImage(a.data, 'JPEG', L, y, IW, h, undefined, 'FAST'); y += h + 5; }
+    });
+    if (charts) { const n = doc.getNumberOfPages(); for (let p = 1; p <= n; p++) { doc.setPage(p); doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...MUTED); doc.text(`${p} / ${n}`, L + W, 292, {align:'right'}); } }
     const blob = doc.output('blob');
-    const fname = `macro-risk-report-${(name || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '') || 'business'}.pdf`;
+    const fname = `macro-risk-${charts ? 'charts' : 'report'}-${(name || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '') || 'business'}.pdf`;
     if (dl) await dl.save({filename:fname, data:blob}); else doc.save(fname);   // plain web hosting: normal browser download
     toast(lang === LANG ? t('pdfSaved') : t('pdfInEnglish'));
     count('pdf', false);
   } catch (e) { if (e && e.code === 'declined') return; toast(t('pdfFail')); }
 }
-$('pdfBtn').onclick = makePdf;
+// "Download report" opens a small menu: the report with figures, or with charts
+const dlMenu = $('pdfMenu');
+function dlOpen(open) { dlMenu.hidden = !open; $('pdfBtn').setAttribute('aria-expanded', open); if (open) dlMenu.querySelector('button').focus(); }
+$('pdfBtn').onclick = () => dlOpen(dlMenu.hidden);
+dlMenu.addEventListener('keydown', e => {
+  const items = [...dlMenu.querySelectorAll('button')], i = items.indexOf(document.activeElement);
+  if (e.key === 'Escape') { dlOpen(false); $('pdfBtn').focus(); }
+  else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length].focus(); }
+  else if (e.key === 'Tab') dlOpen(false);
+});
+document.addEventListener('click', e => { if (!dlMenu.hidden && !e.target.closest('.dl')) dlOpen(false); });
+$('pdfFig').onclick = () => { dlOpen(false); makePdf('figures'); };
+$('pdfCht').onclick = () => { dlOpen(false); makePdf('charts'); };
 $('forget').onclick = () => { try { ['mrm3', LOCAL_KEY, AC_KEY, SEEN_KEY].forEach(k => localStorage.removeItem(k)); } catch (e) {} used = false; location.reload(); };
 
 /* ---------------- since the last visit (Business) ----------------

@@ -278,9 +278,10 @@ def test_languages(browser, base):
           let x; try { x = String(v(n, '€44,300', '€72,000', '62%', '40%', '1.5%')); } catch (e) { out.push(path + k + ' throws ' + e.message); break; }
           if (/undefined|NaN|\\[object|null/.test(x)) { out.push(path + k + ': ' + x.slice(0, 80)); break; }
         } else if (v && typeof v === 'object' && !Array.isArray(v)) calls(v, path + k + '.', out); } return out; };
-      const lostInPdf = l => {                                    // report text the PDF fonts could not write
-        const {ops} = withLang(T[l]._.pdf ? l : 'en', () => reportContent({...V}));
-        return ops.flatMap(o => o.slice(1)).filter(x => typeof x === 'string' && pdfText(x).includes('?') && !x.includes('?')).slice(0, 2);
+      const lostInPdf = l => {                                    // report text the PDF fonts could not write, both reports
+        const lang = T[l]._.pdf ? l : 'en', words = ops => ops.flatMap(o => o[0] === 'bars' ? o[1].flatMap(i => [i.label, i.text]) : o[0] === 'statement' ? o[1].labels : o.slice(1));
+        const all = [...words(withLang(lang, () => reportContent({...V})).ops), ...words(withLang(lang, () => chartContent({...V}, false)).ops)];
+        return all.filter(x => typeof x === 'string' && pdfText(x).includes('?') && !x.includes('?')).slice(0, 2);
       };
       return {langs: LANGS, packs: Object.fromEntries(LANGS.map(l => [l, {diff: diff(T.en, T[l], '', []), bad: withLang(l, () => calls(T[l], '', [])), pdf: lostInPdf(l)}]))};
     }""")
@@ -349,7 +350,7 @@ def test_pdf_language(browser, base):
     init = "window.__saved = []; window.claude = {use: async n => n === 'downloads' ? {save: async f => { window.__saved.push(f.filename); }} : null};"
     for lang, english in (("fr", False), ("ru", True)):
         pg = page_with(browser, f"{base}?plan=pro&lang={lang}", init=init)
-        pg.click("#pdfBtn")
+        pg.click("#pdfBtn"); pg.click("#pdfFig")
         pg.wait_for_function("window.__saved.length > 0 || !document.getElementById('toast').hidden", timeout=15000)
         pg.wait_for_function("!document.getElementById('toast').hidden", timeout=15000)
         toast, want = pg.evaluate("[document.getElementById('toast').textContent, t(" + ("'pdfInEnglish'" if english else "'pdfSaved'") + ")]")
@@ -513,6 +514,40 @@ def test_sources(browser, base):
     pg.close()
 
 
+def test_pdf_charts(browser, base):
+    print("the report menu and the report with charts (10 Nov 2026)")
+    init = ("window.__saved = []; window.claude = {use: async n => n === 'downloads' ? {save: async f => { const s = await f.data.text();"
+            " window.__saved.push({name: f.filename, imgs: (s.match(/\\/Subtype \\/Image/g) || []).length, pages: (s.match(/\\/Type \\/Page[^s]/g) || []).length}); }} : null};")
+    pg = page_with(browser, f"{base}?plan=pro&lang=de", width=390, init=init)
+    before = pg.evaluate("() => $('cashChart').outerHTML + $('wf').outerHTML")
+    pg.click("#pdfBtn")
+    v = pg.evaluate("() => ({open: !$('pdfMenu').hidden, exp: $('pdfBtn').getAttribute('aria-expanded'), items: [...$('pdfMenu').querySelectorAll('[role=menuitem]')].map(b => b.textContent), focus: document.activeElement.id})")
+    check(v["open"] and v["exp"] == "true" and v["items"] == ["Bericht mit Zahlen (PDF)", "Bericht mit Grafiken (PDF)"] and v["focus"] == "pdfFig",
+          f"Download report opens a menu: figures or charts, the first one focused ({v})")
+    pg.keyboard.press("ArrowDown")
+    check(pg.evaluate("() => document.activeElement.id") == "pdfCht", "the arrow keys move through the menu")
+    pg.keyboard.press("Escape")
+    check(pg.evaluate("() => $('pdfMenu').hidden && $('pdfBtn').getAttribute('aria-expanded') === 'false' && document.activeElement.id === 'pdfBtn'"), "Escape closes it and returns to the button")
+    pg.click("#pdfBtn"); pg.click("#pdfCht")
+    pg.wait_for_function("window.__saved.length > 0", timeout=30000)
+    s = pg.evaluate("window.__saved[0]")
+    check(s["name"] == "macro-risk-charts-restaurant.pdf" and s["imgs"] >= 5 and s["pages"] >= 2, f"the charts report holds the page's charts ({s})")
+    check(pg.evaluate("() => $('cashChart').outerHTML + $('wf').outerHTML") == before, "the page's own charts are exactly as before (phone layout, German)")
+    check(pg.evaluate("() => $('toast').textContent === t('pdfSaved')"), "the toast says the report was saved")
+    check(not pg.errors, f"no console errors {pg.errors[:3]}")
+    pg.close()
+    pg = page_with(browser, f"{base}?plan=pro&lang=ru", init=init)
+    before = pg.evaluate("() => $('cashChart').outerHTML")
+    pg.click("#pdfBtn"); pg.click("#pdfCht")
+    pg.wait_for_function("window.__saved.length > 0", timeout=30000)
+    check(pg.evaluate("() => $('toast').textContent === t('pdfInEnglish')") and pg.evaluate("() => $('cashChart').outerHTML") == before,
+          "Russian: the charts report comes out in English and the page stays Russian")
+    pg.close()
+    pg = page_with(browser, f"{base}?lang=en")
+    check(not pg.locator("#pdfBtn").is_visible(), "Free: no report button")
+    pg.close()
+
+
 def test_csp(browser, base):
     """The Content-Security-Policy that build_page.py adds must not break anything a visitor does."""
     print("content security policy")
@@ -529,9 +564,14 @@ def test_csp(browser, base):
     check("script-src 'self' 'sha256-" in policy and "unsafe-inline" not in policy.split("style-src")[0],
           "the page has a policy that allows its own scripts by hash, not 'unsafe-inline'")
     pg.locator("#moreDetail > summary").click()
+    pg.click("#pdfBtn")
     with pg.expect_download(timeout=20000) as dl:                            # loads jsPDF from vendor/ (script-src 'self')
-        pg.click("#pdfBtn")
+        pg.click("#pdfFig")
     check(dl.value.suggested_filename.endswith(".pdf"), f"the PDF report still downloads ({dl.value.suggested_filename})")
+    pg.click("#pdfBtn")
+    with pg.expect_download(timeout=30000) as dl:                            # its charts are drawn through data: images
+        pg.click("#pdfCht")
+    check(dl.value.suggested_filename.startswith("macro-risk-charts-"), f"the charts report downloads under the policy too ({dl.value.suggested_filename})")
     if pg.locator("#chatInput").is_visible() or pg.locator("#askBtn").count():
         if not pg.locator("#chatInput").is_visible() and pg.locator("#askBtn").is_visible():
             pg.click("#askBtn")
@@ -551,7 +591,7 @@ if __name__ == "__main__":
     base = serve()
     with sync_playwright() as p:
         browser = p.chromium.launch()
-        for t in (test_plans, test_tools, test_server_transport, test_claude_transport, test_languages, test_formats, test_pdf_language, test_alerts, test_counts, test_import, test_pool, test_sources, test_csp):
+        for t in (test_plans, test_tools, test_server_transport, test_claude_transport, test_languages, test_formats, test_pdf_language, test_alerts, test_counts, test_import, test_pool, test_sources, test_pdf_charts, test_csp):
             t(browser, base)
         browser.close()
     print(f"\n{len(failures)} failed" if failures else "\nall checks passed")

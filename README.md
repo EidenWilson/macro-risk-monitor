@@ -16,7 +16,7 @@ Built by Eiden Wilson Neralaily (data and modelling) and Channappa (finance and 
 
 - **End-to-end data pipeline.** 21 series from the ECB, Eurostat and FRED, each shifted by its publication lag, stored in SQLite and checked for new releases every day by GitHub Actions, which keeps every value as first published and every later revision (`data/vintages.csv`) and opens an issue when the economic regime changes.
 - **Risk model.** Filtered historical simulation over 280+ past 12-month windows, with the current regime and a 4-state hidden Markov model as alternative views, and an out-of-sample backtest since 2008 (Kupiec test adjusted for overlapping windows).
-- **Product.** Answer first, Free, Pro and Business plans, DATEV import (SKR03 and SKR04), a PDF report, 13 languages (Arabic right to left), a phone layout, no cookies, and no third-party requests outside the Business assistant.
+- **Product.** Answer first, Free, Pro and Business plans, DATEV import (SKR03 and SKR04), a PDF report with figures or with charts, 13 languages (Arabic right to left), a phone layout, no cookies, and no third-party requests outside the Business assistant.
 - **AI assistant (Business).** An open model (Gemma 4) on Cloudflare Workers AI, on the free plan. It never computes numbers itself: it calls tools that run the page's own risk model. Client names never leave the browser, and a routing step plus a check of every euro amount keep it from inventing figures.
 - **Portfolio stress test.** Load a fund report's or a bank's holdings list (CSV, German or English formats): yields solved from prices and coupon dates, duration, convexity and the value of a basis point, then five stated scenarios and one of your own, split into rates, spreads, inflation, equities and gold, holding by holding. In the browser, nothing uploaded.
 - **Tested.** Server tests and browser checks (plans, phone layout, the assistant's tools and conversation loop, bond arithmetic against closed forms, the pages around the tool) run on every push.
@@ -41,7 +41,7 @@ Built by Eiden Wilson Neralaily (data and modelling) and Channappa (finance and 
 | Backtest | Out-of-sample check of the bad-year forecast since 2008 with a Kupiec test adjusted for overlapping windows, and which shocks the misses came from | Pro |
 | Statistical second opinion | A 4-state hidden Markov model on growth and inflation levels with filtered probabilities | Pro |
 | DATEV import | Reads a Summen- und Saldenliste (SKR03 or SKR04) in the browser and fills the exposures | Pro |
-| Report | One-page PDF for a bank or tax advisor meeting | Pro |
+| Report | PDF for a bank or tax advisor meeting: the figures, or the same answers as charts (risks, range of outcomes, cash, past shocks, protection, backtest, 20 years of phases) | Pro |
 | Advisor mode | Save many businesses and rank them by risk, with an alert threshold | Business |
 | Risk assistant | Chat that explains the results, runs what-ifs on the model, compares clients and drafts client notes | Business |
 | Since your last visit | When new data arrives: which saved businesses crossed the alert level or rose by 5 points or more, and a change of economic phase (remembered in the browser only) | Business |

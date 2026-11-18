@@ -1,11 +1,11 @@
 {
- "asOf": "2026-09",
+ "asOf": "2026-10",
  "since": "2026-05",
  "regime": "Stagflation",
  "euribor": 2.635,
- "hicp": 3.3,
- "energy": 13.4,
- "ip": 0.6,
+ "hicp": 2.9,
+ "energy": 10.9,
+ "ip": 0.9,
  "minWage": {
   "from": 13.9,
   "to": 14.6,
@@ -13,30 +13,36 @@
  },
  "examples": {
   "restaurant": {
-   "share": 58,
-   "loss": 41700
+   "share": 59,
+   "loss": 42300
   },
   "bakery": {
-   "share": 60,
+   "share": 59,
    "loss": 27400
   },
   "foodtruck": {
    "share": 37,
-   "loss": 13900
+   "loss": 14100
   },
   "importer": {
    "share": 44,
-   "loss": 48400
+   "loss": 48800
   },
   "metal": {
-   "share": 63,
-   "loss": 131800
+   "share": 62,
+   "loss": 130900
   },
   "print": {
-   "share": 71,
-   "loss": 67100
+   "share": 69,
+   "loss": 65500
   }
  },
+ "pool": "all",
+ "recent": [
+  "Stagflation",
+  "Stagflation",
+  "Stagflation"
+ ],
  "de": {
   "regimes": {
    "Recovery": "Erholung",
@@ -58,7 +64,7 @@
    "metal": "Metallbau",
    "print": "Druckerei"
   },
-  "month": "September 2026",
+  "month": "Oktober 2026",
   "since": "Mai 2026",
   "wageMonth": "Januar 2027"
  },
@@ -83,7 +89,7 @@
    "metal": "Metal workshop",
    "print": "Print shop"
   },
-  "month": "September 2026",
+  "month": "October 2026",
   "since": "May 2026",
   "wageMonth": "January 2027"
  }

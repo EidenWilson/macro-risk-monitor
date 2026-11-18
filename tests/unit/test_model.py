@@ -37,6 +37,7 @@ def test_every_factor_uses_a_fetched_series():
     fetched = set(macro_config.SERIES)
     for name, (sid, _) in build_data.FACTORS.items():
         assert sid in fetched, f"factor {name} reads {sid}, which the pipeline never downloads"
+    assert sorted(validate_data.ALL_FACTORS) == sorted(build_data.FACTORS)   # the gate knows every factor
 
 
 def test_min_wage_warning_fires_once_the_rise_is_in_force():
@@ -189,6 +190,13 @@ def test_gate_catches_unit_errors_and_broken_rows():
     errs = validate_data.check(D, today=_after(D, 1))
     joined = " | ".join(errs)
     assert "euribor" in joined and "wrong length" in joined and "Boom" in joined
+
+
+def test_gate_catches_a_missing_factor():
+    """10 Nov 2026: the gas price download failed and the build simply left the gas factor out."""
+    D = _good()
+    D["factors"] = [f for f in D["factors"] if f != "gas"]
+    assert any("factors missing: ['gas']" in e for e in validate_data.check(D, today=_after(D, 1)))
 
 
 def test_gate_catches_a_missing_scenario():

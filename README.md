@@ -16,7 +16,7 @@ Built by Eiden Wilson Neralaily (data and modelling) and Channappa (finance and 
 
 ## Highlights
 
-- **End-to-end data pipeline.** 21 series from the ECB, Eurostat and FRED, each shifted by its publication lag, stored in SQLite and checked for new releases every day by GitHub Actions, which keeps every value as first published and every later revision (`data/vintages.csv`) and opens an issue when the economic regime changes.
+- **End-to-end data pipeline.** 21 series from the ECB, Eurostat and FRED, each shifted by its publication lag, stored in SQLite and checked for new releases every day by GitHub Actions, which keeps every value as first published and every later revision (`data/vintages.csv`) and opens an issue when the economic regime changes. A series that fails to download keeps its last known values from that log, and a build missing any factor never goes live.
 - **Risk model.** Filtered historical simulation over 280+ past 12-month windows, with the current regime and a 4-state hidden Markov model as alternative views, and an out-of-sample backtest since 2008 (Kupiec test adjusted for overlapping windows).
 - **Product.** Answer first, Free, Pro and Business plans, the bad year after German tax (income tax with splitting, trade tax, GmbH), DATEV import (SKR03 and SKR04), a PDF report with figures or with charts, 13 languages (Arabic right to left), a phone layout, no cookies, and no third-party requests outside the Business assistant.
 - **AI assistant (Business).** An open model (Gemma 4) on Cloudflare Workers AI, on the free plan. It never computes numbers itself: it calls tools that run the page's own risk model. Client names never leave the browser, and a routing step plus a check of every euro amount keep it from inventing figures.
@@ -131,7 +131,7 @@ The portfolio test reads any CSV with a name or ISIN and a market value; holding
 ```bash
 pip install -r requirements-dev.txt -c constraints.txt   # the versions the model was tested with
 echo "FRED_API_KEY=your_key" > .env          # free key from fred.stlouisfed.org
-python pipeline.py --db macro.db --start 2000-01   # add --strict to stop when a critical series failed or is stale
+python pipeline.py --db macro.db --start 2000-01 --log data/vintages.csv   # --strict stops on a failed or stale critical series; --log lets any other failed series keep its last known values
 python vintage.py --db macro.db --log data/vintages.csv   # append what is new or revised since the last run
 python build_data.py --db macro.db --out docs/data.json
 python validate_data.py docs/data.json          # the gate the scheduled refresh runs before publishing

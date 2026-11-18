@@ -3,7 +3,7 @@ Macro data pipeline: ECB Data Portal + FRED -> SQLite, monthly and lag-aware.
 
 Usage:
     put FRED_API_KEY=your_key in a .env file next to this script (free at fred.stlouisfed.org)
-    python pipeline.py --db macro.db --start 2000-01
+    python pipeline.py --db macro.db --start 2000-01 [--log data/vintages.csv]
 
 Tables written:
     observations   long format, raw monthly values (upserted, revisions overwrite)
@@ -25,6 +25,7 @@ import numpy as np
 import pandas as pd
 import requests
 
+import vintage
 from macro_config import CRITICAL, SERIES
 
 log = logging.getLogger("pipeline")
@@ -231,6 +232,28 @@ def fetch_one(sid, cfg, start):
         return sid, None, e
 
 
+def keep_last_known(conn, failed, log_path, now):
+    """A series whose download failed keeps its last known values from the data log (data/vintages.csv).
+
+    The database is rebuilt on every run, so a failed download used to leave the series out, and build_data.py
+    then dropped its factor: on 10 Nov 2026 German gas prices failed and the page ran two days without the gas
+    factor, which moved the restaurant's bad year from €41,700 to €44,200. The series is marked 'kept', not
+    'ok', so vintage.py does not log these values again. Returns the series that were filled."""
+    known = vintage.known_on(vintage.read_log(log_path))
+    kept = []
+    for sid in failed:
+        rows = known[known.series_id == sid]
+        if rows.empty:
+            continue
+        s = pd.Series(rows.value.to_numpy(dtype=float), index=rows.period.to_numpy()).sort_index()
+        upsert(conn, sid, s, now)
+        conn.execute("UPDATE series_meta SET status = 'kept', last_period = ? WHERE series_id = ?", (s.index.max(), sid))
+        log.warning("%-15s kept %d values from the data log, up to %s", sid, len(s), s.index.max())
+        kept.append(sid)
+    conn.commit()
+    return kept
+
+
 def quality_gate(panel, failed, months_stale=3):
     """Problems serious enough to stop the refresh instead of publishing: a critical series failed or went stale."""
     problems = [f"{sid}: fetch failed" for sid in failed if sid in CRITICAL]
@@ -240,7 +263,7 @@ def quality_gate(panel, failed, months_stale=3):
     return problems
 
 
-def run(db, start, strict=False, workers=6):
+def run(db, start, strict=False, workers=6, log_path=None):
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
     conn = sqlite3.connect(db)
     conn.executescript(SCHEMA)
@@ -265,6 +288,8 @@ def run(db, start, strict=False, workers=6):
     if ok == 0:
         log.error("all series failed")
         return 1
+    if log_path and failed:
+        keep_last_known(conn, failed, log_path, now)   # a critical one still stops the run below
     panel = build_panel(conn)
     for msg in validate(panel):
         log.warning("validation: %s", msg)
@@ -286,6 +311,7 @@ if __name__ == "__main__":
     ap.add_argument("--strict", action="store_true",
                     help="exit with code 2 when a critical series failed or is stale (used by the scheduled refresh)")
     ap.add_argument("--workers", type=int, default=6, help="parallel downloads")
+    ap.add_argument("--log", help="the data log (data/vintages.csv): a series that fails to download keeps its last known values from it")
     args = ap.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
-    sys.exit(run(args.db, args.start, strict=args.strict, workers=args.workers))
+    sys.exit(run(args.db, args.start, strict=args.strict, workers=args.workers, log_path=args.log))

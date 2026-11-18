@@ -9,7 +9,7 @@ install:         ## Python packages for building and testing, at the tested vers
 	$(PY) -m playwright install chromium
 
 data:            ## download all series (needs FRED_API_KEY in .env) and build docs/data.json
-	$(PY) pipeline.py --db macro.db --start 2000-01 --strict
+	$(PY) pipeline.py --db macro.db --start 2000-01 --strict --log data/vintages.csv
 	$(PY) build_data.py --db macro.db --out docs/data.json
 	$(PY) validate_data.py docs/data.json
 

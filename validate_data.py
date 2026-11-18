@@ -19,6 +19,9 @@ REGIMES = {"Recovery", "Overheating", "Stagflation", "Contraction"}
 REQUIRED_CURRENT = ["asOf", "regime", "since", "euribor", "eurusd", "hicp", "energy", "food", "hmm", "vol", "hmmState"]
 REQUIRED_SCENARIOS = ["2022 energy shock", "Last 12 months", "2008 financial crisis", "2011 euro crisis", "2020 pandemic lockdown"]
 BASE_FACTORS = ["rate", "fx", "energy", "food", "oil", "cpi"]
+# every factor of build_data.FACTORS: one that drops out (on 10 Nov 2026 the gas price download failed and the page ran
+# two days without gas) changes the examples' results without anyone noticing, so it stops the refresh
+ALL_FACTORS = BASE_FACTORS + ["elec", "gas", "retail", "foodserv", "ppi_food", "ppi_metal", "ppi_paper", "ppi_plastic", "ppi_wood", "ip"]
 
 # plausible ranges: a value outside them means a unit or parsing error, not an economic event
 RANGES = {"euribor": (-2, 15), "eurusd": (0.6, 2.0), "hicp": (-5, 25), "energy": (-60, 150), "food": (-15, 40)}
@@ -65,6 +68,9 @@ def check(D, today=None, max_age_months=4):
     missing_base = [f for f in BASE_FACTORS if f not in factors]
     if missing_base:
         errs.append(f"core factors missing: {missing_base}")
+    missing = [f for f in ALL_FACTORS if f not in factors and f not in BASE_FACTORS]
+    if missing:
+        errs.append(f"factors missing: {missing} (a series failed and the data log had no copy of it)")
 
     width = 5 + 2 * len(factors)                       # period, regime, hmm, e0, infl0, moves..., vols...
     S = D["samples"]

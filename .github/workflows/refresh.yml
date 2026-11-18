@@ -33,10 +33,10 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements-dev.txt -c constraints.txt
-      - name: Fetch data (stops if a critical series failed or went stale)
+      - name: Fetch data (stops if a critical series failed or went stale; another failed series keeps its last known values)
         env:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
-        run: python pipeline.py --db macro.db --start 2000-01 --strict
+        run: python pipeline.py --db macro.db --start 2000-01 --strict --log data/vintages.csv
       - name: Keep a copy of the data (new and revised values go to data/vintages.csv and the run summary)
         run: python vintage.py --db macro.db --log data/vintages.csv --summary "$GITHUB_STEP_SUMMARY"
       - name: Build data

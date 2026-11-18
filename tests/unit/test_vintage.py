@@ -82,3 +82,23 @@ def test_two_runs_on_one_day_keep_the_later_value(tmp_path):
     fixed = [r for r in BASE if r[:2] != ("A", "2026-03")] + [("A", "2026-03", 3.3)]
     vintage.update(make_db(tmp_path / "2.db", fixed), log, day="2026-11-09")
     assert value(vintage.read_log(log), "A", "2026-03") == 3.3
+
+
+def test_a_failed_download_keeps_its_last_known_values(tmp_path):
+    """10 Nov 2026: German gas prices failed to download and the page ran two days without the gas factor."""
+    import pipeline
+    log = tmp_path / "vintages.csv"
+    vintage.update(make_db(tmp_path / "1.db", BASE), log, day="2026-11-09")
+    revised = [("A", "2026-01", 1.0), ("A", "2026-02", 2.5), ("A", "2026-03", 3.0)]
+    vintage.update(make_db(tmp_path / "2.db", revised, ok=("A",)), log, day="2026-11-10")
+    db = tmp_path / "3.db"
+    conn = sqlite3.connect(db)
+    conn.executescript(SCHEMA)
+    conn.executemany("INSERT INTO series_meta (series_id, status) VALUES (?, 'failed')", [("A",), ("C",)])
+    kept = pipeline.keep_last_known(conn, ["A", "C"], log, "t3")
+    rows = conn.execute("SELECT period, value FROM observations WHERE series_id = 'A' ORDER BY period").fetchall()
+    meta = dict(conn.execute("SELECT series_id, status FROM series_meta").fetchall())
+    conn.close()
+    assert kept == ["A"] and rows == [("2026-01", 1.0), ("2026-02", 2.5), ("2026-03", 3.0)]   # the latest revision
+    assert meta == {"A": "kept", "C": "failed"}                 # C was never seen, so there is nothing to keep
+    assert vintage.read_db(db).empty                            # kept values are not logged again as new
